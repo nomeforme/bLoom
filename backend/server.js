@@ -37,6 +37,7 @@ const TREE_ABI = [
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
+  "function getNodeCount() external view returns (uint256)",
   "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)"
 ];
 
@@ -47,7 +48,7 @@ const LLM_CONFIG = {
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: 'https://api.openai.com/v1',
-    model: 'gpt-3.5-turbo'
+    model: 'gpt-4o'
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -164,17 +165,35 @@ io.on('connection', (socket) => {
             'Write the beginning of an interesting story (1-2 sentences):';
           
           const generatedText = await generateText(prompt, 'openai');
-          generations.push(generatedText);
+          if (generatedText && generatedText.trim()) {
+            generations.push(generatedText.trim());
+          } else {
+            throw new Error('Empty response from AI');
+          }
         } catch (error) {
-          console.error(`Error generating text ${i + 1}:`, error);
-          generations.push(`Generated branch ${i + 1}: [AI generation failed, using placeholder]`);
+          console.error(`Error generating text ${i + 1}:`, error.message);
+          
+          // Create meaningful placeholder based on parent content
+          const placeholder = parentContent ? 
+            `[Branch ${i + 1}] The story continues in an unexpected direction...` :
+            `[Story ${i + 1}] Once upon a time, in a place far from here...`;
+          
+          generations.push(placeholder);
         }
       }
       
-      // Add generated nodes to blockchain
-      const nodePromises = generations.map(async (content, index) => {
+      // Add generated nodes to blockchain sequentially to avoid nonce conflicts
+      let successCount = 0;
+      for (let i = 0; i < generations.length; i++) {
+        const content = generations[i];
         try {
-          console.log(`Adding generated node ${index + 1}:`, content.substring(0, 50) + '...');
+          console.log(`Adding generated node ${i + 1}:`, content.substring(0, 50) + '...');
+          
+          // Add small delay between transactions to avoid nonce conflicts
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
           const tx = await treeContract.addNode(parentId, content);
           const receipt = await tx.wait();
           
@@ -202,21 +221,16 @@ io.on('connection', (socket) => {
             // Emit to all connected clients
             io.emit('nodeCreated', nodeData);
             console.log('Node created and broadcasted:', nodeData.nodeId);
+            successCount++;
           }
-          
-          return receipt;
         } catch (error) {
-          console.error(`Error adding node ${index + 1} to blockchain:`, error);
-          throw error;
+          console.error(`Error adding node ${i + 1} to blockchain:`, error);
         }
-      });
-      
-      // Wait for all nodes to be added
-      await Promise.allSettled(nodePromises);
+      }
       
       socket.emit('generationComplete', {
         success: true,
-        message: `Generated ${count} sibling nodes`
+        message: `Generated ${successCount}/${count} sibling nodes successfully`
       });
       
     } catch (error) {
