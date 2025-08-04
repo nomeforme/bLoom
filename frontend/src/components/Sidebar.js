@@ -125,7 +125,7 @@ const Sidebar = ({
               {selectedNode.content}
             </div>
             <div style={{ fontSize: '12px', color: '#ccc' }}>
-              <div>Author: {selectedNode.author}</div>
+              <div>Author: {ellipseAddress(selectedNode.author)}</div>
               <div>Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
               <div>ID: {selectedNode.id.substring(0, 8)}...</div>
             </div>
