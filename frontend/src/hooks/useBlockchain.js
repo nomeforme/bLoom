@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 
 // Contract ABI - in a real app, you'd import this from generated files
@@ -90,7 +90,7 @@ export const useBlockchain = () => {
       // For development, auto-connect with a test account
       connectWithTestAccount(provider);
     }
-  }, []);
+  }, [account]);
 
   const connectWithTestAccount = async (provider) => {
     try {
@@ -176,23 +176,18 @@ export const useBlockchain = () => {
     }
   };
 
-  const getTree = async (treeAddress) => {
+  const getTree = useCallback(async (treeAddress) => {
     if (!signer) throw new Error('Not connected');
 
     try {
       console.log('Getting tree at address:', treeAddress);
       
-      // Force fresh provider state
-      const currentBlock = await provider.getBlockNumber();
-      console.log('Current block number:', currentBlock);
-      
-      // Create fresh contract instance with explicit provider
-      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
+      // Use existing provider instead of creating fresh one
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, provider);
       
       // Check node count first
       const nodeCount = await treeContract.getNodeCount();
-      console.log('Contract reports node count (fresh provider):', nodeCount.toString());
+      console.log('Contract reports node count:', nodeCount.toString());
       
       const rootId = await treeContract.getRootId();
       console.log('Root ID:', rootId);
@@ -213,7 +208,13 @@ export const useBlockchain = () => {
             timestamp: Number(nodeData[5]),
             isRoot: nodeData[6]
           };
-          console.log('Loaded node:', node.nodeId, node.isRoot ? '[ROOT]' : '[CHILD]', node.content.substring(0, 30));
+          console.log('Loaded node:', {
+            nodeId: node.nodeId,
+            parentId: node.parentId,
+            isRoot: node.isRoot,
+            content: node.content.substring(0, 50) + '...',
+            author: node.author
+          });
           return node;
         })
       );
@@ -239,7 +240,7 @@ export const useBlockchain = () => {
       console.error('Error getting tree:', error);
       throw error;
     }
-  };
+  }, [signer, provider]);
 
   const addNode = async (treeAddress, parentId, content) => {
     if (!signer) throw new Error('Not connected');
@@ -259,7 +260,7 @@ export const useBlockchain = () => {
     }
   };
 
-  const getUserTrees = async () => {
+  const getUserTrees = useCallback(async () => {
     if (!factory || !account) return [];
 
     try {
@@ -282,7 +283,7 @@ export const useBlockchain = () => {
       console.error('Error getting user trees:', error);
       return [];
     }
-  };
+  }, [factory, account, getTree]);
 
   return {
     provider,
