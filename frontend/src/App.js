@@ -32,14 +32,6 @@ function App() {
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
-    // Listen for blockchain events
-    newSocket.on('nodeCreated', (data) => {
-      console.log('Node created:', data);
-      if (graphRef.current) {
-        graphRef.current.addNodeFromBlockchain(data);
-      }
-    });
-
     newSocket.on('treeCreated', (data) => {
       console.log('Tree created:', data);
       setTrees(prev => [...prev, data]);
@@ -47,6 +39,95 @@ function App() {
 
     return () => newSocket.close();
   }, []);
+
+  // Handle socket events that depend on currentTree
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleGenerationComplete = (data) => {
+      console.log('Generation complete:', data);
+      // Refresh the current tree after generation is complete
+      if (currentTree && data.success) {
+        setTimeout(async () => {
+          try {
+            console.log('Refreshing tree after generation complete');
+            const updatedTree = await getTree(currentTree.address);
+            setCurrentTree(updatedTree);
+            // Update trees list as well
+            setTrees(prevTrees => 
+              prevTrees.map(tree => 
+                tree.address === currentTree.address ? updatedTree : tree
+              )
+            );
+          } catch (error) {
+            console.error('Error refreshing tree after generation:', error);
+          }
+        }, 2000); // Wait for blockchain to settle
+      }
+    };
+
+    const handleNodeCreated = (data) => {
+      console.log('Socket nodeCreated event received:', {
+        nodeId: data.nodeId,
+        parentId: data.parentId,
+        content: data.content?.substring(0, 50) + '...',
+        treeAddress: data.treeAddress,
+        currentTreeAddress: currentTree?.address
+      });
+      
+      if (graphRef.current) {
+        graphRef.current.addNodeFromBlockchain(data);
+      }
+      
+      // Update current tree state with new node
+      if (currentTree && data.treeAddress === currentTree.address) {
+        console.log('Updating current tree with new node');
+        const newNode = {
+          nodeId: data.nodeId,
+          parentId: data.parentId,
+          content: data.content,
+          children: [],
+          author: data.author,
+          timestamp: data.timestamp,
+          isRoot: false
+        };
+
+        setCurrentTree(prevTree => {
+          console.log('Previous tree node count:', prevTree.nodeCount);
+          const updatedTree = {
+            ...prevTree,
+            nodes: [...(prevTree.nodes || []), newNode],
+            nodeCount: (prevTree.nodeCount || 0) + 1
+          };
+          console.log('Updated tree node count:', updatedTree.nodeCount);
+          return updatedTree;
+        });
+
+        // Also update the tree in the trees list to ensure persistence
+        setTrees(prevTrees => 
+          prevTrees.map(tree => 
+            tree.address === data.treeAddress 
+              ? {
+                  ...tree,
+                  nodes: [...(tree.nodes || []), newNode],
+                  nodeCount: (tree.nodeCount || 0) + 1
+                }
+              : tree
+          )
+        );
+      } else {
+        console.log('Not updating tree - currentTree mismatch or null');
+      }
+    };
+
+    socket.on('nodeCreated', handleNodeCreated);
+    socket.on('generationComplete', handleGenerationComplete);
+
+    return () => {
+      socket.off('nodeCreated', handleNodeCreated);
+      socket.off('generationComplete', handleGenerationComplete);
+    };
+  }, [socket, currentTree, getTree]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -70,7 +151,7 @@ function App() {
     };
 
     loadExistingTrees();
-  }, [connected, account, getUserTrees]);
+  }, [connected, account, getUserTrees, currentTree]);
 
   const handleCreateTree = async (rootContent) => {
     try {
@@ -92,10 +173,25 @@ function App() {
     
     try {
       await addNode(currentTree.address, parentId, content);
+      // After adding a node, refresh the tree to get the latest state
+      setTimeout(async () => {
+        try {
+          const updatedTree = await getTree(currentTree.address);
+          setCurrentTree(updatedTree);
+          // Update trees list as well
+          setTrees(prevTrees => 
+            prevTrees.map(tree => 
+              tree.address === currentTree.address ? updatedTree : tree
+            )
+          );
+        } catch (error) {
+          console.error('Error refreshing tree after node addition:', error);
+        }
+      }, 1000); // Give some time for blockchain to process
     } catch (error) {
       console.error('Error adding node:', error);
     }
-  }, [currentTree, addNode]);
+  }, [currentTree, addNode, getTree]);
 
   const handleGenerateSiblings = useCallback(async (parentId, count = 3) => {
     if (!parentId) return;
