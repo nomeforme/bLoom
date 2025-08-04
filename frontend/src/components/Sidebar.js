@@ -78,18 +78,37 @@ const Sidebar = ({
         ) : (
           trees.map((tree, index) => (
             <div
-              key={tree.id || index}
-              className={`tree-item ${currentTree?.id === tree.id ? 'selected' : ''}`}
+              key={tree.address || tree.id || index}
+              className={`tree-item ${currentTree?.address === tree.address ? 'selected' : ''}`}
               onClick={() => onSelectTree(tree)}
             >
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                Tree #{index + 1}
+              <div style={{ 
+                fontWeight: 'bold', 
+                marginBottom: '5px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>🌳 Tree #{index + 1}</span>
+                <span style={{ fontSize: '9px', color: '#666', fontWeight: 'normal' }}>
+                  {tree.address ? tree.address.substring(0, 6) + '...' : ''}
+                </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#ccc' }}>
-                {tree.rootContent ? tree.rootContent.substring(0, 50) + '...' : 'Loading...'}
+              <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '8px' }}>
+                {tree.rootContent ? tree.rootContent.substring(0, 45) + '...' : 'Loading...'}
               </div>
-              <div style={{ fontSize: '10px', color: '#888', marginTop: '5px' }}>
-                Nodes: {tree.nodeCount || 0}
+              <div className="node-stats" style={{ 
+                fontSize: '11px', 
+                color: '#4CAF50', 
+                fontWeight: 'bold',
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>📊 Total: {tree.nodeCount || 0} nodes</span>
+                <span style={{ color: '#888' }}>
+                  {tree.nodes ? `(${tree.nodes.filter(n => !n.isRoot).length} children)` : ''}
+                </span>
               </div>
             </div>
           ))

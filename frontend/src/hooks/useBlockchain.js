@@ -15,6 +15,7 @@ const TREE_ABI = [
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
+  "function getNodeCount() external view returns (uint256)",
   "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)"
 ];
 
@@ -179,14 +180,31 @@ export const useBlockchain = () => {
     if (!signer) throw new Error('Not connected');
 
     try {
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
+      console.log('Getting tree at address:', treeAddress);
+      
+      // Force fresh provider state
+      const currentBlock = await provider.getBlockNumber();
+      console.log('Current block number:', currentBlock);
+      
+      // Create fresh contract instance with explicit provider
+      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
+      
+      // Check node count first
+      const nodeCount = await treeContract.getNodeCount();
+      console.log('Contract reports node count (fresh provider):', nodeCount.toString());
+      
       const rootId = await treeContract.getRootId();
+      console.log('Root ID:', rootId);
+      
       const allNodeIds = await treeContract.getAllNodes();
+      console.log('getAllNodes() returned:', allNodeIds.length, 'node IDs');
+      console.log('Node IDs:', allNodeIds);
       
       const nodes = await Promise.all(
         allNodeIds.map(async (nodeId) => {
           const nodeData = await treeContract.getNode(nodeId);
-          return {
+          const node = {
             nodeId: nodeData[0],
             parentId: nodeData[1],
             content: nodeData[2],
@@ -195,10 +213,13 @@ export const useBlockchain = () => {
             timestamp: Number(nodeData[5]),
             isRoot: nodeData[6]
           };
+          console.log('Loaded node:', node.nodeId, node.isRoot ? '[ROOT]' : '[CHILD]', node.content.substring(0, 30));
+          return node;
         })
       );
 
-      return {
+      console.log('Total nodes loaded:', nodes.length);
+      const result = {
         address: treeAddress,
         contract: treeContract,
         rootId,
@@ -206,6 +227,14 @@ export const useBlockchain = () => {
         nodeCount: nodes.length,
         rootContent: nodes.find(n => n.isRoot)?.content || ''
       };
+      
+      console.log('Tree result:', {
+        address: result.address,
+        nodeCount: result.nodeCount,
+        rootContent: result.rootContent.substring(0, 30)
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error getting tree:', error);
       throw error;
@@ -234,13 +263,20 @@ export const useBlockchain = () => {
     if (!factory || !account) return [];
 
     try {
+      console.log('Getting trees for account:', account);
       const treeIds = await factory.getUserTrees(account);
+      console.log('Found tree IDs:', treeIds.length, treeIds);
+      
       const trees = await Promise.all(
-        treeIds.map(async (treeId) => {
+        treeIds.map(async (treeId, index) => {
+          console.log(`Processing tree ${index + 1}/${treeIds.length}, ID:`, treeId);
           const treeAddress = await factory.getTree(treeId);
+          console.log(`Tree ${index + 1} address:`, treeAddress);
           return await getTree(treeAddress);
         })
       );
+      
+      console.log('Loaded trees:', trees.length);
       return trees;
     } catch (error) {
       console.error('Error getting user trees:', error);
