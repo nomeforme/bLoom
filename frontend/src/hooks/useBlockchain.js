@@ -182,8 +182,9 @@ export const useBlockchain = () => {
     try {
       console.log('Getting tree at address:', treeAddress);
       
-      // Use existing provider instead of creating fresh one
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, provider);
+      // Create fresh provider to ensure we get latest blockchain state
+      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       
       // Check node count first
       const nodeCount = await treeContract.getNodeCount();
@@ -194,10 +195,14 @@ export const useBlockchain = () => {
       
       const allNodeIds = await treeContract.getAllNodes();
       console.log('getAllNodes() returned:', allNodeIds.length, 'node IDs');
-      console.log('Node IDs:', allNodeIds);
+      console.log('Expected:', nodeCount.toString(), 'Got:', allNodeIds.length);
+      console.log('Node IDs:', allNodeIds.map(id => id.substring(0, 10) + '...'));
       
-      const nodes = await Promise.all(
-        allNodeIds.map(async (nodeId) => {
+      const nodes = [];
+      for (let i = 0; i < allNodeIds.length; i++) {
+        const nodeId = allNodeIds[i];
+        try {
+          console.log(`Loading node ${i + 1}/${allNodeIds.length}: ${nodeId.substring(0, 10)}...`);
           const nodeData = await treeContract.getNode(nodeId);
           const node = {
             nodeId: nodeData[0],
@@ -208,16 +213,18 @@ export const useBlockchain = () => {
             timestamp: Number(nodeData[5]),
             isRoot: nodeData[6]
           };
-          console.log('Loaded node:', {
-            nodeId: node.nodeId,
-            parentId: node.parentId,
+          console.log('✓ Loaded node:', {
+            nodeId: node.nodeId.substring(0, 10) + '...',
+            parentId: node.parentId.substring(0, 10) + '...',
             isRoot: node.isRoot,
             content: node.content.substring(0, 50) + '...',
-            author: node.author
+            author: node.author.substring(0, 10) + '...'
           });
-          return node;
-        })
-      );
+          nodes.push(node);
+        } catch (error) {
+          console.error(`✗ Failed to load node ${nodeId}:`, error);
+        }
+      }
 
       console.log('Total nodes loaded:', nodes.length);
       const result = {
@@ -240,7 +247,7 @@ export const useBlockchain = () => {
       console.error('Error getting tree:', error);
       throw error;
     }
-  }, [signer, provider]);
+  }, [signer]);
 
   const addNode = async (treeAddress, parentId, content) => {
     if (!signer) throw new Error('Not connected');
