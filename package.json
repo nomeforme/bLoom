@@ -1,0 +1,31 @@
+{
+  "name": "blockchain-loom",
+  "version": "1.0.0",
+  "description": "Decentralized tree-based text generation interface on Ethereum",
+  "main": "backend/server.js",
+  "scripts": {
+    "install-all": "npm install && cd frontend && npm install",
+    "backend": "node backend/server.js",
+    "frontend": "cd frontend && npm start",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "deploy": "forge script scripts/Deploy.s.sol --rpc-url http://localhost:8545 --private-key REDACTED_PRIVATE_KEY --broadcast",
+    "anvil": "anvil",
+    "test": "forge test",
+    "build": "forge build"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.7.1",
+    "ws": "^8.14.2",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1",
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["blockchain", "ethereum", "text-generation", "ai", "narrative", "tree-structure"],
+  "author": "Blockchain Loom Team",
+  "license": "MIT"
+}
