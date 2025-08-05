@@ -248,7 +248,11 @@ const Sidebar = ({
           <h3>Selected Node</h3>
           <div className="node-info">
             <h4>Node Details</h4>
-            <div className="node-content">
+            <div className="node-content" style={{ 
+              border: '1px solid #555',
+              borderRadius: '4px',
+              padding: '8px'
+            }}>
               {selectedNode.content}
             </div>
             <div style={{ fontSize: '12px', color: '#ccc' }}>

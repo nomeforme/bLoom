@@ -24,6 +24,7 @@ function App() {
     createTree,
     getTree,
     addNode,
+    updateNode,
     getUserTrees
   } = useBlockchain();
 
@@ -158,7 +159,7 @@ function App() {
       const treeAddress = await createTree(rootContent);
       const tree = await getTree(treeAddress);
       setCurrentTree(tree);
-      setTrees(prev => [...prev, tree]);
+      // Note: Don't add to trees here - the socket 'treeCreated' event will handle it
     } catch (error) {
       console.error('Error creating tree:', error);
     }
@@ -193,6 +194,77 @@ function App() {
     }
   }, [currentTree, addNode, getTree]);
 
+  const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent) => {
+    if (!socket) {
+      throw new Error('Socket not connected - cannot update node');
+    }
+
+    if (!treeAddress) {
+      throw new Error('Tree address is required');
+    }
+    
+    if (!nodeId) {
+      throw new Error('Node ID is required');
+    }
+    
+    try {
+      // Use socket to send update request to backend
+      const updatePromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          socket.off('updateComplete', handleComplete);
+          reject(new Error('Update timeout'));
+        }, 30000); // 30 second timeout
+        
+        const handleComplete = (data) => {
+          clearTimeout(timeout);
+          socket.off('updateComplete', handleComplete);
+          if (data.success) {
+            resolve(data);
+          } else {
+            reject(new Error(data.error || 'Update failed'));
+          }
+        };
+
+        socket.on('updateComplete', handleComplete);
+
+        // Send update request to backend
+        socket.emit('updateNode', {
+          treeAddress,
+          nodeId,
+          newContent
+        });
+      });
+
+      // Wait for backend to complete the update
+      await updatePromise;
+      
+      // Refresh the tree to get the updated content from blockchain
+      setTimeout(async () => {
+        try {
+          const updatedTree = await getTree(treeAddress);
+          
+          // Update current tree if it matches
+          if (currentTree?.address === treeAddress) {
+            setCurrentTree(updatedTree);
+          }
+          
+          // Update trees list
+          setTrees(prevTrees => 
+            prevTrees.map(tree => 
+              tree.address === treeAddress ? updatedTree : tree
+            )
+          );
+        } catch (error) {
+          console.error('Error refreshing tree after node update:', error);
+        }
+      }, 1000); // Give some time for blockchain to process
+      
+    } catch (error) {
+      console.error('Error updating node:', error);
+      throw error;
+    }
+  }, [socket, getTree, currentTree]);
+
   const handleGenerateSiblings = useCallback((parentId, count = 3) => {
     if (!parentId) return Promise.resolve();
     
@@ -222,10 +294,20 @@ function App() {
       socket.on('generationComplete', handleComplete);
       socket.on('error', handleError);
 
+      // Find the current content of the parent node (including any local modifications)
+      let parentContent = '';
+      if (currentTree && parentId) {
+        const parentNode = currentTree.nodes.find(node => node.nodeId === parentId);
+        if (parentNode) {
+          parentContent = parentNode.content;
+        }
+      }
+
       // Send generation request to backend
       socket.emit('generateSiblings', {
         treeAddress: currentTree?.address,
         parentId,
+        parentContent, // Include the current content (modified or original)
         count
       });
     });
@@ -412,6 +494,7 @@ function App() {
           currentTree={currentTree}
           onNodeSelect={handleNodeSelect}
           onAddNode={handleAddNode}
+          onUpdateNode={handleUpdateNode}
         />
       </div>
     </div>

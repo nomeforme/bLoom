@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
-const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => {
+const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNode }, ref) => {
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
   
@@ -85,7 +85,7 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
       if (this.flags.collapsed) return;
       
       const content = this.properties.content || "";
-      const maxLength = 100;
+      const maxLength = 150; // Increased for better readability
       const displayContent = content.length > maxLength ? 
         content.substring(0, maxLength) + "..." : content;
       
@@ -96,7 +96,7 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
       const words = displayContent.split(' ');
       const lines = [];
       let currentLine = '';
-      const maxWidth = this.size[0] - 20; // Leave padding
+      const maxWidth = this.size[0] - 30; // More padding for better appearance
       
       for (let word of words) {
         const testLine = currentLine + (currentLine ? ' ' : '') + word;
@@ -110,17 +110,26 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
       }
       if (currentLine) lines.push(currentLine);
       
+      // Draw text content
       let y = 35;
-      for (let line of lines.slice(0, 6)) { // Limit to 6 lines
-        ctx.fillText(line, 10, y);
+      for (let line of lines.slice(0, 6)) { // Back to 6 lines since edit indicator moved
+        ctx.fillText(line, 15, y);
         y += 18;
       }
       
       // Draw metadata
       ctx.fillStyle = "#aaaaaa";
       ctx.font = "11px Arial";
-      ctx.fillText(`Author: ${this.properties.author.substring(0, 10)}...`, 10, this.size[1] - 25);
-      ctx.fillText(`Time: ${new Date(this.properties.timestamp * 1000).toLocaleTimeString()}`, 10, this.size[1] - 10);
+      ctx.fillText(`Author: ${this.properties.author.substring(0, 10)}...`, 15, this.size[1] - 25);
+      ctx.fillText(`Time: ${new Date(this.properties.timestamp * 1000).toLocaleTimeString()}`, 15, this.size[1] - 10);
+      
+      // Draw edit indicator in bottom right
+      ctx.fillStyle = "#4CAF50";
+      ctx.font = "10px Arial";
+      const editText = "✏️ Edit";
+      const editMetrics = ctx.measureText(editText);
+      ctx.fillText(editText, this.size[0] - editMetrics.width - 10, this.size[1] - 5);
+      
     };
 
     LoomNode.prototype.onMouseDown = function(e, localpos, canvas) {
@@ -137,11 +146,188 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
     };
 
     LoomNode.prototype.onDblClick = function() {
-      const newContent = prompt("Edit node content:", this.properties.content);
-      if (newContent !== null) {
-        this.properties.content = newContent;
-        this.title = newContent.substring(0, 20) + (newContent.length > 20 ? "..." : "");
+      // Check if we have required data before opening dialog
+      if (!this.properties.nodeId) {
+        console.error('Cannot edit node: missing nodeId');
+        return;
       }
+      
+      const originalContent = this.properties.content;
+      
+      // Create a more user-friendly edit dialog
+      const editDialog = document.createElement('div');
+      editDialog.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #2a2a2a;
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        padding: 20px;
+        z-index: 10000;
+        min-width: 400px;
+        max-width: 600px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      `;
+      
+      editDialog.innerHTML = `
+        <div style="color: #fff; margin-bottom: 15px; font-family: Arial, sans-serif;">
+          <h3 style="margin: 0 0 10px 0; color: #4CAF50;">Edit Node Content</h3>
+          <p style="margin: 0; color: #ccc; font-size: 12px;">Modify the text content for this node. Changes will be automatically saved to the blockchain.</p>
+        </div>
+        <textarea id="nodeContentEditor" style="
+          width: 100%;
+          height: 120px;
+          background: #1a1a1a;
+          color: #fff;
+          border: 1px solid #555;
+          border-radius: 4px;
+          padding: 10px;
+          font-family: Arial, sans-serif;
+          font-size: 14px;
+          resize: vertical;
+          box-sizing: border-box;
+        ">${originalContent}</textarea>
+        <div style="margin-top: 15px; text-align: right;">
+          <button id="cancelEdit" style="
+            background: #666;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+          ">Cancel</button>
+          <button id="saveEdit" style="
+            background: #4CAF50;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+          ">Save Changes</button>
+        </div>
+      `;
+      
+      document.body.appendChild(editDialog);
+      
+      const textarea = document.getElementById('nodeContentEditor');
+      const saveBtn = document.getElementById('saveEdit');
+      const cancelBtn = document.getElementById('cancelEdit');
+      
+      // Focus and select text
+      textarea.focus();
+      textarea.setSelectionRange(0, textarea.value.length);
+      
+      let dialogClosed = false;
+      let clickOutsideHandler = null;
+      
+      const cleanup = () => {
+        if (clickOutsideHandler) {
+          document.removeEventListener('click', clickOutsideHandler);
+          clickOutsideHandler = null;
+        }
+      };
+      
+      const closeDialog = () => {
+        if (!dialogClosed && document.body.contains(editDialog)) {
+          dialogClosed = true;
+          cleanup();
+          document.body.removeChild(editDialog);
+        }
+      };
+      
+      const saveChanges = async () => {
+        const newContent = textarea.value.trim();
+        if (newContent && newContent !== originalContent) {
+          // Show saving state
+          saveBtn.textContent = 'Saving...';
+          saveBtn.disabled = true;
+          textarea.disabled = true;
+          
+          try {
+            // Save to blockchain
+            if (!onUpdateNode) {
+              throw new Error('Update functionality is not available');
+            }
+            
+            // Get current tree address from the graph reference
+            const graph = this.graph;
+            const treeAddress = graph?.currentTreeAddress;
+            
+            if (!treeAddress) {
+              throw new Error('No current tree address available');
+            }
+            
+            // Get the current onUpdateNode function from the graph (not closure)
+            const currentUpdateNode = graph?.onUpdateNode;
+            if (!currentUpdateNode) {
+              throw new Error('Update function not available');
+            }
+            
+            await currentUpdateNode(treeAddress, this.properties.nodeId, newContent);
+            closeDialog();
+          } catch (error) {
+            console.error('Failed to save node update:', error);
+            
+            // Show error state
+            saveBtn.textContent = 'Save Failed - Retry';
+            saveBtn.style.background = '#f44336';
+            saveBtn.disabled = false;
+            textarea.disabled = false;
+            
+            // Create error message
+            const errorMsg = document.createElement('div');
+            errorMsg.style.cssText = `
+              color: #f44336;
+              font-size: 12px;
+              margin-top: 5px;
+              text-align: center;
+            `;
+            errorMsg.textContent = `Failed to save: ${error.message}`;
+            saveBtn.parentElement.insertBefore(errorMsg, saveBtn.parentElement.firstChild);
+            
+            // Remove error message after 3 seconds
+            setTimeout(() => {
+              if (errorMsg.parentElement) {
+                errorMsg.parentElement.removeChild(errorMsg);
+              }
+              saveBtn.textContent = 'Save Changes';
+              saveBtn.style.background = '#4CAF50';
+            }, 3000);
+          }
+        } else {
+          closeDialog();
+        }
+      };
+      
+      // Event listeners
+      saveBtn.addEventListener('click', saveChanges);
+      cancelBtn.addEventListener('click', closeDialog);
+      
+      // Save on Enter (Ctrl+Enter or Cmd+Enter)
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          saveChanges();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeDialog();
+        }
+      });
+      
+      // Close on click outside
+      setTimeout(() => {
+        clickOutsideHandler = (e) => {
+          if (!dialogClosed && !editDialog.contains(e.target)) {
+            closeDialog();
+          }
+        };
+        document.addEventListener('click', clickOutsideHandler);
+      }, 100);
     };
 
     // Override computeSize to enforce our custom size
@@ -279,6 +465,10 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
 
     const graph = graphRef.current;
     
+    // Store current tree address and update function on the graph for access in node functions
+    graph.currentTreeAddress = currentTree.address;
+    graph.onUpdateNode = onUpdateNode;
+    
     // Clear existing nodes
     graph.clear();
     
@@ -342,6 +532,13 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode }, ref) => 
       console.log(`Loaded ${graph.findNodesByType("loom/node").length} nodes to graph`);
     }
   }, [currentTree]);
+
+  // Update the onUpdateNode function reference when it changes
+  useEffect(() => {
+    if (graphRef.current && onUpdateNode) {
+      graphRef.current.onUpdateNode = onUpdateNode;
+    }
+  }, [onUpdateNode]);
 
   const addLoomNode = (nodeData) => {
     if (graphRef.current && graphRef.current.addLoomNode) {
