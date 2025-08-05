@@ -265,6 +265,50 @@ function App() {
     }
   }, [socket, getTree, currentTree]);
 
+  // Helper function to build full narrative context from root to target node
+  const buildFullPathContext = useCallback((targetNodeId) => {
+    if (!currentTree || !currentTree.nodes) return '';
+    
+    // Build a map of nodes for quick lookup
+    const nodeMap = new Map();
+    currentTree.nodes.forEach(node => {
+      nodeMap.set(node.nodeId, node);
+    });
+    
+    // Find the target node
+    const targetNode = nodeMap.get(targetNodeId);
+    if (!targetNode) return '';
+    
+    // Build path from root to target
+    const path = [];
+    let currentNode = targetNode;
+    
+    // Trace back to root
+    while (currentNode) {
+      path.unshift(currentNode);
+      
+      // Check if this is the root node
+      if (currentNode.isRoot || 
+          currentNode.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          currentNode.parentId === '0x0') {
+        break;
+      }
+      
+      // Move to parent
+      currentNode = nodeMap.get(currentNode.parentId);
+      
+      // Prevent infinite loops
+      if (path.length > 50) {
+        console.warn('Path too long, breaking to prevent infinite loop');
+        break;
+      }
+    }
+    
+    // Combine all content in sequence
+    const fullContext = path.map(node => node.content.trim()).filter(content => content).join('\n\n');
+    return fullContext;
+  }, [currentTree]);
+
   const handleGenerateSiblings = useCallback((parentId, count = 3) => {
     if (!parentId) return Promise.resolve();
     
@@ -294,24 +338,18 @@ function App() {
       socket.on('generationComplete', handleComplete);
       socket.on('error', handleError);
 
-      // Find the current content of the parent node (including any local modifications)
-      let parentContent = '';
-      if (currentTree && parentId) {
-        const parentNode = currentTree.nodes.find(node => node.nodeId === parentId);
-        if (parentNode) {
-          parentContent = parentNode.content;
-        }
-      }
+      // Build full narrative context from root to parent node
+      const fullPathContext = buildFullPathContext(parentId);
 
-      // Send generation request to backend
+      // Send generation request to backend with full context
       socket.emit('generateSiblings', {
         treeAddress: currentTree?.address,
         parentId,
-        parentContent, // Include the current content (modified or original)
+        parentContent: fullPathContext, // Full narrative path context
         count
       });
     });
-  }, [socket, currentTree]);
+  }, [socket, currentTree, buildFullPathContext]);
 
   const handleImportTrees = useCallback(async (importData) => {
     if (!socket) {
