@@ -193,17 +193,42 @@ function App() {
     }
   }, [currentTree, addNode, getTree]);
 
-  const handleGenerateSiblings = useCallback(async (parentId, count = 3) => {
-    if (!parentId) return;
+  const handleGenerateSiblings = useCallback((parentId, count = 3) => {
+    if (!parentId) return Promise.resolve();
     
-    // Send generation request to backend
-    if (socket) {
+    return new Promise((resolve, reject) => {
+      if (!socket) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+
+      // Set up one-time listeners for completion
+      const handleComplete = (data) => {
+        socket.off('generationComplete', handleComplete);
+        socket.off('error', handleError);
+        if (data.success) {
+          resolve(data);
+        } else {
+          reject(new Error(data.error || 'Generation failed'));
+        }
+      };
+
+      const handleError = (error) => {
+        socket.off('generationComplete', handleComplete);
+        socket.off('error', handleError);
+        reject(error);
+      };
+
+      socket.on('generationComplete', handleComplete);
+      socket.on('error', handleError);
+
+      // Send generation request to backend
       socket.emit('generateSiblings', {
         treeAddress: currentTree?.address,
         parentId,
         count
       });
-    }
+    });
   }, [socket, currentTree]);
 
   return (
