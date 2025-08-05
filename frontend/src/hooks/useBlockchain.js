@@ -12,11 +12,13 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
-  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)"
+  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)",
+  "event NodeUpdated(bytes32 indexed nodeId, string newContent, address indexed author)"
 ];
 
 // Replace with your deployed factory address
@@ -267,6 +269,21 @@ export const useBlockchain = () => {
     }
   };
 
+  const updateNode = useCallback(async (treeAddress, nodeId, newContent) => {
+    if (!signer) throw new Error('Not connected');
+
+    try {
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
+      const tx = await treeContract.updateNodeContent(nodeId, newContent);
+      const receipt = await tx.wait();
+      
+      return receipt;
+    } catch (error) {
+      console.error('Error updating node:', error);
+      throw error;
+    }
+  }, [signer]);
+
   const getUserTrees = useCallback(async () => {
     if (!factory || !account) return [];
 
@@ -303,6 +320,7 @@ export const useBlockchain = () => {
     createTree,
     getTree,
     addNode,
+    updateNode,
     getUserTrees
   };
 };

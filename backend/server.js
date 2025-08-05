@@ -34,11 +34,13 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
-  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)"
+  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)",
+  "event NodeUpdated(bytes32 indexed nodeId, string newContent, address indexed author)"
 ];
 
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
@@ -178,27 +180,29 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('generateSiblings', async (data) => {
-    const { treeAddress, parentId, count = 3 } = data;
+    const { treeAddress, parentId, parentContent, count = 3 } = data;
     
     try {
-      console.log('Generating siblings for parent:', parentId, 'count:', count);
-      
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
-      // Get parent node content for context
-      let parentContent = '';
-      if (parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        const parentNode = await treeContract.getNode(parentId);
-        parentContent = parentNode[2]; // content is at index 2
+      // Use provided content if available, otherwise fetch from blockchain
+      let contextContent = parentContent || '';
+      if (!contextContent && parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        try {
+          const parentNode = await treeContract.getNode(parentId);
+          contextContent = parentNode[2]; // content is at index 2
+        } catch (error) {
+          console.warn('Could not fetch parent content from blockchain:', error.message);
+        }
       }
       
       // Generate text continuations
       const generations = [];
       for (let i = 0; i < count; i++) {
         try {
-          const prompt = parentContent ? 
-            `Continue this story with a new branch:\n\n${parentContent}\n\nWrite a short continuation (1-2 sentences):` :
+          const prompt = contextContent ? 
+            `Continue this story with a new branch:\n\n${contextContent}\n\nWrite a short continuation (1-2 sentences):` :
             'Write the beginning of an interesting story (1-2 sentences):';
           
           const generatedText = await generateText(prompt, 'openai');
@@ -211,7 +215,7 @@ io.on('connection', (socket) => {
           console.error(`Error generating text ${i + 1}:`, error.message);
           
           // Create meaningful placeholder based on parent content
-          const placeholder = parentContent ? 
+          const placeholder = contextContent ? 
             `[Branch ${i + 1}] The story continues in an unexpected direction...` :
             `[Story ${i + 1}] Once upon a time, in a place far from here...`;
           
@@ -224,8 +228,6 @@ io.on('connection', (socket) => {
       for (let i = 0; i < generations.length; i++) {
         const content = generations[i];
         try {
-          console.log(`Adding generated node ${i + 1}:`, content.substring(0, 50) + '...');
-          
           // Add small delay between transactions to avoid nonce conflicts
           if (i > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -257,7 +259,6 @@ io.on('connection', (socket) => {
             
             // Emit to all connected clients
             io.emit('nodeCreated', nodeData);
-            console.log('Node created and broadcasted:', nodeData.nodeId);
             successCount++;
           }
         } catch (error) {
@@ -279,19 +280,44 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('updateNode', async (data) => {
+    const { treeAddress, nodeId, newContent } = data;
+    
+    try {
+      // Get the tree contract
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
+      
+      // Update the node content
+      const tx = await treeContract.updateNodeContent(nodeId, newContent);
+      const receipt = await tx.wait();
+      
+      // Emit success response
+      socket.emit('updateComplete', {
+        success: true,
+        nodeId,
+        newContent,
+        txHash: receipt.hash
+      });
+      
+    } catch (error) {
+      console.error('Error updating node via backend:', error);
+      socket.emit('updateComplete', {
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   socket.on('importNodes', async (data) => {
     const { treeAddress, rootId, oldRootId, nodes } = data;
     
     try {
-      console.log('Importing nodes for tree:', treeAddress, 'nodes:', nodes.length);
-      
       // Verify the tree contract exists and is accessible
       try {
         const code = await provider.getCode(treeAddress);
         if (code === '0x') {
           throw new Error(`No contract found at address ${treeAddress}`);
         }
-        console.log('✓ Tree contract verified at:', treeAddress);
       } catch (error) {
         console.error('Contract verification failed:', error);
         throw new Error(`Failed to verify tree contract: ${error.message}`);
@@ -303,7 +329,6 @@ io.on('connection', (socket) => {
       // Test the contract by calling a simple read function
       try {
         const nodeCount = await treeContract.getNodeCount();
-        console.log('✓ Tree contract responsive, current node count:', nodeCount.toString());
       } catch (error) {
         console.error('Tree contract test call failed:', error);
         throw new Error(`Tree contract not responsive: ${error.message}`);
@@ -315,12 +340,10 @@ io.on('connection', (socket) => {
       // Map old root to new root
       if (oldRootId && rootId) {
         nodeIdMapping.set(oldRootId, rootId);
-        console.log(`Mapped old root ${oldRootId.substring(0, 8)} to new root ${rootId.substring(0, 8)}`);
       }
       
       // Sort nodes by dependency order (parents before children)
       const sortedNodes = sortNodesByDependency(nodes, oldRootId);
-      console.log(`Sorted ${sortedNodes.length} nodes for import`);
       
       let successCount = 0;
       let failureCount = 0;
@@ -335,18 +358,14 @@ io.on('connection', (socket) => {
           if (nodeData.parentId === oldRootId) {
             // Parent is the old root, use new root ID
             parentIdToUse = rootId;
-            console.log(`Using new root ID as parent for node ${i + 1}`);
           } else if (nodeIdMapping.has(nodeData.parentId)) {
             // Use mapped parent ID
             parentIdToUse = nodeIdMapping.get(nodeData.parentId);
-            console.log(`Using mapped parent ID for node ${i + 1}`);
           } else {
             console.warn(`Parent node ${nodeData.parentId.substring(0, 8)} not found in mapping for node ${i + 1}`);
             failureCount++;
             continue; // Skip this node
           }
-          
-          console.log(`Importing node ${i + 1}/${sortedNodes.length}:`, nodeData.content.substring(0, 50) + '...');
           
           // Add small delay between transactions to avoid nonce conflicts
           if (i > 0) {
@@ -384,7 +403,6 @@ io.on('connection', (socket) => {
             
             // Emit to all connected clients
             io.emit('nodeCreated', broadcastData);
-            console.log(`Node imported and broadcasted: ${newNodeId.substring(0, 8)}`);
             successCount++;
           } else {
             console.error('NodeCreated event not found in receipt');
