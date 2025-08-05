@@ -202,7 +202,7 @@ io.on('connection', (socket) => {
       for (let i = 0; i < count; i++) {
         try {
           const prompt = contextContent ? 
-            `Continue this story with a new branch:\n\n${contextContent}\n\nWrite a short continuation (1-2 sentences):` :
+            `Here is a narrative story that has developed sequentially. Please continue this story with a new branch that follows naturally from the established narrative:\n\n${contextContent}\n\nWrite a short, engaging continuation (1-2 sentences) that builds upon this story:` :
             'Write the beginning of an interesting story (1-2 sentences):';
           
           const generatedText = await generateText(prompt, 'openai');
