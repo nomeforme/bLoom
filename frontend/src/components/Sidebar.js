@@ -14,6 +14,7 @@ const Sidebar = ({
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
   const [siblingCount, setSiblingCount] = useState(3);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const ellipseAddress = (address) => {
     if (!address) return '';
@@ -27,9 +28,14 @@ const Sidebar = ({
     }
   };
 
-  const handleGenerateSiblings = () => {
+  const handleGenerateSiblings = async () => {
     if (selectedNode && selectedNode.id) {
-      onGenerateSiblings(selectedNode.id, siblingCount);
+      setIsGenerating(true);
+      try {
+        await onGenerateSiblings(selectedNode.id, siblingCount);
+      } finally {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -152,9 +158,9 @@ const Sidebar = ({
           <button
             className="btn"
             onClick={handleGenerateSiblings}
-            disabled={!connected || !selectedNode}
+            disabled={!connected || !selectedNode || isGenerating}
           >
-            Generate Siblings
+            {isGenerating ? 'Generating...' : 'Generate Siblings'}
           </button>
         </div>
       )}
