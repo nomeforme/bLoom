@@ -10,11 +10,14 @@ const Sidebar = ({
   currentTree,
   onSelectTree,
   selectedNode,
-  onGenerateSiblings
+  onGenerateSiblings,
+  onImportTrees
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
   const [siblingCount, setSiblingCount] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const ellipseAddress = (address) => {
     if (!address) return '';
@@ -38,6 +41,98 @@ const Sidebar = ({
       }
     }
   };
+
+  const handleExportTrees = async () => {
+    if (!trees || trees.length === 0) {
+      alert('No trees to export');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Create export data with tree structure and metadata
+      const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        account: account,
+        trees: trees.map(tree => ({
+          address: tree.address,
+          rootContent: tree.rootContent,
+          nodeCount: tree.nodeCount,
+          nodes: tree.nodes.map(node => ({
+            nodeId: node.nodeId,
+            parentId: node.parentId,
+            content: node.content,
+            author: node.author,
+            timestamp: node.timestamp,
+            isRoot: node.isRoot
+          }))
+        }))
+      };
+
+      // Create downloadable JSON file
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `loom-trees-${account?.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert(`Successfully exported ${trees.length} trees to JSON file`);
+    } catch (error) {
+      console.error('Error exporting trees:', error);
+      alert('Failed to export trees: ' + error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportTrees = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setIsImporting(true);
+      try {
+        const text = await file.text();
+        const importData = JSON.parse(text);
+
+        // Validate import data structure
+        if (!importData.version || !importData.trees || !Array.isArray(importData.trees)) {
+          throw new Error('Invalid import file format');
+        }
+
+        // Ask user for confirmation
+        const confirmMessage = `This will recreate ${importData.trees.length} trees with all their nodes on the blockchain. This action cannot be undone and will cost gas. Continue?`;
+        if (!window.confirm(confirmMessage)) {
+          return;
+        }
+
+        // Use the parent component's import function
+        if (onImportTrees) {
+          await onImportTrees(importData);
+          alert(`Successfully imported ${importData.trees.length} trees to the blockchain!`);
+        } else {
+          throw new Error('Import function not available');
+        }
+      } catch (error) {
+        console.error('Error importing trees:', error);
+        alert('Failed to import trees: ' + error.message);
+      } finally {
+        setIsImporting(false);
+      }
+    };
+    input.click();
+  };
+
 
   return (
     <div className="sidebar">
@@ -74,6 +169,32 @@ const Sidebar = ({
         >
           Create Tree
         </button>
+      </div>
+
+      {/* Save/Load Trees */}
+      <div className="section">
+        <h3>Backup & Restore</h3>
+        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleExportTrees}
+            disabled={!connected || trees.length === 0 || isExporting}
+            style={{ fontSize: '12px', padding: '8px 12px' }}
+          >
+            {isExporting ? 'Exporting...' : `💾 Save All Trees (${trees.length})`}
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleImportTrees}
+            disabled={!connected || isImporting}
+            style={{ fontSize: '12px', padding: '8px 12px' }}
+          >
+            {isImporting ? 'Importing...' : '📂 Load Trees from JSON'}
+          </button>
+        </div>
+        <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
+          Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
+        </div>
       </div>
 
       {/* Tree List */}

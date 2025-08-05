@@ -231,6 +231,165 @@ function App() {
     });
   }, [socket, currentTree]);
 
+  const handleImportTrees = useCallback(async (importData) => {
+    if (!socket) {
+      throw new Error('Socket not connected - cannot import trees');
+    }
+
+    try {
+      console.log('Starting import of', importData.trees.length, 'trees');
+      const importedTrees = [];
+      
+      for (let i = 0; i < importData.trees.length; i++) {
+        const treeData = importData.trees[i];
+        console.log(`Importing tree ${i + 1}/${importData.trees.length}:`, treeData.rootContent.substring(0, 50));
+        
+        try {
+          // Create the tree with root content (only wallet transaction needed)
+          const treeAddress = await createTree(treeData.rootContent);
+          let newTree = await getTree(treeAddress);
+          importedTrees.push(newTree);
+          
+          // Update UI with new tree
+          setTrees(prev => [...prev, newTree]);
+          
+          // Wait for tree creation to settle on blockchain
+          console.log('Waiting for tree deployment to settle...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Get the fresh tree data to get the new root ID
+          console.log('Fetching fresh tree data for import...');
+          newTree = await getTree(treeAddress);
+          const newRootId = newTree.rootId;
+          
+          console.log(`Tree ready for import - Address: ${treeAddress}, Root ID: ${newRootId.substring(0, 8)}`);
+          
+          // Find the old root node
+          const oldRootNode = treeData.nodes.find(node => node.isRoot);
+          
+          // Prepare all non-root nodes for import via backend
+          const nonRootNodes = treeData.nodes.filter(node => !node.isRoot);
+          
+          if (nonRootNodes.length > 0) {
+            console.log(`Importing ${nonRootNodes.length} nodes via backend for tree ${treeAddress}`);
+            
+            // Use socket to send import request to backend
+            const importPromise = new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => {
+                socket.off('importComplete', handleComplete);
+                socket.off('error', handleError);
+                reject(new Error('Import timeout'));
+              }, 300000); // 5 minute timeout
+              
+              const handleComplete = (data) => {
+                clearTimeout(timeout);
+                socket.off('importComplete', handleComplete);
+                socket.off('error', handleError);
+                if (data.success) {
+                  resolve(data);
+                } else {
+                  reject(new Error(data.error || 'Import failed'));
+                }
+              };
+
+              const handleError = (error) => {
+                clearTimeout(timeout);
+                socket.off('importComplete', handleComplete);
+                socket.off('error', handleError);
+                reject(error);
+              };
+
+              socket.on('importComplete', handleComplete);
+              socket.on('error', handleError);
+
+              // Send import request to backend
+              socket.emit('importNodes', {
+                treeAddress: treeAddress,
+                rootId: newRootId,
+                oldRootId: oldRootNode?.nodeId,
+                nodes: nonRootNodes.map(node => ({
+                  nodeId: node.nodeId,
+                  parentId: node.parentId,
+                  content: node.content,
+                  author: node.author,
+                  timestamp: node.timestamp
+                }))
+              });
+            });
+
+            // Wait for backend to complete the import
+            await importPromise;
+            console.log(`Backend import completed for tree ${treeAddress}`);
+          }
+          
+          // Refresh the tree after all nodes are added
+          setTimeout(async () => {
+            try {
+              const updatedTree = await getTree(treeAddress);
+              setTrees(prevTrees => 
+                prevTrees.map(tree => 
+                  tree.address === treeAddress ? updatedTree : tree
+                )
+              );
+              if (currentTree?.address === treeAddress) {
+                setCurrentTree(updatedTree);
+              }
+              console.log(`Tree ${treeAddress} refreshed with ${updatedTree.nodeCount} nodes`);
+            } catch (error) {
+              console.error('Error refreshing imported tree:', error);
+            }
+          }, 3000);
+          
+        } catch (treeError) {
+          console.error(`Failed to import tree ${i + 1}:`, treeError);
+          throw treeError; // Re-throw to handle in caller
+        }
+      }
+      
+      return importedTrees;
+    } catch (error) {
+      console.error('Error in handleImportTrees:', error);
+      throw error;
+    }
+  }, [createTree, getTree, currentTree, socket]);
+
+  // Helper function to sort nodes by dependency order
+  const sortNodesByDependency = (nodes) => {
+    const sorted = [];
+    const processed = new Set();
+    const rootParentId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    
+    // Keep trying to add nodes until all are processed
+    let remainingNodes = [...nodes];
+    let maxIterations = nodes.length * 2; // Prevent infinite loops
+    let iteration = 0;
+    
+    while (remainingNodes.length > 0 && iteration < maxIterations) {
+      const initialLength = remainingNodes.length;
+      
+      remainingNodes = remainingNodes.filter(node => {
+        // Can add if parent is root or already processed
+        if (node.parentId === rootParentId || node.parentId === '0x0' || processed.has(node.parentId)) {
+          sorted.push(node);
+          processed.add(node.nodeId);
+          return false; // Remove from remaining
+        }
+        return true; // Keep in remaining
+      });
+      
+      // If no progress was made, break to avoid infinite loop
+      if (remainingNodes.length === initialLength) {
+        console.warn('Could not resolve all node dependencies, adding remaining nodes anyway');
+        sorted.push(...remainingNodes);
+        break;
+      }
+      
+      iteration++;
+    }
+    
+    return sorted;
+  };
+
   return (
     <div className="app-container">
       <Sidebar
@@ -244,6 +403,7 @@ function App() {
         onSelectTree={setCurrentTree}
         selectedNode={selectedNode}
         onGenerateSiblings={handleGenerateSiblings}
+        onImportTrees={handleImportTrees}
       />
       
       <div className="graph-container">
