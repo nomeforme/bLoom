@@ -14,8 +14,10 @@ const Sidebar = ({
   onImportTrees
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
+  const [childrenCount, setChildrenCount] = useState(3);
   const [siblingCount, setSiblingCount] = useState(3);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
+  const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -31,13 +33,25 @@ const Sidebar = ({
     }
   };
 
-  const handleGenerateSiblings = async () => {
+  const handleGenerateChildren = async () => {
     if (selectedNode && selectedNode.id) {
-      setIsGenerating(true);
+      setIsGeneratingChildren(true);
       try {
-        await onGenerateSiblings(selectedNode.id, siblingCount);
+        await onGenerateSiblings(selectedNode.id, childrenCount);
       } finally {
-        setIsGenerating(false);
+        setIsGeneratingChildren(false);
+      }
+    }
+  };
+
+  const handleGenerateSiblings = async () => {
+    if (selectedNode && selectedNode.id && selectedNode.parentId) {
+      setIsGeneratingSiblings(true);
+      try {
+        // Generate siblings by using the parent ID
+        await onGenerateSiblings(selectedNode.parentId, siblingCount);
+      } finally {
+        setIsGeneratingSiblings(false);
       }
     }
   };
@@ -267,26 +281,64 @@ const Sidebar = ({
       {/* Generation Controls */}
       {selectedNode && (
         <div className="section">
-          <h3>Generate Siblings</h3>
-          <div className="input-group">
-            <label>Number of siblings to generate:</label>
-            <select
-              value={siblingCount}
-              onChange={(e) => setSiblingCount(parseInt(e.target.value))}
+          <h3>AI Generation</h3>
+          
+          {/* Generate Children */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ fontSize: '14px', color: '#4CAF50', marginBottom: '8px' }}>Generate Children</h4>
+            <div className="input-group">
+              <label>Number of children to generate:</label>
+              <select
+                value={childrenCount}
+                onChange={(e) => setChildrenCount(parseInt(e.target.value))}
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={5}>5</option>
+              </select>
+            </div>
+            <button
+              className="btn"
+              onClick={handleGenerateChildren}
+              disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+              style={{ marginBottom: '10px' }}
             >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={5}>5</option>
-            </select>
+              {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
+            </button>
+            <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
+              Creates new nodes as children of the selected node
+            </div>
           </div>
-          <button
-            className="btn"
-            onClick={handleGenerateSiblings}
-            disabled={!connected || !selectedNode || isGenerating}
-          >
-            {isGenerating ? 'Generating...' : 'Generate Siblings'}
-          </button>
+          
+          {/* Generate Siblings */}
+          {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+            <div>
+              <h4 style={{ fontSize: '14px', color: '#4CAF50', marginBottom: '8px' }}>Generate Siblings</h4>
+              <div className="input-group">
+                <label>Number of siblings to generate:</label>
+                <select
+                  value={siblingCount}
+                  onChange={(e) => setSiblingCount(parseInt(e.target.value))}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={5}>5</option>
+                </select>
+              </div>
+              <button
+                className="btn"
+                onClick={handleGenerateSiblings}
+                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+              >
+                {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
+              </button>
+              <div style={{ fontSize: '11px', color: '#888' }}>
+                Creates new nodes at the same level as the selected node
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -298,8 +350,9 @@ const Sidebar = ({
           <p>2. Create a new tree by entering root content</p>
           <p>3. Click on nodes in the graph to select them</p>
           <p>4. Right-click nodes to add children manually</p>
-          <p>5. Use "Generate Siblings" to create AI-generated branches</p>
-          <p>6. All changes are automatically saved to the blockchain</p>
+          <p>5. Use "Generate Children" to create AI-generated sub-branches</p>
+          <p>6. Use "Generate Siblings" to create alternatives at the same level</p>
+          <p>7. All changes are automatically saved to the blockchain</p>
         </div>
       </div>
     </div>
