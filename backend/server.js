@@ -61,6 +61,43 @@ const LLM_CONFIG = {
   }
 };
 
+// Helper function to sort nodes by dependency order
+function sortNodesByDependency(nodes, rootParentId) {
+  const sorted = [];
+  const processed = new Set();
+  const rootId = rootParentId || '0x0000000000000000000000000000000000000000000000000000000000000000';
+  
+  // Keep trying to add nodes until all are processed
+  let remainingNodes = [...nodes];
+  let maxIterations = nodes.length * 2; // Prevent infinite loops
+  let iteration = 0;
+  
+  while (remainingNodes.length > 0 && iteration < maxIterations) {
+    const initialLength = remainingNodes.length;
+    
+    remainingNodes = remainingNodes.filter(node => {
+      // Can add if parent is root or already processed
+      if (node.parentId === rootId || node.parentId === '0x0' || processed.has(node.parentId)) {
+        sorted.push(node);
+        processed.add(node.nodeId);
+        return false; // Remove from remaining
+      }
+      return true; // Keep in remaining
+    });
+    
+    // If no progress was made, break to avoid infinite loop
+    if (remainingNodes.length === initialLength) {
+      console.warn('Could not resolve all node dependencies, adding remaining nodes anyway');
+      sorted.push(...remainingNodes);
+      break;
+    }
+    
+    iteration++;
+  }
+  
+  return sorted;
+}
+
 // Text generation function
 async function generateText(prompt, provider = 'openai') {
   try {
@@ -236,6 +273,140 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error in generateSiblings:', error);
       socket.emit('generationComplete', {
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  socket.on('importNodes', async (data) => {
+    const { treeAddress, rootId, oldRootId, nodes } = data;
+    
+    try {
+      console.log('Importing nodes for tree:', treeAddress, 'nodes:', nodes.length);
+      
+      // Verify the tree contract exists and is accessible
+      try {
+        const code = await provider.getCode(treeAddress);
+        if (code === '0x') {
+          throw new Error(`No contract found at address ${treeAddress}`);
+        }
+        console.log('✓ Tree contract verified at:', treeAddress);
+      } catch (error) {
+        console.error('Contract verification failed:', error);
+        throw new Error(`Failed to verify tree contract: ${error.message}`);
+      }
+      
+      // Get the tree contract
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
+      
+      // Test the contract by calling a simple read function
+      try {
+        const nodeCount = await treeContract.getNodeCount();
+        console.log('✓ Tree contract responsive, current node count:', nodeCount.toString());
+      } catch (error) {
+        console.error('Tree contract test call failed:', error);
+        throw new Error(`Tree contract not responsive: ${error.message}`);
+      }
+      
+      // Create mapping from old node IDs to new node IDs
+      const nodeIdMapping = new Map();
+      
+      // Map old root to new root
+      if (oldRootId && rootId) {
+        nodeIdMapping.set(oldRootId, rootId);
+        console.log(`Mapped old root ${oldRootId.substring(0, 8)} to new root ${rootId.substring(0, 8)}`);
+      }
+      
+      // Sort nodes by dependency order (parents before children)
+      const sortedNodes = sortNodesByDependency(nodes, oldRootId);
+      console.log(`Sorted ${sortedNodes.length} nodes for import`);
+      
+      let successCount = 0;
+      let failureCount = 0;
+      
+      // Add nodes to blockchain sequentially
+      for (let i = 0; i < sortedNodes.length; i++) {
+        const nodeData = sortedNodes[i];
+        try {
+          // Map the parent ID to the new blockchain ID
+          let parentIdToUse = nodeData.parentId;
+          
+          if (nodeData.parentId === oldRootId) {
+            // Parent is the old root, use new root ID
+            parentIdToUse = rootId;
+            console.log(`Using new root ID as parent for node ${i + 1}`);
+          } else if (nodeIdMapping.has(nodeData.parentId)) {
+            // Use mapped parent ID
+            parentIdToUse = nodeIdMapping.get(nodeData.parentId);
+            console.log(`Using mapped parent ID for node ${i + 1}`);
+          } else {
+            console.warn(`Parent node ${nodeData.parentId.substring(0, 8)} not found in mapping for node ${i + 1}`);
+            failureCount++;
+            continue; // Skip this node
+          }
+          
+          console.log(`Importing node ${i + 1}/${sortedNodes.length}:`, nodeData.content.substring(0, 50) + '...');
+          
+          // Add small delay between transactions to avoid nonce conflicts
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          const tx = await treeContract.addNode(parentIdToUse, nodeData.content);
+          const receipt = await tx.wait();
+          
+          // Find the NodeCreated event to get the new node ID
+          const nodeCreatedEvent = receipt.logs.find(log => {
+            try {
+              const parsed = treeContract.interface.parseLog(log);
+              return parsed.name === 'NodeCreated';
+            } catch {
+              return false;
+            }
+          });
+          
+          if (nodeCreatedEvent) {
+            const parsedEvent = treeContract.interface.parseLog(nodeCreatedEvent);
+            const newNodeId = parsedEvent.args.nodeId;
+            
+            // Store mapping for future children
+            nodeIdMapping.set(nodeData.nodeId, newNodeId);
+            
+            const broadcastData = {
+              nodeId: newNodeId,
+              parentId: parsedEvent.args.parentId,
+              content: parsedEvent.args.content,
+              author: parsedEvent.args.author,
+              timestamp: Number(parsedEvent.args.timestamp),
+              treeAddress: treeAddress
+            };
+            
+            // Emit to all connected clients
+            io.emit('nodeCreated', broadcastData);
+            console.log(`Node imported and broadcasted: ${newNodeId.substring(0, 8)}`);
+            successCount++;
+          } else {
+            console.error('NodeCreated event not found in receipt');
+            failureCount++;
+          }
+        } catch (error) {
+          console.error(`Error importing node ${i + 1}:`, error.message);
+          failureCount++;
+        }
+      }
+      
+      socket.emit('importComplete', {
+        success: true,
+        message: `Import completed: ${successCount} successful, ${failureCount} failed`,
+        successCount,
+        failureCount,
+        totalNodes: sortedNodes.length
+      });
+      
+    } catch (error) {
+      console.error('Error in importNodes:', error);
+      socket.emit('importComplete', {
         success: false,
         error: error.message
       });

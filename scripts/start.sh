@@ -39,9 +39,8 @@ fi
 
 # Start backend
 echo "🔧 Starting backend server..."
-cd backend && npm start &
+(cd backend && npm start) &
 BACKEND_PID=$!
-cd ..
 
 # Wait for backend to start
 echo "⏳ Waiting for backend to start..."
@@ -52,9 +51,8 @@ echo "✅ Backend is running"
 
 # Start frontend
 echo "🌐 Starting frontend..."
-cd frontend && npm start &
+(cd frontend && npm start) &
 FRONTEND_PID=$!
-cd ..
 
 echo "✅ All services started!"
 echo ""
