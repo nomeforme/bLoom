@@ -1,6 +1,17 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
-const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNode }, ref) => {
+const LoomGraph = forwardRef(({ 
+  currentTree, 
+  onNodeSelect, 
+  onAddNode, 
+  onUpdateNode, 
+  onGenerateSiblings,
+  isGeneratingChildren,
+  setIsGeneratingChildren,
+  isGeneratingSiblings,
+  setIsGeneratingSiblings
+}, ref) => {
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
   
@@ -84,6 +95,13 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
     LoomNode.prototype.onDrawForeground = function(ctx) {
       if (this.flags.collapsed) return;
       
+      // Draw keyboard selection border
+      if (this.keyboardSelected) {
+        ctx.strokeStyle = "#4CAF50"; // Green color for keyboard selection
+        ctx.lineWidth = 1; // Very thin line
+        ctx.strokeRect(-1, -1, this.size[0] + 2, this.size[1] + 2);
+      }
+      
       const content = this.properties.content || "";
       const maxLength = 150; // Increased for better readability
       const displayContent = content.length > maxLength ? 
@@ -133,6 +151,17 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
     };
 
     LoomNode.prototype.onMouseDown = function(e, localpos, canvas) {
+      // Update keyboard selection when clicking on a node
+      const currentGraph = this.graph;
+      if (currentGraph) {
+        currentGraph.findNodesByType("loom/node").forEach(n => {
+          n.keyboardSelected = false;
+        });
+        this.keyboardSelected = true;
+        // Update the selected node reference stored on the graph
+        currentGraph.selectedNodeForKeyboard = this;
+      }
+      
       if (onNodeSelect) {
         onNodeSelect({
           id: this.properties.nodeId,
@@ -426,6 +455,195 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
 
     // Store reference to addLoomNode function
     graph.addLoomNode = addLoomNode;
+    
+    // Add keyboard navigation with shortcuts manager
+    graph.selectedNodeForKeyboard = null;
+    const shortcutsManager = new KeyboardShortcutsManager();
+    
+    const handleKeyDown = (e) => {
+      // Don't interfere if user is typing in an input field
+      if (shortcutsManager.isTypingInInput()) {
+        return;
+      }
+
+      // Update generation state in shortcuts manager
+      shortcutsManager.setGenerating(isGeneratingChildren || isGeneratingSiblings);
+
+      const selectedNode = graph.selectedNodeForKeyboard;
+      const selectedNodeData = selectedNode ? {
+        id: selectedNode.properties.nodeId,
+        parentId: selectedNode.properties.parentId
+      } : null;
+
+      // Handle navigation shortcuts
+      if (shortcutsManager.matchShortcut(e, 'up') || 
+          shortcutsManager.matchShortcut(e, 'down') || 
+          shortcutsManager.matchShortcut(e, 'left') || 
+          shortcutsManager.matchShortcut(e, 'right')) {
+        
+        e.preventDefault();
+        
+        const allNodes = graph.findNodesByType("loom/node");
+        if (allNodes.length === 0) return;
+        
+        // If no node is currently selected, select the first one
+        if (!selectedNode) {
+          graph.selectedNodeForKeyboard = allNodes[0];
+          selectNodeByKeyboard(graph.selectedNodeForKeyboard);
+          return;
+        }
+        
+        let targetNode = null;
+        const currentPos = selectedNode.pos;
+        
+        if (shortcutsManager.matchShortcut(e, 'up')) {
+          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'up');
+        } else if (shortcutsManager.matchShortcut(e, 'down')) {
+          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'down');
+        } else if (shortcutsManager.matchShortcut(e, 'left')) {
+          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'left');
+        } else if (shortcutsManager.matchShortcut(e, 'right')) {
+          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'right');
+        }
+        
+        if (targetNode && targetNode !== selectedNode) {
+          graph.selectedNodeForKeyboard = targetNode;
+          selectNodeByKeyboard(graph.selectedNodeForKeyboard);
+        }
+        return;
+      }
+
+      // Handle generation shortcuts
+      if (shortcutsManager.matchShortcut(e, 'generateChildren')) {
+        if (shortcutsManager.canExecuteShortcut('generateChildren', selectedNodeData)) {
+          e.preventDefault();
+          
+          // Update sidebar state
+          if (setIsGeneratingChildren) {
+            setIsGeneratingChildren(true);
+          }
+          
+          const generateChildren = graph.onGenerateSiblings;
+          if (generateChildren) {
+            generateChildren(selectedNodeData.id, 3)
+              .finally(() => {
+                if (setIsGeneratingChildren) {
+                  setIsGeneratingChildren(false);
+                }
+              });
+          }
+        }
+        return;
+      }
+
+      if (shortcutsManager.matchShortcut(e, 'generateSiblings')) {
+        if (shortcutsManager.canExecuteShortcut('generateSiblings', selectedNodeData)) {
+          e.preventDefault();
+          
+          // Update sidebar state
+          if (setIsGeneratingSiblings) {
+            setIsGeneratingSiblings(true);
+          }
+          
+          const generateSiblings = graph.onGenerateSiblings;
+          if (generateSiblings) {
+            generateSiblings(selectedNodeData.parentId, 3)
+              .finally(() => {
+                if (setIsGeneratingSiblings) {
+                  setIsGeneratingSiblings(false);
+                }
+              });
+          }
+        }
+        return;
+      }
+
+      // Handle edit shortcut (F2)
+      if (shortcutsManager.matchShortcut(e, 'editNode')) {
+        if (shortcutsManager.canExecuteShortcut('editNode', selectedNodeData)) {
+          e.preventDefault();
+          if (selectedNode && selectedNode.onDblClick) {
+            selectedNode.onDblClick();
+          }
+        }
+        return;
+      }
+    };
+    
+    const findNearestNodeInDirection = (nodes, currentPos, direction) => {
+      let candidates = [];
+      const threshold = 50; // Pixels of tolerance for "same line"
+      
+      switch (direction) {
+        case 'up':
+          candidates = nodes.filter(node => node.pos[1] < currentPos[1] - 10);
+          candidates.sort((a, b) => {
+            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
+            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
+            return distY !== 0 ? -distY : distX; // Prefer closer Y, then closer X
+          });
+          break;
+        case 'down':
+          candidates = nodes.filter(node => node.pos[1] > currentPos[1] + 10);
+          candidates.sort((a, b) => {
+            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
+            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
+            return distY !== 0 ? distY : distX; // Prefer closer Y, then closer X
+          });
+          break;
+        case 'left':
+          candidates = nodes.filter(node => node.pos[0] < currentPos[0] - 10);
+          candidates.sort((a, b) => {
+            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
+            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
+            return distX !== 0 ? -distX : distY; // Prefer closer X, then closer Y
+          });
+          break;
+        case 'right':
+          candidates = nodes.filter(node => node.pos[0] > currentPos[0] + 10);
+          candidates.sort((a, b) => {
+            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
+            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
+            return distX !== 0 ? distX : distY; // Prefer closer X, then closer Y
+          });
+          break;
+      }
+      
+      return candidates.length > 0 ? candidates[0] : null;
+    };
+    
+    const selectNodeByKeyboard = (node) => {
+      // Clear previous selection visual
+      graph.findNodesByType("loom/node").forEach(n => {
+        n.keyboardSelected = false;
+      });
+      
+      // Mark new selection
+      node.keyboardSelected = true;
+      
+      // Trigger the node selection callback
+      if (onNodeSelect) {
+        onNodeSelect({
+          id: node.properties.nodeId,
+          content: node.properties.content,
+          author: node.properties.author,
+          timestamp: node.properties.timestamp,
+          parentId: node.properties.parentId
+        });
+      }
+      
+      // Center the canvas on the selected node
+      canvas.centerOnNode(node);
+      canvas.setDirty(true);
+    };
+    
+    // Add event listener for keyboard navigation
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Store reference to cleanup function
+    graph.keyboardCleanup = () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
 
     // Handle window resize
     const handleResize = () => {
@@ -453,6 +671,9 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (graph && graph.keyboardCleanup) {
+        graph.keyboardCleanup();
+      }
       if (canvas) {
         canvas.setGraph(null);
       }
@@ -465,9 +686,10 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
 
     const graph = graphRef.current;
     
-    // Store current tree address and update function on the graph for access in node functions
+    // Store current tree address and functions on the graph for access in node functions
     graph.currentTreeAddress = currentTree.address;
     graph.onUpdateNode = onUpdateNode;
+    graph.onGenerateSiblings = onGenerateSiblings;
     
     // Clear existing nodes
     graph.clear();
@@ -533,12 +755,17 @@ const LoomGraph = forwardRef(({ currentTree, onNodeSelect, onAddNode, onUpdateNo
     }
   }, [currentTree]);
 
-  // Update the onUpdateNode function reference when it changes
+  // Update function references when they change
   useEffect(() => {
-    if (graphRef.current && onUpdateNode) {
-      graphRef.current.onUpdateNode = onUpdateNode;
+    if (graphRef.current) {
+      if (onUpdateNode) {
+        graphRef.current.onUpdateNode = onUpdateNode;
+      }
+      if (onGenerateSiblings) {
+        graphRef.current.onGenerateSiblings = onGenerateSiblings;
+      }
     }
-  }, [onUpdateNode]);
+  }, [onUpdateNode, onGenerateSiblings]);
 
   const addLoomNode = (nodeData) => {
     if (graphRef.current && graphRef.current.addLoomNode) {

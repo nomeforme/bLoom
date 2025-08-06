@@ -12,6 +12,8 @@ function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [trees, setTrees] = useState([]);
   const [currentTree, setCurrentTree] = useState(null);
+  const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
+  const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   
   const {
     provider,
@@ -524,6 +526,10 @@ function App() {
         selectedNode={selectedNode}
         onGenerateSiblings={handleGenerateSiblings}
         onImportTrees={handleImportTrees}
+        isGeneratingChildren={isGeneratingChildren}
+        setIsGeneratingChildren={setIsGeneratingChildren}
+        isGeneratingSiblings={isGeneratingSiblings}
+        setIsGeneratingSiblings={setIsGeneratingSiblings}
       />
       
       <div className="graph-container">
@@ -533,6 +539,11 @@ function App() {
           onNodeSelect={handleNodeSelect}
           onAddNode={handleAddNode}
           onUpdateNode={handleUpdateNode}
+          onGenerateSiblings={handleGenerateSiblings}
+          isGeneratingChildren={isGeneratingChildren}
+          setIsGeneratingChildren={setIsGeneratingChildren}
+          isGeneratingSiblings={isGeneratingSiblings}
+          setIsGeneratingSiblings={setIsGeneratingSiblings}
         />
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
 const Sidebar = ({
   connected,
@@ -11,15 +12,20 @@ const Sidebar = ({
   onSelectTree,
   selectedNode,
   onGenerateSiblings,
-  onImportTrees
+  onImportTrees,
+  isGeneratingChildren,
+  setIsGeneratingChildren,
+  isGeneratingSiblings,
+  setIsGeneratingSiblings
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
   const [childrenCount, setChildrenCount] = useState(3);
   const [siblingCount, setSiblingCount] = useState(3);
-  const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
-  const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  
+  // Initialize keyboard shortcuts manager
+  const shortcutsManager = new KeyboardShortcutsManager();
 
   const ellipseAddress = (address) => {
     if (!address) return '';
@@ -34,7 +40,7 @@ const Sidebar = ({
   };
 
   const handleGenerateChildren = async () => {
-    if (selectedNode && selectedNode.id) {
+    if (selectedNode && selectedNode.id && !isGeneratingChildren && !isGeneratingSiblings) {
       setIsGeneratingChildren(true);
       try {
         await onGenerateSiblings(selectedNode.id, childrenCount);
@@ -45,7 +51,7 @@ const Sidebar = ({
   };
 
   const handleGenerateSiblings = async () => {
-    if (selectedNode && selectedNode.id && selectedNode.parentId) {
+    if (selectedNode && selectedNode.id && selectedNode.parentId && !isGeneratingChildren && !isGeneratingSiblings) {
       setIsGeneratingSiblings(true);
       try {
         // Generate siblings by using the parent ID
@@ -341,6 +347,62 @@ const Sidebar = ({
           )}
         </div>
       )}
+
+      {/* Keyboard Shortcuts */}
+      <div className="section">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.3' }}>
+          {Object.entries(shortcutsManager.getShortcutsByCategory()).map(([category, shortcuts]) => (
+            <div key={category} style={{ marginBottom: '12px' }}>
+              <div style={{ 
+                color: '#4CAF50', 
+                fontSize: '12px', 
+                fontWeight: 'bold', 
+                marginBottom: '6px' 
+              }}>
+                {category}
+              </div>
+              {shortcuts.map((shortcut, index) => (
+                <div key={`${category}-${shortcut.key}-${index}`} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '3px',
+                  padding: '2px 0'
+                }}>
+                  <span>{shortcut.description}</span>
+                  <span style={{ 
+                    backgroundColor: '#333', 
+                    color: '#4CAF50',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontSize: '10px',
+                    fontFamily: 'monospace',
+                    fontWeight: 'bold'
+                  }}>
+                    {(() => {
+                      let displayText = shortcut.symbol || shortcut.key;
+                      if (shortcut.modifiers && shortcut.modifiers.length > 0) {
+                        const modifierSymbols = {
+                          shift: '⇧',
+                          ctrl: '⌃',
+                          control: '⌃', 
+                          alt: '⌥',
+                          meta: '⌘',
+                          cmd: '⌘'
+                        };
+                        const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('');
+                        displayText = modifiers + displayText;
+                      }
+                      return displayText;
+                    })()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Instructions */}
       <div className="section">
