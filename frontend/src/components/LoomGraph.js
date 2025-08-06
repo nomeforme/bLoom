@@ -494,16 +494,19 @@ const LoomGraph = forwardRef(({
         }
         
         let targetNode = null;
-        const currentPos = selectedNode.pos;
         
-        if (shortcutsManager.matchShortcut(e, 'up')) {
-          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'up');
-        } else if (shortcutsManager.matchShortcut(e, 'down')) {
-          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'down');
-        } else if (shortcutsManager.matchShortcut(e, 'left')) {
-          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'left');
+        if (shortcutsManager.matchShortcut(e, 'left')) {
+          // Left: Navigate to parent
+          targetNode = findParent(allNodes, selectedNode);
         } else if (shortcutsManager.matchShortcut(e, 'right')) {
-          targetNode = findNearestNodeInDirection(allNodes, currentPos, 'right');
+          // Right: Navigate to first child
+          targetNode = findFirstChild(allNodes, selectedNode);
+        } else if (shortcutsManager.matchShortcut(e, 'down')) {
+          // Down: Navigate to next sibling
+          targetNode = findNextSibling(allNodes, selectedNode);
+        } else if (shortcutsManager.matchShortcut(e, 'up')) {
+          // Up: Navigate to previous sibling
+          targetNode = findPreviousSibling(allNodes, selectedNode);
         }
         
         if (targetNode && targetNode !== selectedNode) {
@@ -570,46 +573,88 @@ const LoomGraph = forwardRef(({
       }
     };
     
-    const findNearestNodeInDirection = (nodes, currentPos, direction) => {
-      let candidates = [];
-      const threshold = 50; // Pixels of tolerance for "same line"
+    // Tree-based navigation functions
+    const findFirstChild = (nodes, currentNode) => {
+      const children = nodes.filter(node => 
+        node.properties.parentId === currentNode.properties.nodeId
+      );
       
-      switch (direction) {
-        case 'up':
-          candidates = nodes.filter(node => node.pos[1] < currentPos[1] - 10);
-          candidates.sort((a, b) => {
-            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
-            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
-            return distY !== 0 ? -distY : distX; // Prefer closer Y, then closer X
-          });
-          break;
-        case 'down':
-          candidates = nodes.filter(node => node.pos[1] > currentPos[1] + 10);
-          candidates.sort((a, b) => {
-            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
-            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
-            return distY !== 0 ? distY : distX; // Prefer closer Y, then closer X
-          });
-          break;
-        case 'left':
-          candidates = nodes.filter(node => node.pos[0] < currentPos[0] - 10);
-          candidates.sort((a, b) => {
-            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
-            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
-            return distX !== 0 ? -distX : distY; // Prefer closer X, then closer Y
-          });
-          break;
-        case 'right':
-          candidates = nodes.filter(node => node.pos[0] > currentPos[0] + 10);
-          candidates.sort((a, b) => {
-            const distX = Math.abs(a.pos[0] - currentPos[0]) - Math.abs(b.pos[0] - currentPos[0]);
-            const distY = Math.abs(a.pos[1] - currentPos[1]) - Math.abs(b.pos[1] - currentPos[1]);
-            return distX !== 0 ? distX : distY; // Prefer closer X, then closer Y
-          });
-          break;
+      if (children.length === 0) return null;
+      
+      // Sort children by Y position (top to bottom) to get consistent "first" child
+      children.sort((a, b) => a.pos[1] - b.pos[1]);
+      return children[0];
+    };
+    
+    const findParent = (nodes, currentNode) => {
+      const parentId = currentNode.properties.parentId;
+      if (!parentId || 
+          parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          parentId === '0x0') {
+        return null; // No parent (root node)
       }
       
-      return candidates.length > 0 ? candidates[0] : null;
+      return nodes.find(node => node.properties.nodeId === parentId) || null;
+    };
+    
+    const findNextSibling = (nodes, currentNode) => {
+      const parentId = currentNode.properties.parentId;
+      if (!parentId || 
+          parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          parentId === '0x0') {
+        return null; // Root node has no siblings
+      }
+      
+      // Get all siblings (including current node)
+      const siblings = nodes.filter(node => 
+        node.properties.parentId === parentId
+      );
+      
+      if (siblings.length <= 1) return null; // No other siblings
+      
+      // Sort siblings by Y position (top to bottom)
+      siblings.sort((a, b) => a.pos[1] - b.pos[1]);
+      
+      // Find current node index
+      const currentIndex = siblings.findIndex(node => 
+        node.properties.nodeId === currentNode.properties.nodeId
+      );
+      
+      if (currentIndex === -1 || currentIndex === siblings.length - 1) {
+        return null; // Current node not found or is last sibling
+      }
+      
+      return siblings[currentIndex + 1];
+    };
+    
+    const findPreviousSibling = (nodes, currentNode) => {
+      const parentId = currentNode.properties.parentId;
+      if (!parentId || 
+          parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
+          parentId === '0x0') {
+        return null; // Root node has no siblings
+      }
+      
+      // Get all siblings (including current node)
+      const siblings = nodes.filter(node => 
+        node.properties.parentId === parentId
+      );
+      
+      if (siblings.length <= 1) return null; // No other siblings
+      
+      // Sort siblings by Y position (top to bottom)
+      siblings.sort((a, b) => a.pos[1] - b.pos[1]);
+      
+      // Find current node index
+      const currentIndex = siblings.findIndex(node => 
+        node.properties.nodeId === currentNode.properties.nodeId
+      );
+      
+      if (currentIndex === -1 || currentIndex === 0) {
+        return null; // Current node not found or is first sibling
+      }
+      
+      return siblings[currentIndex - 1];
     };
     
     const selectNodeByKeyboard = (node) => {
