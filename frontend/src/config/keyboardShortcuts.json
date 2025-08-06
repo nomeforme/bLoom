@@ -2,25 +2,25 @@
   "navigation": {
     "up": {
       "key": "ArrowUp",
-      "description": "Navigate to node above",
+      "description": "Navigate to previous sibling",
       "symbol": "↑",
       "category": "Navigation"
     },
     "down": {
       "key": "ArrowDown", 
-      "description": "Navigate to node below",
+      "description": "Navigate to next sibling",
       "symbol": "↓",
       "category": "Navigation"
     },
     "left": {
       "key": "ArrowLeft",
-      "description": "Navigate to node on left",
+      "description": "Navigate to parent node",
       "symbol": "←",
       "category": "Navigation"
     },
     "right": {
       "key": "ArrowRight",
-      "description": "Navigate to node on right", 
+      "description": "Navigate to first child", 
       "symbol": "→",
       "category": "Navigation"
     }
