@@ -7,18 +7,31 @@ const FACTORY_ABI = [
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getUserTrees(address user) external view returns (bytes32[] memory)",
   "function getAllTrees() external view returns (bytes32[] memory)",
+  "function getGlobalNFTContract() external view returns (address)",
   "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed creator, string rootContent)"
 ];
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
-  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
+  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
-  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)",
-  "event NodeUpdated(bytes32 indexed nodeId, string newContent, address indexed author)"
+  "function getNFTContract() external view returns (address)",
+  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, address indexed author, uint256 timestamp)",
+  "event NodeUpdated(bytes32 indexed nodeId, address indexed author)"
+];
+
+const NFT_ABI = [
+  "function ownerOf(uint256 tokenId) external view returns (address owner)",
+  "function tokenURI(uint256 tokenId) external view returns (string memory)",
+  "function getTokenIdFromNodeId(bytes32 nodeId) external view returns (uint256)",
+  "function getNodeIdFromTokenId(uint256 tokenId) external view returns (bytes32)",
+  "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
+  "function totalSupply() external view returns (uint256)",
+  "function name() external view returns (string memory)",
+  "function symbol() external view returns (string memory)"
 ];
 
 // Replace with your deployed factory address
@@ -200,20 +213,44 @@ export const useBlockchain = () => {
       console.log('Expected:', nodeCount.toString(), 'Got:', allNodeIds.length);
       console.log('Node IDs:', allNodeIds.map(id => id.substring(0, 10) + '...'));
       
+      // Get NFT contract address and create NFT contract instance BEFORE loading nodes
+      const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, freshProvider);
+      const nftAddress = await factoryContract.getGlobalNFTContract();
+      const nftContract = new ethers.Contract(nftAddress, NFT_ABI, freshProvider);
+      
       const nodes = [];
       for (let i = 0; i < allNodeIds.length; i++) {
         const nodeId = allNodeIds[i];
         try {
           console.log(`Loading node ${i + 1}/${allNodeIds.length}: ${nodeId.substring(0, 10)}...`);
           const nodeData = await treeContract.getNode(nodeId);
+          
+          // Fetch content from NFT instead of node
+          let content = '';
+          try {
+            const nftContentData = await nftContract.getNodeContent(nodeId);
+            // Parse JSON metadata to extract description (content)
+            if (nftContentData) {
+              try {
+                const metadata = JSON.parse(nftContentData);
+                content = metadata.description || '';
+              } catch (parseError) {
+                // If parsing fails, use raw data
+                content = nftContentData;
+              }
+            }
+          } catch (nftError) {
+            console.warn(`Could not fetch NFT content for node ${nodeId}:`, nftError);
+          }
+          
           const node = {
             nodeId: nodeData[0],
             parentId: nodeData[1],
-            content: nodeData[2],
-            children: nodeData[3],
-            author: nodeData[4],
-            timestamp: Number(nodeData[5]),
-            isRoot: nodeData[6]
+            children: nodeData[2],
+            author: nodeData[3],
+            timestamp: Number(nodeData[4]),
+            isRoot: nodeData[5],
+            content: content // Content now comes from NFT
           };
           console.log('✓ Loaded node:', {
             nodeId: node.nodeId.substring(0, 10) + '...',
@@ -229,9 +266,12 @@ export const useBlockchain = () => {
       }
 
       console.log('Total nodes loaded:', nodes.length);
+      
       const result = {
         address: treeAddress,
         contract: treeContract,
+        nftContract,
+        nftAddress,
         rootId,
         nodes,
         nodeCount: nodes.length,
@@ -309,6 +349,30 @@ export const useBlockchain = () => {
     }
   }, [factory, account, getTree]);
 
+  const getNodeNFTInfo = useCallback(async (tree, nodeId) => {
+    if (!tree.nftContract) return null;
+
+    try {
+      const tokenId = await tree.nftContract.getTokenIdFromNodeId(nodeId);
+      if (tokenId.toString() === '0') return null;
+
+      const owner = await tree.nftContract.ownerOf(tokenId);
+      const tokenURI = await tree.nftContract.tokenURI(tokenId);
+      const content = await tree.nftContract.getNodeContent(nodeId);
+      
+      return {
+        tokenId: tokenId.toString(),
+        owner,
+        tokenURI,
+        content,
+        nodeId
+      };
+    } catch (error) {
+      console.error('Error getting NFT info:', error);
+      return null;
+    }
+  }, []);
+
   return {
     provider,
     signer,
@@ -321,6 +385,7 @@ export const useBlockchain = () => {
     getTree,
     addNode,
     updateNode,
-    getUserTrees
+    getUserTrees,
+    getNodeNFTInfo
   };
 };

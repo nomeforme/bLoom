@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../LoomFactory.sol";
 import "../LoomTree.sol";
+import "../LoomNodeNFT.sol";
 
 contract LoomTest is Test {
     LoomFactory public factory;
@@ -47,7 +48,6 @@ contract LoomTest is Test {
         (
             bytes32 id,
             bytes32 parentId,
-            string memory content,
             bytes32[] memory children,
             address author,
             uint256 timestamp,
@@ -56,9 +56,13 @@ contract LoomTest is Test {
         
         assertEq(id, childId);
         assertEq(parentId, rootId);
-        assertEq(content, "Child content");
         assertEq(author, user1);
         assertFalse(isRoot);
+        
+        // Check content is stored in NFT
+        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        string memory nftContent = nftContract.getNodeContent(childId);
+        assertTrue(bytes(nftContent).length > 0);
     }
 
     function testMultipleChildren() public {
@@ -76,20 +80,25 @@ contract LoomTest is Test {
         bytes32 child2 = treeContract.addNode(rootId, "Child 2");
         
         vm.prank(user1);
-        bytes32 child3 = treeContract.addNode(rootId, "Child 3");
+        treeContract.addNode(rootId, "Child 3");
         
         // Check root has all children
         bytes32[] memory rootChildren = treeContract.getChildren(rootId);
         assertEq(rootChildren.length, 3);
         
-        // Verify children content and authors
-        (, , string memory content1, , address author1, ,) = treeContract.getNode(child1);
-        assertEq(content1, "Child 1");
+        // Verify children authors
+        (, , , address author1, ,) = treeContract.getNode(child1);
         assertEq(author1, user1);
         
-        (, , string memory content2, , address author2, ,) = treeContract.getNode(child2);
-        assertEq(content2, "Child 2");
+        (, , , address author2, ,) = treeContract.getNode(child2);
         assertEq(author2, user2);
+        
+        // Verify content is stored in NFT
+        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        string memory content1 = nftContract.getNodeContent(child1);
+        string memory content2 = nftContract.getNodeContent(child2);
+        assertTrue(bytes(content1).length > 0);
+        assertTrue(bytes(content2).length > 0);
     }
 
     function testNodeMetadata() public {
@@ -157,5 +166,77 @@ contract LoomTest is Test {
         
         bytes32[] memory allNodes = treeContract.getAllNodes();
         assertEq(allNodes.length, 3);
+    }
+
+    function testNodeNFTMinting() public {
+        vm.prank(user1);
+        address treeAddress = factory.createTree("Root content");
+        
+        LoomTree treeContract = LoomTree(treeAddress);
+        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        bytes32 rootId = treeContract.getRootId();
+        
+        // Check that root node has NFT
+        uint256 rootTokenId = nftContract.getTokenIdFromNodeId(rootId);
+        assertTrue(rootTokenId > 0);
+        assertEq(nftContract.ownerOf(rootTokenId), user1);
+        
+        // Add a child node and check NFT is minted
+        vm.prank(user2);
+        bytes32 childId = treeContract.addNode(rootId, "Child content");
+        
+        uint256 childTokenId = nftContract.getTokenIdFromNodeId(childId);
+        assertTrue(childTokenId > 0);
+        assertEq(nftContract.ownerOf(childTokenId), user2);
+        
+        // Check total supply
+        assertEq(nftContract.totalSupply(), 2);
+    }
+
+    function testNFTMetadata() public {
+        vm.prank(user1);
+        address treeAddress = factory.createTree("Test content for NFT");
+        
+        LoomTree treeContract = LoomTree(treeAddress);
+        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        bytes32 rootId = treeContract.getRootId();
+        
+        uint256 tokenId = nftContract.getTokenIdFromNodeId(rootId);
+        string memory tokenURI = nftContract.tokenURI(tokenId);
+        
+        // Should contain node information in metadata
+        assertTrue(bytes(tokenURI).length > 0);
+        
+        // Check reverse mapping
+        bytes32 nodeIdFromToken = nftContract.getNodeIdFromTokenId(tokenId);
+        assertEq(nodeIdFromToken, rootId);
+    }
+
+    function testMultipleNFTs() public {
+        vm.prank(user1);
+        address treeAddress = factory.createTree("Root");
+        
+        LoomTree treeContract = LoomTree(treeAddress);
+        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        bytes32 rootId = treeContract.getRootId();
+        
+        // Create multiple nodes
+        vm.prank(user1);
+        bytes32 child1 = treeContract.addNode(rootId, "Child 1");
+        
+        vm.prank(user2);
+        bytes32 child2 = treeContract.addNode(rootId, "Child 2");
+        
+        vm.prank(user1);
+        bytes32 child3 = treeContract.addNode(child1, "Grandchild");
+        
+        // Check NFT ownership
+        assertEq(nftContract.ownerOf(nftContract.getTokenIdFromNodeId(rootId)), user1);
+        assertEq(nftContract.ownerOf(nftContract.getTokenIdFromNodeId(child1)), user1);
+        assertEq(nftContract.ownerOf(nftContract.getTokenIdFromNodeId(child2)), user2);
+        assertEq(nftContract.ownerOf(nftContract.getTokenIdFromNodeId(child3)), user1);
+        
+        // Check total supply
+        assertEq(nftContract.totalSupply(), 4);
     }
 }

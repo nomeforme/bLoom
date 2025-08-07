@@ -11,6 +11,7 @@ const Sidebar = ({
   currentTree,
   onSelectTree,
   selectedNode,
+  selectedNodeNFT,
   onGenerateSiblings,
   onImportTrees,
   isGeneratingChildren,
@@ -23,6 +24,7 @@ const Sidebar = ({
   const [siblingCount, setSiblingCount] = useState(3);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCreatingTree, setIsCreatingTree] = useState(false);
   
   // Initialize keyboard shortcuts manager
   const shortcutsManager = new KeyboardShortcutsManager();
@@ -32,10 +34,18 @@ const Sidebar = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const handleCreateTree = () => {
+  const handleCreateTree = async () => {
     if (newTreeContent.trim()) {
-      onCreateTree(newTreeContent.trim());
-      setNewTreeContent('');
+      setIsCreatingTree(true);
+      try {
+        await onCreateTree(newTreeContent.trim());
+        setNewTreeContent('');
+      } catch (error) {
+        console.error('Failed to create tree:', error);
+        alert('Failed to create tree: ' + error.message);
+      } finally {
+        setIsCreatingTree(false);
+      }
     }
   };
 
@@ -185,9 +195,9 @@ const Sidebar = ({
         <button 
           className="btn" 
           onClick={handleCreateTree}
-          disabled={!connected || !newTreeContent.trim()}
+          disabled={!connected || !newTreeContent.trim() || isCreatingTree}
         >
-          Create Tree
+          {isCreatingTree ? 'Creating Tree...' : 'Create Tree'}
         </button>
       </div>
 
@@ -267,19 +277,73 @@ const Sidebar = ({
         <div className="section">
           <h3>Selected Node</h3>
           <div className="node-info">
-            <h4>Node Details</h4>
-            <div className="node-content" style={{ 
-              border: '1px solid #555',
-              borderRadius: '4px',
-              padding: '8px'
-            }}>
-              {selectedNode.content}
-            </div>
-            <div style={{ fontSize: '12px', color: '#ccc' }}>
+            <h4>Node Relationship Data</h4>
+            <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '15px' }}>
               <div>Author: {ellipseAddress(selectedNode.author)}</div>
               <div>Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
               <div>ID: {selectedNode.id.substring(0, 8)}...</div>
+              <div>Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? selectedNode.parentId.substring(0, 8) + '...' : 'Root Node'}</div>
+              <div>Children: {selectedNode.children ? selectedNode.children.length : 0}</div>
             </div>
+
+            {/* NFT Information - Now displays content and metadata */}
+            <h4 style={{ color: '#FF6B35', marginBottom: '8px' }}>🎨 Content (stored as NFT)</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #FF6B35',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#FF6B35', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 'bold' }}>NFT Token ID: #{selectedNodeNFT.tokenId}</div>
+                </div>
+                
+                {/* Display the actual content from NFT */}
+                <div style={{ 
+                  backgroundColor: '#0a0a0a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '8px',
+                  marginBottom: '8px'
+                }}>
+                  {(() => {
+                    try {
+                      const metadata = JSON.parse(selectedNodeNFT.content);
+                      return metadata.description || selectedNodeNFT.content;
+                    } catch {
+                      return selectedNodeNFT.content;
+                    }
+                  })()}
+                </div>
+                
+                <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>
+                  <div>NFT Owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                  <div style={{ 
+                    marginTop: '8px',
+                    fontSize: '10px',
+                    color: '#888',
+                    fontStyle: 'italic',
+                    textAlign: 'center'
+                  }}>
+                    💎 Content is permanently stored on-chain as NFT metadata
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  {selectedNode ? 'Loading content from NFT...' : 'No content available'}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
