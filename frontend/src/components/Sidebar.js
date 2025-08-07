@@ -345,6 +345,77 @@ const Sidebar = ({
               </div>
             )}
 
+            {/* Node Token Information */}
+            <h4 style={{ color: '#FFC107', marginBottom: '8px', marginTop: '15px' }}>🪙 Node Token (ERC20)</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #FFC107',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#FFC107', marginBottom: '8px' }}>
+                  {(() => {
+                    try {
+                      const metadata = JSON.parse(selectedNodeNFT.content);
+                      if (metadata.nodeTokenContract) {
+                        return (
+                          <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                              🪙 Token Contract:
+                            </div>
+                            <div style={{ 
+                              backgroundColor: '#0a0a0a',
+                              border: '1px solid #333',
+                              borderRadius: '4px',
+                              padding: '6px',
+                              fontFamily: 'monospace',
+                              fontSize: '10px',
+                              wordBreak: 'break-all',
+                              marginBottom: '8px'
+                            }}>
+                              {metadata.nodeTokenContract}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                              <div>🏷️ Token Name: NODE</div>
+                              <div>💰 Total Supply: 1000 NODE</div>
+                              <div>🏦 Held by Token Bound Account</div>
+                              <div>💎 ERC20 standard token for this node</div>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                            ⚠️ No Node Token found in NFT metadata
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          ⚠️ Could not parse NFT metadata for token info
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Loading Node Token info...
+                </div>
+              </div>
+            )}
+
             {/* Token Bound Account (TBA) Information */}
             <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>🏦 Token Bound Account (TBA)</h4>
             {selectedNodeNFT ? (
@@ -549,8 +620,9 @@ const Sidebar = ({
           <p>4. Right-click nodes to add children manually</p>
           <p>5. Use "Generate Children" to create AI-generated sub-branches</p>
           <p>6. Use "Generate Siblings" to create alternatives at the same level</p>
-          <p>7. Each node's NFT has its own Token Bound Account (TBA)</p>
-          <p>8. All changes are automatically saved to the blockchain</p>
+          <p>7. Each node gets its own ERC20 token (1000 NODE tokens)</p>
+          <p>8. Each node's NFT has its own Token Bound Account (TBA) that holds the tokens</p>
+          <p>9. All changes are automatically saved to the blockchain</p>
         </div>
       </div>
     </div>
