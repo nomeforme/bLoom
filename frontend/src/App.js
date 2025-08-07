@@ -199,7 +199,7 @@ function App() {
     };
 
     loadExistingTrees();
-  }, [connected, account, getUserTrees, currentTree]);
+  }, [connected, account, getUserTrees]);
 
   const handleCreateTree = async (rootContent) => {
     try {
