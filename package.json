@@ -9,9 +9,12 @@
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "deploy": "forge script scripts/Deploy.s.sol --rpc-url http://localhost:8545 --private-key REDACTED_PRIVATE_KEY --broadcast",
-    "anvil": "anvil",
+    "anvil": "anvil --host 0.0.0.0",
     "test": "forge test",
-    "build": "forge build"
+    "build": "forge build",
+    "blockscout": "docker-compose -f docker-compose.blockscout.yml up -d",
+    "blockscout:stop": "docker-compose -f docker-compose.blockscout.yml down && sudo rm -rf blockscout-services-data",
+    "blockscout:logs": "docker-compose -f docker-compose.blockscout.yml logs -f blockscout"
   },
   "dependencies": {
     "express": "^4.18.2",
