@@ -87,7 +87,7 @@ contract LoomFactory {
         return accountImplementation;
     }
     
-    function getSalt() external view returns (bytes32) {
+    function getSalt() external pure returns (bytes32) {
         return SALT;
     }
 }

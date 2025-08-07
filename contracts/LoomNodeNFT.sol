@@ -15,6 +15,9 @@ contract LoomNodeNFT is ERC721, Ownable {
     mapping(address => bool) public authorizedMinters;
     mapping(uint256 => address) public tokenBoundAccounts;
     mapping(uint256 => address) public nodeTokenContracts;
+    mapping(uint256 => string) public nodeTokenNames;
+    mapping(uint256 => string) public nodeTokenSymbols;
+    mapping(uint256 => uint256) public nodeTokenSupplies;
     
     IERC6551Registry public immutable registry;
     address public immutable accountImplementation;
@@ -84,7 +87,10 @@ contract LoomNodeNFT is ERC721, Ownable {
     function mintNodeNFT(
         address to,
         bytes32 nodeId,
-        string memory content
+        string memory content,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint256 tokenSupply
     ) external onlyAuthorizedMinter returns (uint256) {
         require(nodeIdToTokenId[nodeId] == 0, "NFT already exists for this node");
         
@@ -108,29 +114,36 @@ contract LoomNodeNFT is ERC721, Ownable {
         tokenBoundAccounts[newTokenId] = tokenBoundAccount;
         
         // Create ERC20 token for this node and mint to token bound account
-        NodeToken nodeToken = new NodeToken();
+        NodeToken nodeToken = new NodeToken(tokenName, tokenSymbol, tokenSupply);
         address nodeTokenContract = address(nodeToken);
         nodeTokenContracts[newTokenId] = nodeTokenContract;
+        nodeTokenNames[newTokenId] = tokenName;
+        nodeTokenSymbols[newTokenId] = tokenSymbol;
+        nodeTokenSupplies[newTokenId] = tokenSupply;
         
         // Transfer all tokens to the token bound account
         nodeToken.transfer(tokenBoundAccount, nodeToken.totalSupply());
         
-        // Create a simple metadata JSON including token bound account and node token
-        string memory metadata = string(abi.encodePacked(
-            '{"name": "LoomNode #',
+        // Create metadata JSON with essential info
+        tokenURIs[newTokenId] = string(abi.encodePacked(
+            '{"name":"LoomNode #',
             toString(newTokenId),
-            '", "description": "',
+            '","description":"',
             content,
-            '", "nodeId": "',
+            '","nodeId":"',
             toHexString(uint256(nodeId)),
-            '", "tokenBoundAccount": "',
+            '","tokenBoundAccount":"',
             toHexStringAddress(tokenBoundAccount),
-            '", "nodeTokenContract": "',
+            '","nodeTokenContract":"',
             toHexStringAddress(nodeTokenContract),
+            '","tokenName":"',
+            tokenName,
+            '","tokenSymbol":"',
+            tokenSymbol,
+            '","tokenSupply":"',
+            toString(tokenSupply),
             '"}'
         ));
-        
-        tokenURIs[newTokenId] = metadata;
         
         emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount, nodeTokenContract);
         emit TokenBoundAccountCreated(newTokenId, tokenBoundAccount);
@@ -194,11 +207,21 @@ contract LoomNodeNFT is ERC721, Ownable {
         return nodeTokenContracts[tokenId];
     }
     
-    function getNodeTokenInfo(uint256 tokenId) external view returns (address tokenContract, address tokenBoundAccount, uint256 tokenBalance) {
+    function getNodeTokenInfo(uint256 tokenId) external view returns (
+        address tokenContract, 
+        address tokenBoundAccount, 
+        uint256 tokenBalance,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint256 tokenSupply
+    ) {
         require(ownerOf(tokenId) != address(0), "Token does not exist");
         
         tokenContract = nodeTokenContracts[tokenId];
         tokenBoundAccount = tokenBoundAccounts[tokenId];
+        tokenName = nodeTokenNames[tokenId];
+        tokenSymbol = nodeTokenSymbols[tokenId];
+        tokenSupply = nodeTokenSupplies[tokenId];
         
         // Get token balance from the token contract
         if (tokenContract != address(0)) {
