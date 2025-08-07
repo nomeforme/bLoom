@@ -35,13 +35,43 @@ function App() {
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
-    newSocket.on('treeCreated', (data) => {
+    newSocket.on('treeCreated', async (data) => {
       console.log('Tree created:', data);
-      setTrees(prev => [...prev, data]);
+      try {
+        // Fetch the full tree data from blockchain instead of using incomplete socket data
+        const fullTree = await getTree(data.treeAddress);
+        setTrees(prev => {
+          // Check if tree already exists to prevent duplicates
+          const exists = prev.some(tree => tree.address === data.treeAddress);
+          if (exists) {
+            console.log('Tree already exists in list, skipping duplicate');
+            return prev;
+          }
+          return [...prev, fullTree];
+        });
+        
+        // Always set the newly created tree as current tree
+        setCurrentTree(fullTree);
+      } catch (error) {
+        console.error('Error fetching full tree data:', error);
+        // Fallback to basic tree structure from socket data
+        const basicTree = {
+          address: data.treeAddress,
+          rootContent: data.rootContent,
+          nodeCount: 1,
+          nodes: []
+        };
+        setTrees(prev => {
+          const exists = prev.some(tree => tree.address === data.treeAddress);
+          if (exists) return prev;
+          return [...prev, basicTree];
+        });
+        setCurrentTree(basicTree);
+      }
     });
 
     return () => newSocket.close();
-  }, []);
+  }, [getTree, currentTree]);
 
   // Handle socket events that depend on currentTree
   useEffect(() => {
@@ -159,9 +189,9 @@ function App() {
   const handleCreateTree = async (rootContent) => {
     try {
       const treeAddress = await createTree(rootContent);
-      const tree = await getTree(treeAddress);
-      setCurrentTree(tree);
-      // Note: Don't add to trees here - the socket 'treeCreated' event will handle it
+      // Wait a moment for the blockchain transaction to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // The socket 'treeCreated' event will handle adding to trees list and setting currentTree
     } catch (error) {
       console.error('Error creating tree:', error);
     }
