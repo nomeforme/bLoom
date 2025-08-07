@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IERC6551Registry.sol";
+import "./NodeToken.sol";
 
 contract LoomNodeNFT is ERC721, Ownable {
     uint256 private _nextTokenId = 1;
@@ -13,6 +14,7 @@ contract LoomNodeNFT is ERC721, Ownable {
     mapping(uint256 => string) public tokenURIs;
     mapping(address => bool) public authorizedMinters;
     mapping(uint256 => address) public tokenBoundAccounts;
+    mapping(uint256 => address) public nodeTokenContracts;
     
     IERC6551Registry public immutable registry;
     address public immutable accountImplementation;
@@ -23,11 +25,18 @@ contract LoomNodeNFT is ERC721, Ownable {
         bytes32 indexed nodeId,
         address indexed owner,
         string content,
-        address tokenBoundAccount
+        address tokenBoundAccount,
+        address nodeTokenContract
     );
     
     event TokenBoundAccountCreated(
         uint256 indexed tokenId,
+        address indexed tokenBoundAccount
+    );
+    
+    event NodeTokenCreated(
+        uint256 indexed tokenId,
+        address indexed nodeTokenContract,
         address indexed tokenBoundAccount
     );
     
@@ -98,7 +107,15 @@ contract LoomNodeNFT is ERC721, Ownable {
         
         tokenBoundAccounts[newTokenId] = tokenBoundAccount;
         
-        // Create a simple metadata JSON including token bound account
+        // Create ERC20 token for this node and mint to token bound account
+        NodeToken nodeToken = new NodeToken();
+        address nodeTokenContract = address(nodeToken);
+        nodeTokenContracts[newTokenId] = nodeTokenContract;
+        
+        // Transfer all tokens to the token bound account
+        nodeToken.transfer(tokenBoundAccount, nodeToken.totalSupply());
+        
+        // Create a simple metadata JSON including token bound account and node token
         string memory metadata = string(abi.encodePacked(
             '{"name": "LoomNode #',
             toString(newTokenId),
@@ -108,13 +125,16 @@ contract LoomNodeNFT is ERC721, Ownable {
             toHexString(uint256(nodeId)),
             '", "tokenBoundAccount": "',
             toHexStringAddress(tokenBoundAccount),
+            '", "nodeTokenContract": "',
+            toHexStringAddress(nodeTokenContract),
             '"}'
         ));
         
         tokenURIs[newTokenId] = metadata;
         
-        emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount);
+        emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount, nodeTokenContract);
         emit TokenBoundAccountCreated(newTokenId, tokenBoundAccount);
+        emit NodeTokenCreated(newTokenId, nodeTokenContract, tokenBoundAccount);
         
         return newTokenId;
     }
@@ -161,6 +181,30 @@ contract LoomNodeNFT is ERC721, Ownable {
             address(this),
             tokenId
         );
+    }
+    
+    function getNodeTokenContract(uint256 tokenId) external view returns (address) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        return nodeTokenContracts[tokenId];
+    }
+    
+    function getNodeTokenContractByNodeId(bytes32 nodeId) external view returns (address) {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        return nodeTokenContracts[tokenId];
+    }
+    
+    function getNodeTokenInfo(uint256 tokenId) external view returns (address tokenContract, address tokenBoundAccount, uint256 tokenBalance) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        
+        tokenContract = nodeTokenContracts[tokenId];
+        tokenBoundAccount = tokenBoundAccounts[tokenId];
+        
+        // Get token balance from the token contract
+        if (tokenContract != address(0)) {
+            NodeToken token = NodeToken(tokenContract);
+            tokenBalance = token.balanceOf(tokenBoundAccount);
+        }
     }
     
     // Helper function to convert uint to string
