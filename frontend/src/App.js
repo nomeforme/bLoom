@@ -10,6 +10,7 @@ function App() {
   const graphRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedNodeNFT, setSelectedNodeNFT] = useState(null);
   const [trees, setTrees] = useState([]);
   const [currentTree, setCurrentTree] = useState(null);
   const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
@@ -27,7 +28,8 @@ function App() {
     getTree,
     addNode,
     updateNode,
-    getUserTrees
+    getUserTrees,
+    getNodeNFTInfo
   } = useBlockchain();
 
   useEffect(() => {
@@ -36,38 +38,51 @@ function App() {
     setSocket(newSocket);
 
     newSocket.on('treeCreated', async (data) => {
-      console.log('Tree created:', data);
-      try {
-        // Fetch the full tree data from blockchain instead of using incomplete socket data
-        const fullTree = await getTree(data.treeAddress);
-        setTrees(prev => {
-          // Check if tree already exists to prevent duplicates
-          const exists = prev.some(tree => tree.address === data.treeAddress);
-          if (exists) {
-            console.log('Tree already exists in list, skipping duplicate');
-            return prev;
-          }
-          return [...prev, fullTree];
-        });
+      console.log('Socket: Tree created event received:', data);
+      
+      // Check if tree already exists (may have been added by handleCreateTree)
+      setTrees(prev => {
+        const exists = prev.some(tree => tree.address === data.treeAddress);
+        if (exists) {
+          console.log('Socket: Tree already exists in list, skipping socket update');
+          return prev;
+        }
         
-        // Always set the newly created tree as current tree
-        setCurrentTree(fullTree);
-      } catch (error) {
-        console.error('Error fetching full tree data:', error);
-        // Fallback to basic tree structure from socket data
-        const basicTree = {
-          address: data.treeAddress,
-          rootContent: data.rootContent,
-          nodeCount: 1,
-          nodes: []
-        };
-        setTrees(prev => {
-          const exists = prev.some(tree => tree.address === data.treeAddress);
-          if (exists) return prev;
-          return [...prev, basicTree];
-        });
-        setCurrentTree(basicTree);
-      }
+        // Tree doesn't exist, this might be from another client or a missed immediate update
+        console.log('Socket: Adding tree from socket event');
+        try {
+          // Try to fetch full tree data
+          getTree(data.treeAddress).then(fullTree => {
+            setTrees(prevTrees => {
+              const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
+              if (stillExists) return prevTrees;
+              return [...prevTrees, fullTree];
+            });
+            setCurrentTree(fullTree);
+          }).catch(error => {
+            console.error('Socket: Error fetching full tree data:', error);
+            // Fallback to basic tree
+            const basicTree = {
+              address: data.treeAddress,
+              rootContent: data.rootContent,
+              nodeCount: 1,
+              nodes: [],
+              nftContract: null,
+              nftAddress: null
+            };
+            setTrees(prevTrees => {
+              const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
+              if (stillExists) return prevTrees;
+              return [...prevTrees, basicTree];
+            });
+            setCurrentTree(basicTree);
+          });
+        } catch (error) {
+          console.error('Socket: Error in tree creation handler:', error);
+        }
+        
+        return prev; // Return unchanged for now, async operations will update
+      });
     });
 
     return () => newSocket.close();
@@ -188,18 +203,87 @@ function App() {
 
   const handleCreateTree = async (rootContent) => {
     try {
+      console.log('Creating tree with content:', rootContent);
       const treeAddress = await createTree(rootContent);
+      console.log('Tree created at address:', treeAddress);
+      
       // Wait a moment for the blockchain transaction to propagate
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // The socket 'treeCreated' event will handle adding to trees list and setting currentTree
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      try {
+        // Immediately fetch the full tree data and add to UI
+        console.log('Fetching full tree data for immediate UI update');
+        const fullTree = await getTree(treeAddress);
+        console.log('Full tree data loaded:', fullTree);
+        
+        // Add to trees list immediately
+        setTrees(prev => {
+          const exists = prev.some(tree => tree.address === treeAddress);
+          if (exists) {
+            console.log('Tree already exists in list, skipping duplicate');
+            return prev;
+          }
+          console.log('Adding new tree to sidebar');
+          return [...prev, fullTree];
+        });
+        
+        // Set as current tree
+        setCurrentTree(fullTree);
+        console.log('Tree creation and UI update complete');
+      } catch (treeError) {
+        console.error('Error fetching tree after creation:', treeError);
+        
+        // Fallback: add basic tree info immediately
+        const basicTree = {
+          address: treeAddress,
+          rootContent: rootContent,
+          nodeCount: 1,
+          nodes: [],
+          nftContract: null,
+          nftAddress: null
+        };
+        
+        setTrees(prev => {
+          const exists = prev.some(tree => tree.address === treeAddress);
+          if (!exists) {
+            return [...prev, basicTree];
+          }
+          return prev;
+        });
+        setCurrentTree(basicTree);
+      }
+      
+      // Socket event is still useful for other clients or as backup
     } catch (error) {
       console.error('Error creating tree:', error);
+      throw error; // Re-throw so UI can show error state
     }
   };
 
   const handleNodeSelect = useCallback((node) => {
     setSelectedNode(node);
   }, []);
+
+  // Fetch NFT information when a node is selected
+  useEffect(() => {
+    const fetchNodeNFT = async () => {
+      if (selectedNode && currentTree && getNodeNFTInfo) {
+        try {
+          console.log('Fetching NFT info for node:', selectedNode.id);
+          const nftInfo = await getNodeNFTInfo(currentTree, selectedNode.id);
+          setSelectedNodeNFT(nftInfo);
+          console.log('NFT info:', nftInfo);
+        } catch (error) {
+          console.error('Error fetching NFT info:', error);
+          setSelectedNodeNFT(null);
+        }
+      } else {
+        setSelectedNodeNFT(null);
+      }
+    };
+
+    fetchNodeNFT();
+  }, [selectedNode, currentTree, getNodeNFTInfo]);
 
   const handleAddNode = useCallback(async (parentId, content) => {
     if (!currentTree) return;
@@ -554,6 +638,7 @@ function App() {
         currentTree={currentTree}
         onSelectTree={setCurrentTree}
         selectedNode={selectedNode}
+        selectedNodeNFT={selectedNodeNFT}
         onGenerateSiblings={handleGenerateSiblings}
         onImportTrees={handleImportTrees}
         isGeneratingChildren={isGeneratingChildren}
