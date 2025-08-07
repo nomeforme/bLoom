@@ -344,6 +344,77 @@ const Sidebar = ({
                 </div>
               </div>
             )}
+
+            {/* Token Bound Account (TBA) Information */}
+            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>🏦 Token Bound Account (TBA)</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #9C27B0',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#9C27B0', marginBottom: '8px' }}>
+                  {(() => {
+                    try {
+                      const metadata = JSON.parse(selectedNodeNFT.content);
+                      if (metadata.tokenBoundAccount) {
+                        return (
+                          <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                              🏦 Account Address:
+                            </div>
+                            <div style={{ 
+                              backgroundColor: '#0a0a0a',
+                              border: '1px solid #333',
+                              borderRadius: '4px',
+                              padding: '6px',
+                              fontFamily: 'monospace',
+                              fontSize: '10px',
+                              wordBreak: 'break-all',
+                              marginBottom: '8px'
+                            }}>
+                              {metadata.tokenBoundAccount}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                              <div>✅ This NFT has its own Ethereum account</div>
+                              <div>💰 Can hold assets and execute transactions</div>
+                              <div>🔐 Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                              <div>🔄 Account transfers with NFT ownership</div>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                            ⚠️ No Token Bound Account found in NFT metadata
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          ⚠️ Could not parse NFT metadata for TBA info
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Loading Token Bound Account info...
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -478,7 +549,8 @@ const Sidebar = ({
           <p>4. Right-click nodes to add children manually</p>
           <p>5. Use "Generate Children" to create AI-generated sub-branches</p>
           <p>6. Use "Generate Siblings" to create alternatives at the same level</p>
-          <p>7. All changes are automatically saved to the blockchain</p>
+          <p>7. Each node's NFT has its own Token Bound Account (TBA)</p>
+          <p>8. All changes are automatically saved to the blockchain</p>
         </div>
       </div>
     </div>

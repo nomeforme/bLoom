@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "./LoomTree.sol";
 import "./LoomNodeNFT.sol";
+import "./ERC6551Registry.sol";
+import "./examples/simple/ERC6551Account.sol";
 
 contract LoomFactory {
     mapping(bytes32 => address) public trees;
     mapping(address => bytes32[]) public userTrees;
     bytes32[] public allTrees;
     LoomNodeNFT public globalNFTContract;
+    ERC6551Registry public registry;
+    address public accountImplementation;
+    bytes32 public constant SALT = keccak256("LoomNode");
     
     event TreeCreated(
         bytes32 indexed treeId,
@@ -18,7 +23,19 @@ contract LoomFactory {
     );
     
     constructor() {
-        globalNFTContract = new LoomNodeNFT();
+        // Deploy ERC-6551 infrastructure
+        registry = new ERC6551Registry();
+        
+        // Deploy account implementation
+        ERC6551Account implementation = new ERC6551Account();
+        accountImplementation = address(implementation);
+        
+        // Deploy global NFT contract with ERC-6551 support
+        globalNFTContract = new LoomNodeNFT(
+            address(registry),
+            accountImplementation,
+            SALT
+        );
     }
     
     function createTree(string memory rootContent) external returns (address) {
@@ -60,5 +77,17 @@ contract LoomFactory {
     
     function getGlobalNFTContract() external view returns (address) {
         return address(globalNFTContract);
+    }
+    
+    function getRegistry() external view returns (address) {
+        return address(registry);
+    }
+    
+    function getAccountImplementation() external view returns (address) {
+        return accountImplementation;
+    }
+    
+    function getSalt() external view returns (bytes32) {
+        return SALT;
     }
 }

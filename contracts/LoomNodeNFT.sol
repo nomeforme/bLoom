@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IERC6551Registry.sol";
 
 contract LoomNodeNFT is ERC721, Ownable {
     uint256 private _nextTokenId = 1;
@@ -11,15 +12,34 @@ contract LoomNodeNFT is ERC721, Ownable {
     mapping(uint256 => bytes32) public tokenIdToNodeId;
     mapping(uint256 => string) public tokenURIs;
     mapping(address => bool) public authorizedMinters;
+    mapping(uint256 => address) public tokenBoundAccounts;
+    
+    IERC6551Registry public immutable registry;
+    address public immutable accountImplementation;
+    bytes32 public immutable salt;
     
     event NodeNFTMinted(
         uint256 indexed tokenId,
         bytes32 indexed nodeId,
         address indexed owner,
-        string content
+        string content,
+        address tokenBoundAccount
     );
     
-    constructor() ERC721("LoomNode", "LNODE") Ownable(msg.sender) {}
+    event TokenBoundAccountCreated(
+        uint256 indexed tokenId,
+        address indexed tokenBoundAccount
+    );
+    
+    constructor(
+        address _registry,
+        address _accountImplementation,
+        bytes32 _salt
+    ) ERC721("LoomNode", "LNODE") Ownable(msg.sender) {
+        registry = IERC6551Registry(_registry);
+        accountImplementation = _accountImplementation;
+        salt = _salt;
+    }
     
     modifier onlyAuthorizedMinter() {
         require(authorizedMinters[msg.sender] || msg.sender == owner(), "Not authorized to mint");
@@ -67,7 +87,18 @@ contract LoomNodeNFT is ERC721, Ownable {
         nodeIdToTokenId[nodeId] = newTokenId;
         tokenIdToNodeId[newTokenId] = nodeId;
         
-        // Create a simple metadata JSON
+        // Create ERC-6551 token bound account
+        address tokenBoundAccount = registry.createAccount(
+            accountImplementation,
+            salt,
+            block.chainid,
+            address(this),
+            newTokenId
+        );
+        
+        tokenBoundAccounts[newTokenId] = tokenBoundAccount;
+        
+        // Create a simple metadata JSON including token bound account
         string memory metadata = string(abi.encodePacked(
             '{"name": "LoomNode #',
             toString(newTokenId),
@@ -75,12 +106,15 @@ contract LoomNodeNFT is ERC721, Ownable {
             content,
             '", "nodeId": "',
             toHexString(uint256(nodeId)),
+            '", "tokenBoundAccount": "',
+            toHexStringAddress(tokenBoundAccount),
             '"}'
         ));
         
         tokenURIs[newTokenId] = metadata;
         
-        emit NodeNFTMinted(newTokenId, nodeId, to, content);
+        emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount);
+        emit TokenBoundAccountCreated(newTokenId, tokenBoundAccount);
         
         return newTokenId;
     }
@@ -106,6 +140,27 @@ contract LoomNodeNFT is ERC721, Ownable {
         uint256 tokenId = nodeIdToTokenId[nodeId];
         require(tokenId != 0, "No token exists for this node");
         return tokenURIs[tokenId];
+    }
+    
+    function getTokenBoundAccount(uint256 tokenId) external view returns (address) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        return tokenBoundAccounts[tokenId];
+    }
+    
+    function getTokenBoundAccountByNodeId(bytes32 nodeId) external view returns (address) {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        return tokenBoundAccounts[tokenId];
+    }
+    
+    function computeTokenBoundAccount(uint256 tokenId) external view returns (address) {
+        return registry.account(
+            accountImplementation,
+            salt,
+            block.chainid,
+            address(this),
+            tokenId
+        );
     }
     
     // Helper function to convert uint to string
@@ -134,6 +189,17 @@ contract LoomNodeNFT is ERC721, Ownable {
         for (uint256 i = 0; i < 32; i++) {
             buffer[i * 2] = _HEX_SYMBOLS[uint8(value >> (8 * (31 - i) + 4)) & 0xf];
             buffer[i * 2 + 1] = _HEX_SYMBOLS[uint8(value >> (8 * (31 - i))) & 0xf];
+        }
+        return string(abi.encodePacked("0x", string(buffer)));
+    }
+    
+    // Helper function to convert address to hex string
+    function toHexStringAddress(address value) internal pure returns (string memory) {
+        uint160 addressValue = uint160(value);
+        bytes memory buffer = new bytes(40);
+        for (uint256 i = 0; i < 20; i++) {
+            buffer[i * 2] = _HEX_SYMBOLS[uint8(addressValue >> (8 * (19 - i) + 4)) & 0xf];
+            buffer[i * 2 + 1] = _HEX_SYMBOLS[uint8(addressValue >> (8 * (19 - i))) & 0xf];
         }
         return string(abi.encodePacked("0x", string(buffer)));
     }
