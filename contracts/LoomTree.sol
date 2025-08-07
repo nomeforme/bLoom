@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
+
+import "./LoomNodeNFT.sol";
 
 contract LoomTree {
     struct Node {
         bytes32 id;
         bytes32 parentId;
-        string content;
         bytes32[] children;
         address author;
         uint256 timestamp;
@@ -18,18 +19,18 @@ contract LoomTree {
     bytes32[] public allNodes;
     bytes32 public rootId;
     address public treeOwner;
+    address public factory;
+    LoomNodeNFT public nftContract;
     
     event NodeCreated(
         bytes32 indexed nodeId,
         bytes32 indexed parentId,
-        string content,
         address indexed author,
         uint256 timestamp
     );
     
     event NodeUpdated(
         bytes32 indexed nodeId,
-        string newContent,
         address indexed author
     );
     
@@ -44,9 +45,17 @@ contract LoomTree {
         _;
     }
     
-    constructor(string memory rootContent, address owner) {
+    constructor(string memory rootContent, address owner, address nftContractAddress) {
         treeOwner = owner;
-        rootId = _createNode(bytes32(0), rootContent, true);
+        factory = msg.sender;
+        nftContract = LoomNodeNFT(nftContractAddress);
+        // Root node will be created after authorization is set up
+    }
+    
+    function initializeRootNode(string memory rootContent) external {
+        require(rootId == bytes32(0), "Root node already initialized");
+        require(msg.sender == factory, "Only factory can initialize");
+        rootId = _createNodeWithAuthor(bytes32(0), rootContent, true, treeOwner);
     }
     
     function addNode(bytes32 parentId, string memory content) external returns (bytes32) {
@@ -55,13 +64,16 @@ contract LoomTree {
     }
     
     function _createNode(bytes32 parentId, string memory content, bool isRoot) internal returns (bytes32) {
-        bytes32 nodeId = keccak256(abi.encodePacked(msg.sender, block.timestamp, content, parentId));
+        return _createNodeWithAuthor(parentId, content, isRoot, msg.sender);
+    }
+    
+    function _createNodeWithAuthor(bytes32 parentId, string memory content, bool isRoot, address author) internal returns (bytes32) {
+        bytes32 nodeId = keccak256(abi.encodePacked(author, block.timestamp, content, parentId));
         
         Node storage newNode = nodes[nodeId];
         newNode.id = nodeId;
         newNode.parentId = parentId;
-        newNode.content = content;
-        newNode.author = msg.sender;
+        newNode.author = author;
         newNode.timestamp = block.timestamp;
         newNode.isRoot = isRoot;
         
@@ -71,7 +83,10 @@ contract LoomTree {
             nodes[parentId].children.push(nodeId);
         }
         
-        emit NodeCreated(nodeId, parentId, content, msg.sender, block.timestamp);
+        emit NodeCreated(nodeId, parentId, author, block.timestamp);
+        
+        // Mint NFT for the node with content - NFT becomes the content storage
+        nftContract.mintNodeNFT(author, nodeId, content);
         
         return nodeId;
     }
@@ -80,8 +95,9 @@ contract LoomTree {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
         require(nodes[nodeId].author == msg.sender || msg.sender == treeOwner, "Not authorized to update this node");
         
-        nodes[nodeId].content = newContent;
-        emit NodeUpdated(nodeId, newContent, msg.sender);
+        // Update the NFT metadata instead of node content
+        nftContract.updateTokenContent(nodeId, newContent);
+        emit NodeUpdated(nodeId, msg.sender);
     }
     
     function setNodeMetadata(bytes32 nodeId, string memory key, string memory value) external {
@@ -108,7 +124,6 @@ contract LoomTree {
     function getNode(bytes32 nodeId) external view returns (
         bytes32 id,
         bytes32 parentId,
-        string memory content,
         bytes32[] memory children,
         address author,
         uint256 timestamp,
@@ -118,7 +133,6 @@ contract LoomTree {
         return (
             node.id,
             node.parentId,
-            node.content,
             node.children,
             node.author,
             node.timestamp,
@@ -148,5 +162,9 @@ contract LoomTree {
     
     function getRootId() external view returns (bytes32) {
         return rootId;
+    }
+    
+    function getNFTContract() external view returns (address) {
+        return address(nftContract);
     }
 }
