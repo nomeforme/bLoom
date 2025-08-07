@@ -45,7 +45,7 @@ contract LoomTree {
         _;
     }
     
-    constructor(string memory rootContent, address owner, address nftContractAddress) {
+    constructor(string memory /* rootContent */, address owner, address nftContractAddress) {
         treeOwner = owner;
         factory = msg.sender;
         nftContract = LoomNodeNFT(nftContractAddress);
@@ -63,11 +63,35 @@ contract LoomTree {
         return _createNode(parentId, content, false);
     }
     
+    function addNodeWithToken(
+        bytes32 parentId, 
+        string memory content,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint256 tokenSupply
+    ) external returns (bytes32) {
+        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
+        return _createNodeWithToken(parentId, content, false, msg.sender, tokenName, tokenSymbol, tokenSupply);
+    }
+    
     function _createNode(bytes32 parentId, string memory content, bool isRoot) internal returns (bytes32) {
         return _createNodeWithAuthor(parentId, content, isRoot, msg.sender);
     }
     
     function _createNodeWithAuthor(bytes32 parentId, string memory content, bool isRoot, address author) internal returns (bytes32) {
+        // Use default token parameters: "NODE" token with 1000 supply
+        return _createNodeWithToken(parentId, content, isRoot, author, "NODE", "NODE", 1000);
+    }
+    
+    function _createNodeWithToken(
+        bytes32 parentId, 
+        string memory content, 
+        bool isRoot, 
+        address author,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint256 tokenSupply
+    ) internal returns (bytes32) {
         bytes32 nodeId = keccak256(abi.encodePacked(author, block.timestamp, content, parentId));
         
         Node storage newNode = nodes[nodeId];
@@ -85,8 +109,8 @@ contract LoomTree {
         
         emit NodeCreated(nodeId, parentId, author, block.timestamp);
         
-        // Mint NFT for the node with content - NFT becomes the content storage
-        nftContract.mintNodeNFT(author, nodeId, content);
+        // Mint NFT for the node with content and token parameters
+        nftContract.mintNodeNFT(author, nodeId, content, tokenName, tokenSymbol, tokenSupply);
         
         return nodeId;
     }

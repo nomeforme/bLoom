@@ -378,8 +378,9 @@ const Sidebar = ({
                               {metadata.nodeTokenContract}
                             </div>
                             <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                              <div>🏷️ Token Name: NODE</div>
-                              <div>💰 Total Supply: 1000 NODE</div>
+                              <div>🏷️ Token Name: {metadata.tokenName || 'NODE'}</div>
+                              <div>🔤 Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
+                              <div>💰 Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
                               <div>🏦 Held by Token Bound Account</div>
                               <div>💎 ERC20 standard token for this node</div>
                             </div>
