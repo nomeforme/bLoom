@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import LoomGraph from './components/LoomGraph';
 import Sidebar from './components/Sidebar';
 import { useBlockchain } from './hooks/useBlockchain';
+import modelsConfig from './config/models.json';
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
   const [currentTree, setCurrentTree] = useState(null);
   const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
   const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
   
   const {
     provider,
@@ -464,10 +466,19 @@ function App() {
         parentId,
         parentContent: fullPathContext, // Full narrative path context
         count,
-        userAccount: account // Pass the current user's account address
+        userAccount: account, // Pass the current user's account address
+        model: selectedModel, // Use the selected model from dropdown
+        temperature: modelsConfig.generationSettings.temperature,
+        maxTokens: modelsConfig.generationSettings.maxTokens
       });
     });
-  }, [socket, currentTree, buildFullPathContext]);
+  }, [socket, currentTree, buildFullPathContext, selectedModel]);
+
+  // Handle model selection change
+  const handleModelChange = useCallback((newModel) => {
+    setSelectedModel(newModel);
+    console.log('🤖 Model changed to:', newModel);
+  }, []);
 
   const handleImportTrees = useCallback(async (importData) => {
     if (!socket) {
@@ -648,6 +659,7 @@ function App() {
         setIsGeneratingChildren={setIsGeneratingChildren}
         isGeneratingSiblings={isGeneratingSiblings}
         setIsGeneratingSiblings={setIsGeneratingSiblings}
+        onModelChange={handleModelChange}
       />
       
       <div className="graph-container">

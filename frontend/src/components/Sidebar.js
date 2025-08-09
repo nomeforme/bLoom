@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
+import modelsConfig from '../config/models.json';
 
 const Sidebar = ({
   connected,
@@ -17,7 +18,8 @@ const Sidebar = ({
   isGeneratingChildren,
   setIsGeneratingChildren,
   isGeneratingSiblings,
-  setIsGeneratingSiblings
+  setIsGeneratingSiblings,
+  onModelChange
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
   const [childrenCount, setChildrenCount] = useState(3);
@@ -26,9 +28,54 @@ const Sidebar = ({
   const [isImporting, setIsImporting] = useState(false);
   const [isCreatingTree, setIsCreatingTree] = useState(false);
   const [showOnlyMyTrees, setShowOnlyMyTrees] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
+  const [availableModels, setAvailableModels] = useState([]);
   
   // Initialize keyboard shortcuts manager
   const shortcutsManager = new KeyboardShortcutsManager();
+
+  // Fetch available models from backend
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/models');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models || []);
+        } else {
+          // Fallback to config models if backend unavailable
+          const configModels = Object.keys(modelsConfig.models).map(id => ({
+            id,
+            name: modelsConfig.models[id].name,
+            provider: modelsConfig.models[id].provider,
+            modelId: modelsConfig.models[id].modelId,
+            available: false // Unknown availability
+          }));
+          setAvailableModels(configModels);
+        }
+      } catch (error) {
+        console.error('Error fetching models:', error);
+        // Fallback to config models
+        const configModels = Object.keys(modelsConfig.models).map(id => ({
+          id,
+          name: modelsConfig.models[id].name,
+          provider: modelsConfig.models[id].provider,
+          modelId: modelsConfig.models[id].modelId,
+          available: false
+        }));
+        setAvailableModels(configModels);
+      }
+    };
+
+    fetchModels();
+  }, []);
+
+  // Notify parent component when model changes
+  useEffect(() => {
+    if (onModelChange) {
+      onModelChange(selectedModel);
+    }
+  }, [selectedModel, onModelChange]);
 
   const ellipseAddress = (address) => {
     if (!address) return '';
@@ -181,6 +228,44 @@ const Sidebar = ({
           Disconnect
         </button>
       )}
+
+      {/* AI Model Selector */}
+      <div className="section">
+        <h3>🤖 AI Model</h3>
+        <select 
+          value={selectedModel} 
+          onChange={(e) => setSelectedModel(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #333',
+            backgroundColor: '#2a2a2a',
+            color: '#fff',
+            fontSize: '12px',
+            marginBottom: '8px'
+          }}
+        >
+          {availableModels.map(model => {
+            // Use config provider name instead of backend provider (which is API compatibility)
+            const configProvider = modelsConfig.models[model.id]?.provider || model.provider;
+            return (
+              <option 
+                key={model.id} 
+                value={model.id}
+                disabled={model.available === false}
+              >
+                {model.name} ({configProvider}) {model.available === false ? ' - Unavailable' : ''}
+              </option>
+            );
+          })}
+        </select>
+        {selectedModel && modelsConfig.models[selectedModel] && (
+          <div style={{ fontSize: '10px', color: '#888', lineHeight: '1.3' }}>
+            Model ID: {modelsConfig.models[selectedModel].modelId}
+          </div>
+        )}
+      </div>
 
       {/* Create New Tree */}
       <div className="section">
