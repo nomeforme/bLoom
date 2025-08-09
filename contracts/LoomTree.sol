@@ -74,6 +74,12 @@ contract LoomTree {
         return _createNodeWithToken(parentId, content, false, msg.sender, tokenName, tokenSymbol, tokenSupply);
     }
     
+    function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32) {
+        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
+        require(author != address(0), "Author cannot be zero address");
+        return _createNodeWithAuthor(parentId, content, false, author);
+    }
+    
     function _createNode(bytes32 parentId, string memory content, bool isRoot) internal returns (bytes32) {
         return _createNodeWithAuthor(parentId, content, isRoot, msg.sender);
     }

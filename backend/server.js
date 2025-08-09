@@ -34,6 +34,7 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
@@ -180,7 +181,7 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('generateSiblings', async (data) => {
-    const { treeAddress, parentId, parentContent, count = 3 } = data;
+    const { treeAddress, parentId, parentContent, count = 3, userAccount } = data;
     
     try {
       // Get the tree contract
@@ -233,7 +234,10 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          const tx = await treeContract.addNode(parentId, content);
+          // Use addNodeForUser if userAccount is provided, otherwise use addNode
+          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000" 
+            ? await treeContract.addNodeForUser(parentId, content, userAccount)
+            : await treeContract.addNode(parentId, content);
           const receipt = await tx.wait();
           
           // Find the NodeCreated event
@@ -309,7 +313,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('importNodes', async (data) => {
-    const { treeAddress, rootId, oldRootId, nodes } = data;
+    const { treeAddress, rootId, oldRootId, nodes, userAccount } = data;
     
     try {
       // Verify the tree contract exists and is accessible
@@ -372,7 +376,10 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          const tx = await treeContract.addNode(parentIdToUse, nodeData.content);
+          // Use addNodeForUser if userAccount is provided, otherwise use addNode  
+          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000"
+            ? await treeContract.addNodeForUser(parentIdToUse, nodeData.content, userAccount)
+            : await treeContract.addNode(parentIdToUse, nodeData.content);
           const receipt = await tx.wait();
           
           // Find the NodeCreated event to get the new node ID
