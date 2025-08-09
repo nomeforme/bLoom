@@ -46,21 +46,85 @@ const TREE_ABI = [
 
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
 
-// LLM Configuration
+// Enhanced LLM Configuration with multiple providers
 const LLM_CONFIG = {
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY,
+  // OpenAI Models
+  'gpt-4o': {
+    name: 'GPT-4o',
+    id: 'gpt-4o',
+    provider: 'openai',
     baseURL: 'https://api.openai.com/v1',
-    model: 'gpt-4o'
+    apiKey: process.env.OPENAI_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
   },
-  anthropic: {
+  'gpt-4-turbo': {
+    name: 'GPT-4 Turbo',
+    id: 'gpt-4-turbo',
+    provider: 'openai',
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+  
+  // Anthropic Models
+  'claude-3-opus': {
+    name: 'Claude 3 Opus',
+    id: 'claude-3-opus-20240229',
+    provider: 'anthropic',
     apiKey: process.env.ANTHROPIC_API_KEY,
-    baseURL: 'https://api.anthropic.com/v1',
-    model: 'claude-3-haiku-20240307'
+    maxTokens: 4000,
+    defaultTemp: 0.7
   },
-  local: {
+  'claude-3-sonnet': {
+    name: 'Claude 3 Sonnet',
+    id: 'claude-3-sonnet-20240229',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.7
+  },
+  'claude-3-haiku': {
+    name: 'Claude 3 Haiku',
+    id: 'claude-3-haiku-20240307',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.7
+  },
+  
+  // DeepSeek via Chutes API
+  'deepseek-v3': {
+    name: 'DeepSeek V3',
+    id: 'deepseek-ai/DeepSeek-V3-Base',
+    provider: 'openai', // Uses OpenAI-compatible API
+    baseURL: 'https://llm.chutes.ai/v1/',
+    apiKey: process.env.CHUTES_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.7
+  },
+  
+  // Meta Llama via OpenRouter
+  'llama-3.1-405b': {
+    name: 'Llama 3.1 405B',
+    id: 'meta-llama/llama-3.1-405b',
+    provider: 'openai', // Uses OpenAI-compatible API
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.7
+  },
+  
+  // Local models
+  'local': {
+    name: 'Local Model',
+    id: 'local-model',
+    provider: 'openai', // Uses OpenAI-compatible API
     baseURL: process.env.LOCAL_LLM_URL || 'http://localhost:1234/v1',
-    model: 'local-model'
+    apiKey: 'local',
+    maxTokens: 2000,
+    defaultTemp: 0.8
   }
 };
 
@@ -101,77 +165,106 @@ function sortNodesByDependency(nodes, rootParentId) {
   return sorted;
 }
 
-// Text generation function
-async function generateText(prompt, provider = 'openai') {
+// Enhanced text generation function with multiple providers
+async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, maxTokens) {
   try {
+    const modelConfig = LLM_CONFIG[modelKey];
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${modelKey}`);
+    }
+
+    if (!modelConfig.apiKey || modelConfig.apiKey === '' || modelConfig.apiKey === 'your-api-key-here') {
+      throw new Error(`API key not configured for model: ${modelKey}`);
+    }
+
+    const finalTemp = temperature || modelConfig.defaultTemp;
+    const finalMaxTokens = maxTokens || Math.min(modelConfig.maxTokens, 200); // Cap at 200 for story generation
+
+    console.log(`🤖 Generating text with ${modelConfig.name} (${modelConfig.id})`);
+    console.log(`📊 Temperature: ${finalTemp}, Max Tokens: ${finalMaxTokens}`);
+
     let response;
     
-    switch (provider) {
-      case 'openai':
-        if (!LLM_CONFIG.openai.apiKey) {
-          throw new Error('OpenAI API key not configured');
+    if (modelConfig.provider === 'anthropic') {
+      // Anthropic API
+      response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: modelConfig.id,
+          max_tokens: finalMaxTokens,
+          temperature: finalTemp,
+          messages: [{ role: 'user', content: prompt }]
+        },
+        {
+          headers: {
+            'x-api-key': modelConfig.apiKey,
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01'
+          }
         }
+      );
+      return response.data.content[0].text.trim();
+      
+    } else if (modelConfig.provider === 'openai') {
+      // OpenAI-compatible API (covers OpenAI, DeepSeek via Chutes, Llama via OpenRouter, Local)
+      const isCompletionModel = modelConfig.id.includes('gpt-4-base') || modelConfig.id.includes('deepseek') || modelKey === 'local';
+      
+      if (isCompletionModel) {
+        // Use completions endpoint for base models
         response = await axios.post(
-          `${LLM_CONFIG.openai.baseURL}/chat/completions`,
+          `${modelConfig.baseURL}/completions`,
           {
-            model: LLM_CONFIG.openai.model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 150,
-            temperature: 0.8
+            model: modelConfig.id,
+            prompt: prompt,
+            max_tokens: finalMaxTokens,
+            temperature: finalTemp,
+            stop: ['\n\n', '\n###', 'Human:', 'Assistant:']
           },
           {
             headers: {
-              'Authorization': `Bearer ${LLM_CONFIG.openai.apiKey}`,
+              'Authorization': `Bearer ${modelConfig.apiKey}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        return response.data.choices[0].text.trim();
+      } else {
+        // Use chat completions endpoint for chat models
+        response = await axios.post(
+          `${modelConfig.baseURL}/chat/completions`,
+          {
+            model: modelConfig.id,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: finalMaxTokens,
+            temperature: finalTemp
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${modelConfig.apiKey}`,
               'Content-Type': 'application/json'
             }
           }
         );
         return response.data.choices[0].message.content.trim();
-        
-      case 'anthropic':
-        if (!LLM_CONFIG.anthropic.apiKey) {
-          throw new Error('Anthropic API key not configured');
-        }
-        response = await axios.post(
-          `${LLM_CONFIG.anthropic.baseURL}/messages`,
-          {
-            model: LLM_CONFIG.anthropic.model,
-            max_tokens: 150,
-            messages: [{ role: 'user', content: prompt }]
-          },
-          {
-            headers: {
-              'x-api-key': LLM_CONFIG.anthropic.apiKey,
-              'Content-Type': 'application/json',
-              'anthropic-version': '2023-06-01'
-            }
-          }
-        );
-        return response.data.content[0].text.trim();
-        
-      case 'local':
-        response = await axios.post(
-          `${LLM_CONFIG.local.baseURL}/chat/completions`,
-          {
-            model: LLM_CONFIG.local.model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 150,
-            temperature: 0.8
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        return response.data.choices[0].message.content.trim();
-        
-      default:
-        throw new Error(`Unknown LLM provider: ${provider}`);
+      }
     }
+    
+    throw new Error(`Unsupported provider: ${modelConfig.provider}`);
+    
   } catch (error) {
-    console.error('Error generating text:', error.message);
-    // Fallback to a simple continuation
+    console.error(`❌ Error generating text with ${modelKey}:`, error.message);
+    
+    // Try fallback model if original fails
+    if (modelKey !== 'claude-3-haiku') {
+      console.log('🔄 Falling back to Claude 3 Haiku...');
+      try {
+        return await generateText(prompt, 'claude-3-haiku', temperature, maxTokens);
+      } catch (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError.message);
+      }
+    }
+    
+    // Final fallback to a simple continuation
     return `[Generated continuation from "${prompt.substring(0, 50)}..."]`;
   }
 }
@@ -181,7 +274,7 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('generateSiblings', async (data) => {
-    const { treeAddress, parentId, parentContent, count = 3, userAccount } = data;
+    const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens } = data;
     
     try {
       // Get the tree contract
@@ -206,7 +299,9 @@ io.on('connection', (socket) => {
             `Here is a narrative story that has developed sequentially. Please continue this story with a new branch that follows naturally from the established narrative:\n\n${contextContent}\n\nWrite a short, engaging continuation (1-2 sentences) that builds upon this story:` :
             'Write the beginning of an interesting story (1-2 sentences):';
           
-          const generatedText = await generateText(prompt, 'openai');
+          // Use specified model (no more auto mode)
+          const selectedModel = model || 'claude-3-haiku';
+          const generatedText = await generateText(prompt, selectedModel, temperature, maxTokens);
           if (generatedText && generatedText.trim()) {
             generations.push(generatedText.trim());
           } else {
@@ -448,20 +543,40 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Get available models
+app.get('/api/models', (req, res) => {
+  const models = Object.keys(LLM_CONFIG).map(key => ({
+    id: key,
+    name: LLM_CONFIG[key].name,
+    provider: LLM_CONFIG[key].provider,
+    maxTokens: LLM_CONFIG[key].maxTokens,
+    defaultTemp: LLM_CONFIG[key].defaultTemp,
+    available: !!(LLM_CONFIG[key].apiKey && LLM_CONFIG[key].apiKey !== '' && LLM_CONFIG[key].apiKey !== 'your-api-key-here')
+  }));
+  
+  res.json({
+    success: true,
+    models,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Enhanced generate endpoint with model selection
 app.post('/api/generate', async (req, res) => {
   try {
-    const { prompt, provider = 'openai', maxTokens = 150 } = req.body;
+    const { prompt, model = 'claude-3-haiku', temperature, maxTokens } = req.body;
     
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
     
-    const generatedText = await generateText(prompt, provider);
+    const generatedText = await generateText(prompt, model, temperature, maxTokens);
     
     res.json({
       success: true,
       generatedText,
-      provider,
+      model: model,
+      modelName: LLM_CONFIG[model]?.name || model,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

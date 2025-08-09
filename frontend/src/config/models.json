@@ -1,0 +1,57 @@
+{
+  "defaultModel": "claude-3-haiku",
+  "models": {
+    "claude-3-opus": {
+      "name": "Claude 3 Opus",
+      "provider": "Anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "maxTokens": 4000
+    },
+    "claude-3-sonnet": {
+      "name": "Claude 3 Sonnet", 
+      "provider": "Anthropic",
+      "modelId": "claude-3-sonnet-20240229",
+      "maxTokens": 4000
+    },
+    "claude-3-haiku": {
+      "name": "Claude 3 Haiku",
+      "provider": "Anthropic",
+      "modelId": "claude-3-haiku-20240307",
+      "maxTokens": 4000
+    },
+    "gpt-4o": {
+      "name": "GPT-4o",
+      "provider": "OpenAI",
+      "modelId": "gpt-4o",
+      "maxTokens": 4000
+    },
+    "gpt-4-turbo": {
+      "name": "GPT-4 Turbo",
+      "provider": "OpenAI",
+      "modelId": "gpt-4-turbo",
+      "maxTokens": 4000
+    },
+    "deepseek-v3": {
+      "name": "DeepSeek V3",
+      "provider": "Chutes",
+      "modelId": "deepseek-ai/DeepSeek-V3-Base",
+      "maxTokens": 4000
+    },
+    "llama-3.1-405b": {
+      "name": "Llama 3.1 405B",
+      "provider": "OpenRouter",
+      "modelId": "meta-llama/llama-3.1-405b",
+      "maxTokens": 4000
+    },
+    "local": {
+      "name": "Local Model",
+      "provider": "Local",
+      "modelId": "local-model",
+      "maxTokens": 2000
+    }
+  },
+  "generationSettings": {
+    "temperature": 0.8,
+    "maxTokens": 200
+  }
+}
