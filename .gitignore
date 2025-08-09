@@ -87,3 +87,5 @@ sdist/
 var/
 wheels/
 *.egg-info/
+
+dump.rdb

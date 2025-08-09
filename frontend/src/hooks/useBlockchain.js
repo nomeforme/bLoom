@@ -349,6 +349,31 @@ export const useBlockchain = () => {
     }
   }, [factory, account, getTree]);
 
+  const getAllTrees = useCallback(async () => {
+    if (!factory) return [];
+
+    try {
+      console.log('Getting all trees from factory');
+      const treeIds = await factory.getAllTrees();
+      console.log('Found all tree IDs:', treeIds.length, treeIds);
+      
+      const trees = await Promise.all(
+        treeIds.map(async (treeId, index) => {
+          console.log(`Processing tree ${index + 1}/${treeIds.length}, ID:`, treeId);
+          const treeAddress = await factory.getTree(treeId);
+          console.log(`Tree ${index + 1} address:`, treeAddress);
+          return await getTree(treeAddress);
+        })
+      );
+      
+      console.log('Loaded all trees:', trees.length);
+      return trees;
+    } catch (error) {
+      console.error('Error getting all trees:', error);
+      return [];
+    }
+  }, [factory, getTree]);
+
   const getNodeNFTInfo = useCallback(async (tree, nodeId) => {
     if (!tree.nftContract) return null;
 
@@ -386,6 +411,7 @@ export const useBlockchain = () => {
     addNode,
     updateNode,
     getUserTrees,
+    getAllTrees,
     getNodeNFTInfo
   };
 };

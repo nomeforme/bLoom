@@ -29,6 +29,7 @@ function App() {
     addNode,
     updateNode,
     getUserTrees,
+    getAllTrees,
     getNodeNFTInfo
   } = useBlockchain();
 
@@ -180,17 +181,17 @@ function App() {
   // Load existing trees when user connects
   useEffect(() => {
     const loadExistingTrees = async () => {
-      if (connected && account && getUserTrees) {
+      if (connected && getAllTrees) {
         try {
-          console.log('Loading existing trees for account:', account);
-          const userTrees = await getUserTrees();
-          console.log('Found trees:', userTrees);
-          setTrees(userTrees);
+          console.log('Loading all trees');
+          const allTrees = await getAllTrees();
+          console.log('Found all trees:', allTrees);
+          setTrees(allTrees);
           
           // If no current tree is selected and we have trees, select the first one
-          if (userTrees.length > 0 && !currentTree) {
-            console.log('Setting current tree to first tree:', userTrees[0]);
-            setCurrentTree(userTrees[0]);
+          if (allTrees.length > 0 && !currentTree) {
+            console.log('Setting current tree to first tree:', allTrees[0]);
+            setCurrentTree(allTrees[0]);
           }
         } catch (error) {
           console.error('Error loading existing trees:', error);
@@ -199,7 +200,7 @@ function App() {
     };
 
     loadExistingTrees();
-  }, [connected, account, getUserTrees]);
+  }, [connected, getAllTrees]);
 
   const handleCreateTree = async (rootContent) => {
     try {
@@ -462,7 +463,8 @@ function App() {
         treeAddress: currentTree?.address,
         parentId,
         parentContent: fullPathContext, // Full narrative path context
-        count
+        count,
+        userAccount: account // Pass the current user's account address
       });
     });
   }, [socket, currentTree, buildFullPathContext]);
@@ -543,6 +545,7 @@ function App() {
                 treeAddress: treeAddress,
                 rootId: newRootId,
                 oldRootId: oldRootNode?.nodeId,
+                userAccount: account, // Pass the current user's account address
                 nodes: nonRootNodes.map(node => ({
                   nodeId: node.nodeId,
                   parentId: node.parentId,
