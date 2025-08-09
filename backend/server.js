@@ -36,12 +36,12 @@ const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
   "function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
-  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, string memory content, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
+  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
-  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, string content, address indexed author, uint256 timestamp)",
-  "event NodeUpdated(bytes32 indexed nodeId, string newContent, address indexed author)"
+  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, address indexed author, uint256 timestamp)",
+  "event NodeUpdated(bytes32 indexed nodeId, address indexed author)"
 ];
 
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
@@ -182,6 +182,7 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
 
     console.log(`🤖 Generating text with ${modelConfig.name} (${modelConfig.id})`);
     console.log(`📊 Temperature: ${finalTemp}, Max Tokens: ${finalMaxTokens}`);
+    console.log(`🔑 API Key configured:`, !!modelConfig.apiKey && modelConfig.apiKey !== 'your-api-key-here');
 
     let response;
     
@@ -203,7 +204,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
           }
         }
       );
-      return response.data.content[0].text.trim();
+      const generatedText = response.data.content[0].text.trim();
+      console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+      return generatedText;
       
     } else if (modelConfig.provider === 'openai') {
       // OpenAI-compatible API (covers OpenAI, DeepSeek via Chutes, Llama via OpenRouter, Local)
@@ -227,7 +230,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
             }
           }
         );
-        return response.data.choices[0].text.trim();
+        const generatedText = response.data.choices[0].text.trim();
+        console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+        return generatedText;
       } else {
         // Use chat completions endpoint for chat models
         response = await axios.post(
@@ -245,7 +250,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
             }
           }
         );
-        return response.data.choices[0].message.content.trim();
+        const generatedText = response.data.choices[0].message.content.trim();
+        console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+        return generatedText;
       }
     }
     
@@ -264,8 +271,8 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       }
     }
     
-    // Final fallback to a simple continuation
-    return `[Generated continuation from "${prompt.substring(0, 50)}..."]`;
+    // Return null instead of placeholder text
+    return null;
   }
 }
 
@@ -295,34 +302,40 @@ io.on('connection', (socket) => {
       const generations = [];
       for (let i = 0; i < count; i++) {
         try {
-          const prompt = contextContent ? 
-            `Here is a narrative story that has developed sequentially. Please continue this story with a new branch that follows naturally from the established narrative:\n\n${contextContent}\n\nWrite a short, engaging continuation (1-2 sentences) that builds upon this story:` :
-            'Write the beginning of an interesting story (1-2 sentences):';
-          
           // Use specified model (no more auto mode)
           const selectedModel = model || 'claude-3-haiku';
-          const generatedText = await generateText(prompt, selectedModel, temperature, maxTokens);
+          const generatedText = await generateText(contextContent, selectedModel, temperature, maxTokens);
+          console.log(`🔍 Generation ${i + 1} result:`, {
+            hasText: !!generatedText,
+            length: generatedText?.length || 0,
+            firstChars: generatedText?.substring(0, 50) || 'null/empty'
+          });
+          
           if (generatedText && generatedText.trim()) {
             generations.push(generatedText.trim());
+            console.log(`✅ Added generation ${i + 1} to array (${generations.length} total)`);
           } else {
-            throw new Error('Empty response from AI');
+            console.error(`❌ Empty response generating text ${i + 1} with model ${selectedModel}`);
+            // Skip this generation - don't add to generations array
           }
         } catch (error) {
           console.error(`Error generating text ${i + 1}:`, error.message);
-          
-          // Create meaningful placeholder based on parent content
-          const placeholder = contextContent ? 
-            `[Branch ${i + 1}] The story continues in an unexpected direction...` :
-            `[Story ${i + 1}] Once upon a time, in a place far from here...`;
-          
-          generations.push(placeholder);
+          // Skip this generation - don't add placeholder
         }
       }
       
       // Add generated nodes to blockchain sequentially to avoid nonce conflicts
       let successCount = 0;
+      console.log(`🔗 Starting blockchain node creation for ${generations.length} generated texts`);
+      
       for (let i = 0; i < generations.length; i++) {
         const content = generations[i];
+        console.log(`🔗 Creating node ${i + 1}/${generations.length}:`, {
+          contentLength: content.length,
+          hasUserAccount: !!userAccount,
+          userAccount: userAccount
+        });
+        
         try {
           // Add small delay between transactions to avoid nonce conflicts
           if (i > 0) {
@@ -333,7 +346,40 @@ io.on('connection', (socket) => {
           const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000" 
             ? await treeContract.addNodeForUser(parentId, content, userAccount)
             : await treeContract.addNode(parentId, content);
+          
+          console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
           const receipt = await tx.wait();
+          
+          console.log(`📄 Receipt for node ${i + 1}:`, {
+            status: receipt.status,
+            gasUsed: receipt.gasUsed?.toString(),
+            logs: receipt.logs?.length || 0,
+            transactionHash: receipt.transactionHash || receipt.hash,
+            blockNumber: receipt.blockNumber,
+            receiptStructure: Object.keys(receipt)
+          });
+          
+          // Log all events for debugging
+          console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256)')}`);
+          
+          receipt.logs.forEach((log, index) => {
+            try {
+              const parsed = treeContract.interface.parseLog(log);
+              console.log(`📝 Event ${index}:`, parsed.name, parsed.args);
+            } catch (e) {
+              // Only log as unparseable if it's from our tree contract
+              if (log.address && log.address.toLowerCase() === treeAddress.toLowerCase()) {
+                console.log(`📝 Unparseable log ${index} from tree contract:`, {
+                  address: log.address,
+                  topic0: log.topics?.[0],
+                  allTopics: log.topics,
+                  error: e.message
+                });
+              } else {
+                console.log(`📝 Log ${index} from other contract (${log.address}) - skipping`);
+              }
+            }
+          });
           
           // Find the NodeCreated event
           const nodeCreatedEvent = receipt.logs.find(log => {
@@ -350,32 +396,82 @@ io.on('connection', (socket) => {
             const nodeData = {
               nodeId: parsedEvent.args.nodeId,
               parentId: parsedEvent.args.parentId,
-              content: parsedEvent.args.content,
+              content: content, // Use the original content, not from event (event doesn't include content)
               author: parsedEvent.args.author,
               timestamp: Number(parsedEvent.args.timestamp),
               treeAddress: treeAddress
             };
             
+            console.log(`✅ Node ${i + 1} created successfully:`, {
+              nodeId: nodeData.nodeId.substring(0, 10) + '...',
+              author: nodeData.author,
+              contentLength: nodeData.content.length
+            });
+            
             // Emit to all connected clients
+            console.log(`📡 Emitting nodeCreated event to ${io.engine.clientsCount} clients`);
             io.emit('nodeCreated', nodeData);
             successCount++;
+          } else {
+            console.error(`❌ No NodeCreated event found for node ${i + 1}`);
           }
         } catch (error) {
-          console.error(`Error adding node ${i + 1} to blockchain:`, error);
+          console.error(`❌ Error adding node ${i + 1} to blockchain:`, {
+            error: error.message,
+            stack: error.stack?.substring(0, 200),
+            nodeIndex: i + 1,
+            totalNodes: generations.length
+          });
         }
       }
       
-      socket.emit('generationComplete', {
-        success: true,
-        message: `Generated ${successCount}/${count} sibling nodes successfully`
-      });
+      console.log(`🔗 Blockchain node creation complete: ${successCount}/${generations.length} successful`);
+      
+      const failedCount = count - successCount;
+      const response = {
+        success: successCount > 0,
+        successCount,
+        failedCount,
+        totalRequested: count,
+        message: successCount > 0 ? 
+          `Generated ${successCount}/${count} sibling nodes successfully` :
+          'All generation attempts failed'
+      };
+
+      if (failedCount > 0) {
+        response.warnings = [`${failedCount} generation${failedCount > 1 ? 's' : ''} failed or returned empty responses`];
+      }
+
+      console.log(`📡 Sending generationComplete to socket ${socket.id}:`, response);
+      
+      // Emit to the requesting socket
+      socket.emit('generationComplete', response);
+      
+      // Also emit to all connected clients as backup
+      console.log(`📡 Broadcasting generationComplete to all ${io.engine.clientsCount} clients`);
+      io.emit('generationComplete', response);
       
     } catch (error) {
-      console.error('Error in generateSiblings:', error);
-      socket.emit('generationComplete', {
-        success: false,
-        error: error.message
+      console.error('Error in generateSiblings:', {
+        error: error.message,
+        stack: error.stack?.substring(0, 300),
+        socketId: socket.id
       });
+      
+      const errorResponse = {
+        success: false,
+        error: error.message,
+        successCount: 0,
+        failedCount: count,
+        totalRequested: count
+      };
+      
+      // Emit to the requesting socket
+      socket.emit('generationComplete', errorResponse);
+      
+      // Also broadcast to all clients as backup
+      console.log(`📡 Broadcasting error response to all ${io.engine.clientsCount} clients`);
+      io.emit('generationComplete', errorResponse);
     }
   });
 
