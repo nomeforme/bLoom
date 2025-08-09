@@ -17,6 +17,7 @@ function App() {
   const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
   const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
+  const [notifications, setNotifications] = useState([]);
   
   const {
     provider,
@@ -91,12 +92,54 @@ function App() {
     return () => newSocket.close();
   }, [getTree, currentTree]);
 
+  // Add notification function
+  const addNotification = useCallback((message, type = 'info') => {
+    const notification = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+      message,
+      type,
+      timestamp: new Date()
+    };
+    setNotifications(prev => [...prev, notification]);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+    }, 5000);
+  }, []);
+
   // Handle socket events that depend on currentTree
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log('🎯 App: No socket available for event handlers');
+      return;
+    }
+
+    console.log('🎯 App: Setting up socket event handlers');
 
     const handleGenerationComplete = (data) => {
-      console.log('Generation complete:', data);
+      console.log('🎯 App: Global handleGenerationComplete called:', data);
+      
+      // Reset generation states immediately
+      setIsGeneratingChildren(false);
+      setIsGeneratingSiblings(false);
+      console.log('🎯 App: Reset generation states on completion');
+      
+      // Show warnings if any generations failed
+      if (data.warnings && data.warnings.length > 0) {
+        data.warnings.forEach(warning => {
+          addNotification(warning, 'warning');
+        });
+      }
+      
+      // Show success message if some succeeded
+      if (data.successCount > 0) {
+        addNotification(data.message, 'success');
+      } else {
+        // Show error if all failed
+        addNotification(data.message, 'error');
+      }
+      
       // Refresh the current tree after generation is complete
       if (currentTree && data.success) {
         setTimeout(async () => {
@@ -173,12 +216,14 @@ function App() {
 
     socket.on('nodeCreated', handleNodeCreated);
     socket.on('generationComplete', handleGenerationComplete);
+    console.log('🎯 App: Added global socket event listeners');
 
     return () => {
+      console.log('🎯 App: Removing global socket event listeners');
       socket.off('nodeCreated', handleNodeCreated);
       socket.off('generationComplete', handleGenerationComplete);
     };
-  }, [socket, currentTree, getTree]);
+  }, [socket, currentTree, getTree, addNotification]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -439,13 +484,13 @@ function App() {
 
       // Set up one-time listeners for completion
       const handleComplete = (data) => {
+        console.log('🎯 App: Local handleComplete called in handleGenerateSiblings:', data);
+        console.log('🎯 App: Removing local socket listeners');
         socket.off('generationComplete', handleComplete);
         socket.off('error', handleError);
-        if (data.success) {
-          resolve(data);
-        } else {
-          reject(new Error(data.error || 'Generation failed'));
-        }
+        // Always resolve - notifications will handle showing warnings/errors
+        // Only reject on actual socket/network errors, not generation failures
+        resolve(data);
       };
 
       const handleError = (error) => {
@@ -456,6 +501,7 @@ function App() {
 
       socket.on('generationComplete', handleComplete);
       socket.on('error', handleError);
+      console.log('🎯 App: Added local socket listeners for generation promise');
 
       // Build full narrative context from root to parent node
       const fullPathContext = buildFullPathContext(parentId);
@@ -661,6 +707,40 @@ function App() {
         setIsGeneratingSiblings={setIsGeneratingSiblings}
         onModelChange={handleModelChange}
       />
+      
+      {/* Notifications */}
+      {notifications.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
+          {notifications.map(notification => (
+            <div
+              key={notification.id}
+              style={{
+                background: notification.type === 'error' ? '#ff4444' : 
+                           notification.type === 'warning' ? '#ff8800' : 
+                           notification.type === 'success' ? '#44ff44' : '#4488ff',
+                color: 'white',
+                padding: '12px 16px',
+                borderRadius: '6px',
+                maxWidth: '300px',
+                fontSize: '14px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                cursor: 'pointer'
+              }}
+              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
+            >
+              {notification.message}
+            </div>
+          ))}
+        </div>
+      )}
       
       <div className="graph-container">
         <LoomGraph
