@@ -82,6 +82,88 @@ const Sidebar = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  // Helper function to safely parse NFT metadata with control character fixes
+  const parseNFTMetadata = (content) => {
+    try {
+      // First attempt: Fix malformed JSON by escaping control characters
+      let fixedContent = content
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+        .replace(/\f/g, '\\f')
+        .replace(/\b/g, ''); // Remove backspace characters
+      
+      try {
+        const parsed = JSON.parse(fixedContent);
+        
+        // Clean up any backspace characters that made it through
+        const cleanMetadata = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          cleanMetadata[key] = typeof value === 'string' ? value.replace(/\b/g, '') : value;
+        }
+        
+        return cleanMetadata;
+      } catch (firstError) {
+        console.log('🔍 First parse attempt failed:', firstError.message);
+        
+        // Second attempt: Also escape unescaped quotes within string values
+        // This is more aggressive and tries to fix common JSON issues
+        fixedContent = content
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/\t/g, '\\t')
+          .replace(/\f/g, '\\f')
+          .replace(/\b/g, '')
+          // Fix unescaped quotes within JSON string values (but not structural quotes)
+          .replace(/"([^"]*)"([^"]*)"([^"]*)":/g, '"$1\\"$2\\"$3":') // Fix quotes in keys
+          .replace(/:"([^"]*)"([^"]*)"([^"]*)"([,}])/g, ':"$1\\"$2\\"$3"$4'); // Fix quotes in values
+        
+        try {
+          const parsed = JSON.parse(fixedContent);
+          
+          const cleanMetadata = {};
+          for (const [key, value] of Object.entries(parsed)) {
+            cleanMetadata[key] = typeof value === 'string' ? value.replace(/\b/g, '').replace(/\\"/g, '"') : value;
+          }
+          
+          return cleanMetadata;
+        } catch (secondError) {
+          console.log('🔍 Second parse attempt failed:', secondError.message);
+          
+          // Third attempt: Try to extract just the description using regex as fallback
+          try {
+            const descriptionMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
+            const nodeIdMatch = content.match(/"nodeId"\s*:\s*"([^"]+)"/);
+            const tokenBoundAccountMatch = content.match(/"tokenBoundAccount"\s*:\s*"([^"]+)"/);
+            const nodeTokenContractMatch = content.match(/"nodeTokenContract"\s*:\s*"([^"]+)"/);
+            const tokenNameMatch = content.match(/"tokenName"\s*:\s*"([^"]+)"/);
+            const tokenSymbolMatch = content.match(/"tokenSymbol"\s*:\s*"([^"]+)"/);
+            const tokenSupplyMatch = content.match(/"tokenSupply"\s*:\s*"([^"]+)"/);
+            
+            if (descriptionMatch) {
+              return {
+                description: descriptionMatch[1].replace(/\\n/g, '\n').replace(/\b/g, ''),
+                nodeId: nodeIdMatch?.[1] || '',
+                tokenBoundAccount: tokenBoundAccountMatch?.[1] || '',
+                nodeTokenContract: nodeTokenContractMatch?.[1] || '',
+                tokenName: tokenNameMatch?.[1] || 'NODE',
+                tokenSymbol: tokenSymbolMatch?.[1] || 'NODE',
+                tokenSupply: tokenSupplyMatch?.[1] || '1000'
+              };
+            }
+          } catch (regexError) {
+            console.log('🔍 Regex fallback failed:', regexError.message);
+          }
+          
+          return null;
+        }
+      }
+    } catch (e) {
+      console.log('🔍 Complete parsing failure:', e.message);
+      return null;
+    }
+  };
+
   const handleCreateTree = async () => {
     if (newTreeContent.trim()) {
       setIsCreatingTree(true);
@@ -110,11 +192,24 @@ const Sidebar = ({
 
   const handleGenerateSiblings = async () => {
     if (selectedNode && selectedNode.id && selectedNode.parentId && !isGeneratingChildren && !isGeneratingSiblings) {
+      console.log('🎯 Starting sibling generation...');
       setIsGeneratingSiblings(true);
+      
+      // Add a safety timeout to reset state if promise doesn't resolve
+      const timeoutId = setTimeout(() => {
+        console.log('🎯 Generation timeout - forcing state reset');
+        setIsGeneratingSiblings(false);
+      }, 30000); // 30 second timeout
+      
       try {
         // Generate siblings by using the parent ID
-        await onGenerateSiblings(selectedNode.parentId, siblingCount);
+        const result = await onGenerateSiblings(selectedNode.parentId, siblingCount);
+        console.log('🎯 Generation completed:', result);
+      } catch (error) {
+        console.error('🎯 Generation failed:', error);
       } finally {
+        console.log('🎯 Resetting generation state...');
+        clearTimeout(timeoutId);
         setIsGeneratingSiblings(false);
       }
     }
@@ -425,12 +520,13 @@ const Sidebar = ({
                   marginBottom: '8px'
                 }}>
                   {(() => {
-                    try {
-                      const metadata = JSON.parse(selectedNodeNFT.content);
+                    console.log('🔍 Parsing NFT content for description:', selectedNodeNFT.content);
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    if (metadata) {
+                      console.log('🔍 Parsed metadata for description:', metadata);
                       return metadata.description || selectedNodeNFT.content;
-                    } catch {
-                      return selectedNodeNFT.content;
                     }
+                    return selectedNodeNFT.content;
                   })()}
                 </div>
                 
@@ -473,43 +569,44 @@ const Sidebar = ({
               }}>
                 <div style={{ fontSize: '12px', color: '#FFC107', marginBottom: '8px' }}>
                   {(() => {
-                    try {
-                      const metadata = JSON.parse(selectedNodeNFT.content);
-                      if (metadata.nodeTokenContract) {
-                        return (
-                          <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                              🪙 Token Contract:
-                            </div>
-                            <div style={{ 
-                              backgroundColor: '#0a0a0a',
-                              border: '1px solid #333',
-                              borderRadius: '4px',
-                              padding: '6px',
-                              fontFamily: 'monospace',
-                              fontSize: '10px',
-                              wordBreak: 'break-all',
-                              marginBottom: '8px'
-                            }}>
-                              {metadata.nodeTokenContract}
-                            </div>
-                            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                              <div>🏷️ Token Name: {metadata.tokenName || 'NODE'}</div>
-                              <div>🔤 Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
-                              <div>💰 Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
-                              <div>🏦 Held by Token Bound Account</div>
-                              <div>💎 ERC20 standard token for this node</div>
-                            </div>
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    console.log('🔍 Parsed NFT metadata for token info:', metadata);
+                    console.log('🔍 Looking for nodeTokenContract:', metadata?.nodeTokenContract);
+                    
+                    if (metadata && metadata.nodeTokenContract) {
+                      return (
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                            🪙 Token Contract:
                           </div>
-                        );
-                      } else {
-                        return (
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            ⚠️ No Node Token found in NFT metadata
+                          <div style={{ 
+                            backgroundColor: '#0a0a0a',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            padding: '6px',
+                            fontFamily: 'monospace',
+                            fontSize: '10px',
+                            wordBreak: 'break-all',
+                            marginBottom: '8px'
+                          }}>
+                            {metadata.nodeTokenContract}
                           </div>
-                        );
-                      }
-                    } catch {
+                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                            <div>🏷️ Token Name: {metadata.tokenName || 'NODE'}</div>
+                            <div>🔤 Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>💰 Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>🏦 Held by Token Bound Account</div>
+                            <div>💎 ERC20 standard token for this node</div>
+                          </div>
+                        </div>
+                      );
+                    } else if (metadata) {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          ⚠️ No Node Token found in NFT metadata
+                        </div>
+                      );
+                    } else {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
                           ⚠️ Could not parse NFT metadata for token info
@@ -545,42 +642,43 @@ const Sidebar = ({
               }}>
                 <div style={{ fontSize: '12px', color: '#9C27B0', marginBottom: '8px' }}>
                   {(() => {
-                    try {
-                      const metadata = JSON.parse(selectedNodeNFT.content);
-                      if (metadata.tokenBoundAccount) {
-                        return (
-                          <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                              🏦 Account Address:
-                            </div>
-                            <div style={{ 
-                              backgroundColor: '#0a0a0a',
-                              border: '1px solid #333',
-                              borderRadius: '4px',
-                              padding: '6px',
-                              fontFamily: 'monospace',
-                              fontSize: '10px',
-                              wordBreak: 'break-all',
-                              marginBottom: '8px'
-                            }}>
-                              {metadata.tokenBoundAccount}
-                            </div>
-                            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                              <div>✅ This NFT has its own Ethereum account</div>
-                              <div>💰 Can hold assets and execute transactions</div>
-                              <div>🔐 Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
-                              <div>🔄 Account transfers with NFT ownership</div>
-                            </div>
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    console.log('🔍 Parsed NFT metadata for TBA info:', metadata);
+                    console.log('🔍 Looking for tokenBoundAccount:', metadata?.tokenBoundAccount);
+                    
+                    if (metadata && metadata.tokenBoundAccount) {
+                      return (
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                            🏦 Account Address:
                           </div>
-                        );
-                      } else {
-                        return (
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            ⚠️ No Token Bound Account found in NFT metadata
+                          <div style={{ 
+                            backgroundColor: '#0a0a0a',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            padding: '6px',
+                            fontFamily: 'monospace',
+                            fontSize: '10px',
+                            wordBreak: 'break-all',
+                            marginBottom: '8px'
+                          }}>
+                            {metadata.tokenBoundAccount}
                           </div>
-                        );
-                      }
-                    } catch {
+                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                            <div>✅ This NFT has its own Ethereum account</div>
+                            <div>💰 Can hold assets and execute transactions</div>
+                            <div>🔐 Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                            <div>🔄 Account transfers with NFT ownership</div>
+                          </div>
+                        </div>
+                      );
+                    } else if (metadata) {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          ⚠️ No Token Bound Account found in NFT metadata
+                        </div>
+                      );
+                    } else {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
                           ⚠️ Could not parse NFT metadata for TBA info

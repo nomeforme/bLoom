@@ -15,6 +15,60 @@ const LoomGraph = forwardRef(({
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
   
+  // Helper function to extract clean content from NFT JSON metadata
+  const extractCleanContent = (rawContent) => {
+    if (!rawContent) return '';
+    
+    try {
+      // First attempt: Fix malformed JSON by escaping control characters
+      let fixedContent = rawContent
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+        .replace(/\f/g, '\\f')
+        .replace(/\b/g, ''); // Remove backspace characters
+
+      try {
+        const metadata = JSON.parse(fixedContent);
+        const description = metadata.description || rawContent;
+        return typeof description === 'string' ? description.replace(/\b/g, '') : description;
+      } catch (firstError) {
+        // Second attempt: Also escape unescaped quotes within string values
+        fixedContent = rawContent
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/\t/g, '\\t')
+          .replace(/\f/g, '\\f')
+          .replace(/\b/g, '')
+          // Fix unescaped quotes within JSON string values
+          .replace(/"([^"]*)"([^"]*)"([^"]*)":/g, '"$1\\"$2\\"$3":')
+          .replace(/:"([^"]*)"([^"]*)"([^"]*)"([,}])/g, ':"$1\\"$2\\"$3"$4');
+        
+        try {
+          const metadata = JSON.parse(fixedContent);
+          const description = metadata.description || rawContent;
+          return typeof description === 'string' ? description.replace(/\b/g, '').replace(/\\"/g, '"') : description;
+        } catch (secondError) {
+          // Third attempt: Extract description using regex as fallback
+          try {
+            const descriptionMatch = rawContent.match(/"description"\s*:\s*"([^"]+)"/);
+            if (descriptionMatch) {
+              return descriptionMatch[1].replace(/\\n/g, '\n').replace(/\b/g, '');
+            }
+          } catch (regexError) {
+            // Fallback: return cleaned raw content
+            return typeof rawContent === 'string' ? rawContent.replace(/\b/g, '') : rawContent;
+          }
+        }
+      }
+    } catch (e) {
+      // Final fallback: return cleaned raw content
+      return typeof rawContent === 'string' ? rawContent.replace(/\b/g, '') : rawContent;
+    }
+    
+    return rawContent;
+  };
+  
   useImperativeHandle(ref, () => ({
     addNodeFromBlockchain: (nodeData) => {
       if (graphRef.current) {
@@ -399,13 +453,19 @@ const LoomGraph = forwardRef(({
     // Helper function to add nodes from blockchain data
     const addLoomNode = (nodeData) => {
       const node = window.LiteGraph.createNode("loom/node");
-      node.title = nodeData.content.substring(0, 20) + (nodeData.content.length > 20 ? "..." : "");
+      
+      // Extract clean content from NFT JSON metadata
+      const cleanContent = extractCleanContent(nodeData.content);
+      console.log('🎨 LiteGraph: Raw content:', nodeData.content.substring(0, 50) + '...');
+      console.log('🎨 LiteGraph: Clean content:', cleanContent.substring(0, 50) + '...');
+      node.title = cleanContent.substring(0, 20) + (cleanContent.length > 20 ? "..." : "");
       
       // Force the size after creation
       node.size = [300, 150];
       
       node.properties = {
-        content: nodeData.content,
+        content: cleanContent, // Store the clean content instead of raw JSON
+        rawContent: nodeData.content, // Keep raw content for reference if needed
         nodeId: nodeData.nodeId,
         parentId: nodeData.parentId,
         author: nodeData.author,
@@ -758,7 +818,7 @@ const LoomGraph = forwardRef(({
       // Add root nodes first
       sortedNodes.filter(node => node.isRoot).forEach(nodeData => {
         if (graph.addLoomNode) {
-          console.log('Adding root node:', nodeData.nodeId, nodeData.content.substring(0, 30));
+          console.log('Adding root node:', nodeData.nodeId, 'Raw content:', nodeData.content.substring(0, 50));
           graph.addLoomNode(nodeData);
         }
       });
