@@ -247,7 +247,7 @@ const Sidebar = ({
               minWidth: 'auto'
             }}
           >
-            {showOnlyMyTrees ? '🌍 Show All' : '👤 Mine Only'}
+            {showOnlyMyTrees ? '🌍 Show All' : '🌱 My Trees'}
           </button>
         </div>
         {(() => {
@@ -275,7 +275,7 @@ const Sidebar = ({
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span>🌳 Tree #{trees.findIndex(t => t.address === tree.address) + 1} {isMyTree ? '👤' : ''}</span>
+                    <span>🌳 Tree #{trees.findIndex(t => t.address === tree.address) + 1} {isMyTree ? '🌱' : ''}</span>
                     <span style={{ fontSize: '9px', color: '#666', fontWeight: 'normal' }}>
                       {tree.address ? tree.address.substring(0, 6) + '...' : ''}
                     </span>
