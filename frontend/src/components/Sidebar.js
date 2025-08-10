@@ -376,10 +376,11 @@ const Sidebar = ({
             width: '100%',
             padding: '8px 12px',
             borderRadius: '6px',
-            border: '1px solid #333',
-            backgroundColor: '#2a2a2a',
+            border: '1px solid #555',
+            backgroundColor: '#3d3d3d',
             color: '#fff',
             fontSize: '12px',
+            fontFamily: "'Inconsolata', monospace",
             marginBottom: '8px'
           }}
         >
