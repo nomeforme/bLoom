@@ -140,24 +140,8 @@ function App() {
         addNotification(data.message, 'error');
       }
       
-      // Refresh the current tree after generation is complete
-      if (currentTree && data.success) {
-        setTimeout(async () => {
-          try {
-            console.log('Refreshing tree after generation complete');
-            const updatedTree = await getTree(currentTree.address);
-            setCurrentTree(updatedTree);
-            // Update trees list as well
-            setTrees(prevTrees => 
-              prevTrees.map(tree => 
-                tree.address === currentTree.address ? updatedTree : tree
-              )
-            );
-          } catch (error) {
-            console.error('Error refreshing tree after generation:', error);
-          }
-        }, 2000); // Wait for blockchain to settle
-      }
+      // Note: Tree refresh after generation removed to prevent unnecessary full redraws
+      // The new nodes are already added to the graph via the generation process
     };
 
     const handleNodeCreated = (data) => {
