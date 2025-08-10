@@ -15,6 +15,7 @@ function App() {
   const [selectedNodeNFT, setSelectedNodeNFT] = useState(null);
   const [trees, setTrees] = useState([]);
   const [currentTree, setCurrentTree] = useState(null);
+  const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [isGeneratingChildren, setIsGeneratingChildren] = useState(false);
   const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
@@ -215,6 +216,7 @@ function App() {
       if (connected && getAllTrees) {
         try {
           console.log('Loading all trees');
+          setIsLoadingTrees(true);
           const allTrees = await getAllTrees();
           console.log('Found all trees:', allTrees);
           setTrees(allTrees);
@@ -226,6 +228,8 @@ function App() {
           }
         } catch (error) {
           console.error('Error loading existing trees:', error);
+        } finally {
+          setIsLoadingTrees(false);
         }
       }
     };
@@ -729,6 +733,11 @@ function App() {
       )}
       
       <div className="graph-container">
+        {isLoadingTrees && (
+          <div className="graph-loading-overlay">
+            <div className="graph-loading-text gen-fade">Loading trees…</div>
+          </div>
+        )}
         <LoomGraph
           ref={graphRef}
           currentTree={currentTree}
