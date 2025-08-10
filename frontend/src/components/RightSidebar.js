@@ -346,7 +346,7 @@ const RightSidebar = ({
 
 
   return (
-    <div className="sidebar">
+    <div className="right-sidebar">
       {/* Connection Status */}
       <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
         {connected ? `Connected: ${ellipseAddress(account)}` : 'Disconnected'}
@@ -567,7 +567,7 @@ const RightSidebar = ({
                       content = selectedNodeNFT.content;
                     }
                     
-                    // Clip content to maximum 300 characters for left sidebar
+                    // Clip content to maximum 300 characters for right sidebar
                     const maxLength = 300;
                     if (content.length > maxLength) {
                       return content.substring(0, maxLength) + '...';

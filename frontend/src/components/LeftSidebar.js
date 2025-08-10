@@ -88,7 +88,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
 
   if (!selectedNode) {
     return (
-      <div className="right-sidebar">
+      <div className="left-sidebar">
         <div className="section">
           <h3>📖 Story Path</h3>
           <div style={{ 
@@ -108,7 +108,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
   const isGenerating = !!(isGeneratingChildren || isGeneratingSiblings);
 
   return (
-    <div className={`right-sidebar${isGenerating ? ' generating' : ''}`}>
+    <div className={`left-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
         <h3>📖 Story Path</h3>
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
