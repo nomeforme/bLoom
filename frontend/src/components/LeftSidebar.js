@@ -3,6 +3,7 @@ import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
 const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings }) => {
   const scrollRef = useRef(null);
+  const selectedNodeRef = useRef(null);
   const [viewMode, setViewMode] = useState('story'); // 'story' or 'hierarchy'
   const shortcutsManager = new KeyboardShortcutsManager();
 
@@ -159,6 +160,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
     return (
       <div key={node.nodeId}>
         <div
+          ref={isSelected ? selectedNodeRef : null}
           style={{
             fontFamily: "'Inconsolata', monospace",
             fontSize: '12px',
@@ -183,12 +185,31 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
     );
   };
 
-  // Auto-scroll to bottom when node changes
+  // Auto-scroll behavior - different for each view mode
   useEffect(() => {
-    if (scrollRef.current && selectedNode) {
+    if (!scrollRef.current || !selectedNode) return;
+
+    if (viewMode === 'story') {
+      // Story view: scroll to bottom
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    } else if (viewMode === 'hierarchy' && selectedNodeRef.current) {
+      // Hierarchy view: scroll to center on selected node
+      const container = scrollRef.current;
+      const selectedElement = selectedNodeRef.current;
+      
+      const containerHeight = container.clientHeight;
+      const elementTop = selectedElement.offsetTop;
+      const elementHeight = selectedElement.clientHeight;
+      
+      // Calculate scroll position to center the selected element
+      const centerPosition = elementTop - (containerHeight / 2) + (elementHeight / 2);
+      
+      container.scrollTo({
+        top: Math.max(0, centerPosition),
+        behavior: 'smooth'
+      });
     }
-  }, [selectedNode]);
+  }, [selectedNode, viewMode]);
 
   if (!selectedNode && !currentTree) {
     return (
