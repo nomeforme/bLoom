@@ -75,9 +75,9 @@ const LoomGraph = forwardRef(({
         addLoomNode(nodeData);
       }
     },
-    reorganizeNodes: () => {
+    reorganizeNodes: (targetNodeId = null) => {
       if (graphRef.current && graphRef.current.reorganizeNodes) {
-        graphRef.current.reorganizeNodes();
+        graphRef.current.reorganizeNodes(targetNodeId);
       }
     }
   }));
@@ -489,21 +489,47 @@ const LoomGraph = forwardRef(({
                rectA.top > rectB.bottom);
     };
 
-    // Auto-reorganize nodes to avoid overlaps
-    const reorganizeNodes = () => {
+    // Auto-reorganize nodes to avoid overlaps - optimized for partial updates
+    const reorganizeNodes = (targetNodeId = null) => {
       const allNodes = graph.findNodesByType("loom/node");
       if (allNodes.length <= 1) return;
 
-      // Group nodes by depth level (distance from root)
+      let nodesToReorganize;
+      
+      if (targetNodeId) {
+        // Partial reorganization: only reorganize the subtree starting from targetNodeId
+        const targetNode = findNodeById(targetNodeId);
+        if (!targetNode) return;
+        
+        // Get all descendants of the target node
+        const getDescendants = (nodeId) => {
+          const descendants = [];
+          const children = allNodes.filter(n => n.properties.parentId === nodeId);
+          
+          for (const child of children) {
+            descendants.push(child);
+            descendants.push(...getDescendants(child.properties.nodeId));
+          }
+          
+          return descendants;
+        };
+        
+        nodesToReorganize = [targetNode, ...getDescendants(targetNodeId)];
+      } else {
+        // Full reorganization
+        nodesToReorganize = allNodes;
+      }
+
+      // Group affected nodes by depth level (distance from root)
       const levels = new Map();
-      const rootNodes = allNodes.filter(node => 
+      const rootNodes = nodesToReorganize.filter(node => 
         node.properties.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' || 
         node.properties.parentId === '0x0' || 
         node.properties.parentId === null ||
         !findNodeById(node.properties.parentId)
       );
 
-      // Build level structure
+      // Build level structure for nodes to reorganize
       const visited = new Set();
       const assignLevel = (node, level) => {
         if (visited.has(node.properties.nodeId)) return;
@@ -512,99 +538,159 @@ const LoomGraph = forwardRef(({
         if (!levels.has(level)) levels.set(level, []);
         levels.get(level).push(node);
         
-        const children = allNodes.filter(n => n.properties.parentId === node.properties.nodeId);
+        const children = nodesToReorganize.filter(n => n.properties.parentId === node.properties.nodeId);
         children.forEach(child => assignLevel(child, level + 1));
       };
 
-      rootNodes.forEach(root => assignLevel(root, 0));
+      // If we're doing partial reorganization, start from the target node's level
+      if (targetNodeId && rootNodes.length === 0) {
+        const targetNode = findNodeById(targetNodeId);
+        if (targetNode) {
+          // Find the target node's depth by traversing up to root
+          let depth = 0;
+          let currentNode = targetNode;
+          while (currentNode && currentNode.properties.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && 
+                 currentNode.properties.parentId !== '0x0' && currentNode.properties.parentId) {
+            const parent = findNodeById(currentNode.properties.parentId);
+            if (!parent) break;
+            currentNode = parent;
+            depth++;
+          }
+          
+          assignLevel(targetNode, depth);
+        }
+      } else {
+        rootNodes.forEach(root => assignLevel(root, 0));
+      }
 
-      // Position nodes by level
+      // Position nodes by level - only animate nodes that actually need to move
       const levelSpacing = 400; // Horizontal spacing between levels
       const nodeSpacing = 200;  // Vertical spacing between nodes
-      let maxLevelHeight = 0;
+      const animatingNodes = new Set();
 
       for (let [level, nodes] of levels.entries()) {
-        const x = 50 + (level * levelSpacing);
-        const totalHeight = nodes.length * nodeSpacing;
-        const startY = Math.max(50, maxLevelHeight / 2 - totalHeight / 2);
-        
-        nodes.forEach((node, index) => {
-          const newPos = [x, startY + (index * nodeSpacing)];
+        // For partial reorganization, preserve existing positions where possible
+        if (targetNodeId && level > 0) {
+          // Get the parent's position to anchor the layout
+          const parentNodes = nodes.map(node => {
+            const parentId = node.properties.parentId;
+            return parentId ? findNodeById(parentId) : null;
+          }).filter(Boolean);
           
-          // Smooth animation to new position
-          const currentPos = node.pos;
-          const deltaX = newPos[0] - currentPos[0];
-          const deltaY = newPos[1] - currentPos[1];
-          
-          if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-            // Animate to new position
-            let step = 0;
-            const steps = 10;
-            const animateStep = () => {
-              step++;
-              const progress = step / steps;
-              const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
-              
-              node.pos = [
-                currentPos[0] + (deltaX * easeProgress),
-                currentPos[1] + (deltaY * easeProgress)
-              ];
-              
-              // Force node to mark itself as dirty to update connections
-              node.setDirtyCanvas(true, true);
-              
-              // Also mark connected nodes as dirty to update their connection endpoints
-              if (node.inputs) {
-                for (let input of node.inputs) {
-                  if (input.link) {
-                    const link = graph.links[input.link];
-                    if (link && link.origin_id) {
-                      const originNode = graph.getNodeById(link.origin_id);
-                      if (originNode) {
-                        originNode.setDirtyCanvas(true, true);
-                      }
-                    }
-                  }
-                }
+          if (parentNodes.length > 0) {
+            // Group nodes by their parent for better organization
+            const nodesByParent = new Map();
+            nodes.forEach(node => {
+              const parentId = node.properties.parentId || 'root';
+              if (!nodesByParent.has(parentId)) {
+                nodesByParent.set(parentId, []);
               }
+              nodesByParent.get(parentId).push(node);
+            });
+            
+            // Position each parent's children
+            for (let [parentId, children] of nodesByParent.entries()) {
+              const parentNode = parentId === 'root' ? null : findNodeById(parentId);
+              const baseX = parentNode ? parentNode.pos[0] + 350 : 50 + (level * levelSpacing);
+              const baseY = parentNode ? parentNode.pos[1] : 50;
               
-              if (node.outputs) {
-                for (let output of node.outputs) {
-                  if (output.links) {
-                    for (let linkId of output.links) {
-                      const link = graph.links[linkId];
-                      if (link && link.target_id) {
-                        const targetNode = graph.getNodeById(link.target_id);
-                        if (targetNode) {
-                          targetNode.setDirtyCanvas(true, true);
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              
-              // Force canvas redraw with connection updates
-              canvas.setDirty(true, true);
-              
-              // Force immediate redraw to show animation smoothly
-              canvas.draw(true, true);
-              
-              if (step < steps) {
-                setTimeout(animateStep, 50);
-              } else {
-                // Final cleanup - ensure everything is properly redrawn
-                graph.setDirtyCanvas(true, true);
-                canvas.setDirty(true, true);
-                canvas.draw(true, true);
-              }
-            };
-            animateStep();
+              children.forEach((node, index) => {
+                const newPos = [baseX, baseY + (index * nodeSpacing) - ((children.length - 1) * nodeSpacing / 2)];
+                animateNodeToPosition(node, newPos, animatingNodes);
+              });
+            }
           }
-        });
-        
-        maxLevelHeight = Math.max(maxLevelHeight, totalHeight + 100);
+        } else {
+          // Standard level-based positioning
+          const x = 50 + (level * levelSpacing);
+          const totalHeight = nodes.length * nodeSpacing;
+          const startY = Math.max(50, totalHeight / 2);
+          
+          nodes.forEach((node, index) => {
+            const newPos = [x, startY + (index * nodeSpacing) - (totalHeight / 2)];
+            animateNodeToPosition(node, newPos, animatingNodes);
+          });
+        }
       }
+    };
+
+    // Helper function to animate a single node to a new position
+    const animateNodeToPosition = (node, newPos, animatingNodes) => {
+      const currentPos = [...node.pos];
+      const deltaX = newPos[0] - currentPos[0];
+      const deltaY = newPos[1] - currentPos[1];
+      
+      // Only animate if the position change is significant
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        animatingNodes.add(node.properties.nodeId);
+        
+        let step = 0;
+        const steps = 8; // Reduced steps for faster animation
+        
+        const animateStep = () => {
+          step++;
+          const progress = step / steps;
+          const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+          
+          node.pos = [
+            currentPos[0] + (deltaX * easeProgress),
+            currentPos[1] + (deltaY * easeProgress)
+          ];
+          
+          // Only update connections for this specific node and its immediate connections
+          updateNodeConnections(node);
+          
+          if (step < steps) {
+            setTimeout(animateStep, 40); // Slightly faster animation
+          } else {
+            animatingNodes.delete(node.properties.nodeId);
+            // Final position adjustment
+            node.pos = newPos;
+            updateNodeConnections(node);
+          }
+        };
+        
+        animateStep();
+      }
+    };
+
+    // Helper function to update connections for a specific node
+    const updateNodeConnections = (node) => {
+      node.setDirtyCanvas(true, true);
+      
+      // Update connected nodes
+      if (node.inputs) {
+        for (let input of node.inputs) {
+          if (input.link) {
+            const link = graph.links[input.link];
+            if (link && link.origin_id) {
+              const originNode = graph.getNodeById(link.origin_id);
+              if (originNode) {
+                originNode.setDirtyCanvas(true, true);
+              }
+            }
+          }
+        }
+      }
+      
+      if (node.outputs) {
+        for (let output of node.outputs) {
+          if (output.links) {
+            for (let linkId of output.links) {
+              const link = graph.links[linkId];
+              if (link && link.target_id) {
+                const targetNode = graph.getNodeById(link.target_id);
+                if (targetNode) {
+                  targetNode.setDirtyCanvas(true, true);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Request canvas redraw
+      canvas.setDirty(true, true);
     };
 
     // Find optimal position to avoid overlaps
@@ -786,10 +872,10 @@ const LoomGraph = forwardRef(({
                 if (setIsGeneratingChildren) {
                   setIsGeneratingChildren(false);
                 }
-                // Reorganize nodes after generation completes
+                // Reorganize nodes after generation completes - only the affected subtree
                 setTimeout(() => {
-                  if (graph.reorganizeNodes) {
-                    graph.reorganizeNodes();
+                  if (graph.reorganizeNodes && selectedNodeData) {
+                    graph.reorganizeNodes(selectedNodeData.id);
                   }
                 }, 500); // Small delay to ensure nodes are fully added
               });
@@ -814,10 +900,10 @@ const LoomGraph = forwardRef(({
                 if (setIsGeneratingSiblings) {
                   setIsGeneratingSiblings(false);
                 }
-                // Reorganize nodes after generation completes
+                // Reorganize nodes after generation completes - only the affected subtree
                 setTimeout(() => {
-                  if (graph.reorganizeNodes) {
-                    graph.reorganizeNodes();
+                  if (graph.reorganizeNodes && selectedNodeData) {
+                    graph.reorganizeNodes(selectedNodeData.parentId);
                   }
                 }, 500); // Small delay to ensure nodes are fully added
               });
