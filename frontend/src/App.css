@@ -18,9 +18,9 @@
 .right-sidebar {
   width: 350px;
   background: #2d2d2d;
-  padding: 20px;
+  padding: 12px; /* reduced padding */
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow-y: auto; /* restore scrolling */
   border-left: 1px solid #444;
 }
 
@@ -31,7 +31,7 @@
 }
 
 .section {
-  margin-bottom: 30px;
+  margin-bottom: 30px; /* restore default spacing */
 }
 
 .section h3 {
@@ -244,9 +244,14 @@
 
 /* Right sidebar specific styles */
 .path-content {
-  height: calc(100vh - 160px);
+  height: calc(100vh - 160px); /* default when not generating */
   overflow-y: auto;
   padding-right: 10px;
+}
+
+/* When generating, reserve more space for the status line */
+.right-sidebar.generating .path-content {
+  height: calc(100vh - 180px);
 }
 
 .path-node {
@@ -266,6 +271,17 @@
 .path-content::-webkit-scrollbar-track {
   background: #1a1a1a;
   border-radius: 3px;
+}
+
+/* Generation fade text (green <-> white) */
+@keyframes genFade {
+  0% { color: #4CAF50; }
+  50% { color: #FFFFFF; }
+  100% { color: #4CAF50; }
+}
+
+.gen-fade {
+  animation: genFade 2.5s ease-in-out infinite;
 }
 
 .path-content::-webkit-scrollbar-thumb {

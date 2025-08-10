@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 
-const RightSidebar = ({ currentTree, selectedNode }) => {
+const RightSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings }) => {
   const scrollRef = useRef(null);
   // Helper function to safely parse NFT metadata
   const parseNFTMetadata = (content) => {
@@ -105,8 +105,10 @@ const RightSidebar = ({ currentTree, selectedNode }) => {
     );
   }
 
+  const isGenerating = !!(isGeneratingChildren || isGeneratingSiblings);
+
   return (
-    <div className="right-sidebar">
+    <div className={`right-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
         <h3>📖 Story Path</h3>
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
@@ -139,6 +141,19 @@ const RightSidebar = ({ currentTree, selectedNode }) => {
             })}
           </div>
         </div>
+
+        {(isGeneratingChildren || isGeneratingSiblings) && (
+          <div style={{
+            marginTop: '14px',
+            textAlign: 'center',
+            fontFamily: "'Inconsolata', monospace",
+            fontSize: '16px'
+          }}>
+            <span className="gen-fade">
+              {isGeneratingChildren ? 'Generating children…' : 'Generating siblings…'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
