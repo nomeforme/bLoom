@@ -207,7 +207,7 @@ function App() {
       socket.off('nodeCreated', handleNodeCreated);
       socket.off('generationComplete', handleGenerationComplete);
     };
-  }, [socket, currentTree, getTree, addNotification, isGeneratingChildren, isGeneratingSiblings]);
+  }, [socket, currentTree, getTree, addNotification]);
 
   // Load existing trees when user connects
   useEffect(() => {
