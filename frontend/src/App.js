@@ -302,10 +302,8 @@ function App() {
     const fetchNodeNFT = async () => {
       if (selectedNode && currentTree && getNodeNFTInfo) {
         try {
-          console.log('Fetching NFT info for node:', selectedNode.id);
           const nftInfo = await getNodeNFTInfo(currentTree, selectedNode.id);
           setSelectedNodeNFT(nftInfo);
-          console.log('NFT info:', nftInfo);
         } catch (error) {
           console.error('Error fetching NFT info:', error);
           setSelectedNodeNFT(null);

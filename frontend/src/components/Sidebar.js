@@ -116,7 +116,6 @@ const Sidebar = ({
         
         return cleanMetadata;
       } catch (firstError) {
-        console.log('🔍 First parse attempt failed:', firstError.message);
         
         // Second attempt: More aggressive fixing for nested quotes and LaTeX
         fixedContent = content
@@ -153,7 +152,6 @@ const Sidebar = ({
           
           return cleanMetadata;
         } catch (secondError) {
-          console.log('🔍 Second parse attempt failed:', secondError.message);
           
           // Third attempt: Smart regex parsing that handles nested content
           try {
@@ -194,14 +192,12 @@ const Sidebar = ({
               };
             }
           } catch (regexError) {
-            console.log('🔍 Regex fallback failed:', regexError.message);
           }
           
           return null;
         }
       }
     } catch (e) {
-      console.log('🔍 Complete parsing failure:', e.message);
       return null;
     }
   };
@@ -563,11 +559,9 @@ const Sidebar = ({
                   marginBottom: '8px'
                 }}>
                   {(() => {
-                    console.log('🔍 Parsing NFT content for description:', selectedNodeNFT.content);
                     const metadata = parseNFTMetadata(selectedNodeNFT.content);
                     let content;
                     if (metadata) {
-                      console.log('🔍 Parsed metadata for description:', metadata);
                       content = metadata.description || selectedNodeNFT.content;
                     } else {
                       content = selectedNodeNFT.content;
@@ -622,8 +616,6 @@ const Sidebar = ({
                 <div style={{ fontSize: '12px', color: '#FFC107', marginBottom: '8px' }}>
                   {(() => {
                     const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    console.log('🔍 Parsed NFT metadata for token info:', metadata);
-                    console.log('🔍 Looking for nodeTokenContract:', metadata?.nodeTokenContract);
                     
                     if (metadata && metadata.nodeTokenContract) {
                       return (
@@ -695,8 +687,6 @@ const Sidebar = ({
                 <div style={{ fontSize: '12px', color: '#9C27B0', marginBottom: '8px' }}>
                   {(() => {
                     const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    console.log('🔍 Parsed NFT metadata for TBA info:', metadata);
-                    console.log('🔍 Looking for tokenBoundAccount:', metadata?.tokenBoundAccount);
                     
                     if (metadata && metadata.tokenBoundAccount) {
                       return (
