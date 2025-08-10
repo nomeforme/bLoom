@@ -1,7 +1,32 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
 const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings }) => {
   const scrollRef = useRef(null);
+  const [viewMode, setViewMode] = useState('story'); // 'story' or 'hierarchy'
+  const shortcutsManager = new KeyboardShortcutsManager();
+
+  // Keyboard event handler for view switching
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      // Skip if user is typing in an input field
+      if (shortcutsManager.isTypingInInput()) return;
+
+      if (shortcutsManager.matchShortcut(event, 'storyView')) {
+        event.preventDefault();
+        setViewMode('story');
+      } else if (shortcutsManager.matchShortcut(event, 'hierarchyView')) {
+        event.preventDefault();
+        setViewMode('hierarchy');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [shortcutsManager]);
+
   // Helper function to safely parse NFT metadata
   const parseNFTMetadata = (content) => {
     try {
@@ -79,6 +104,85 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
     return { segments, selectedNodeId: selectedNode.id };
   }, [currentTree, selectedNode]);
 
+  // Build tree hierarchy data
+  const hierarchyData = useMemo(() => {
+    if (!currentTree || !currentTree.nodes) {
+      return { rootNode: null, nodeMap: new Map() };
+    }
+
+    // Build a map of nodes for quick lookup
+    const nodeMap = new Map();
+    currentTree.nodes.forEach(node => {
+      nodeMap.set(node.nodeId, {
+        ...node,
+        children: []
+      });
+    });
+
+    // Build parent-child relationships
+    let rootNode = null;
+    currentTree.nodes.forEach(node => {
+      if (node.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' || 
+          node.parentId === '0x0' || 
+          node.parentId === null ||
+          node.isRoot) {
+        rootNode = nodeMap.get(node.nodeId);
+      } else {
+        const parent = nodeMap.get(node.parentId);
+        if (parent) {
+          parent.children.push(nodeMap.get(node.nodeId));
+        }
+      }
+    });
+
+    return { rootNode, nodeMap };
+  }, [currentTree]);
+
+  // Helper function to truncate text for hierarchy view
+  const truncateText = (text, maxLength = 25) => {
+    const cleanText = parseNFTMetadata(text).trim();
+    if (cleanText.length <= maxLength) return cleanText;
+    return cleanText.substring(0, maxLength) + '...';
+  };
+
+  // Render tree hierarchy recursively
+  const renderHierarchyNode = (node, depth = 0, isLast = false, prefix = '') => {
+    if (!node) return null;
+
+    const isSelected = selectedNode && node.nodeId === selectedNode.id;
+    const hasChildren = node.children && node.children.length > 0;
+    
+    // Create tree-like prefix
+    const currentPrefix = depth === 0 ? '' : prefix + (isLast ? '└── ' : '├── ');
+    const childPrefix = depth === 0 ? '' : prefix + (isLast ? '    ' : '│   ');
+
+    return (
+      <div key={node.nodeId}>
+        <div
+          style={{
+            fontFamily: "'Inconsolata', monospace",
+            fontSize: '12px',
+            lineHeight: '1.4',
+            color: isSelected ? '#4CAF50' : '#ffffff',
+            fontWeight: isSelected ? 'bold' : 'normal',
+            whiteSpace: 'pre',
+            cursor: 'default'
+          }}
+        >
+          {currentPrefix}{truncateText(node.content)}
+        </div>
+        {hasChildren && node.children.map((child, index) => 
+          renderHierarchyNode(
+            child, 
+            depth + 1, 
+            index === node.children.length - 1,
+            childPrefix
+          )
+        )}
+      </div>
+    );
+  };
+
   // Auto-scroll to bottom when node changes
   useEffect(() => {
     if (scrollRef.current && selectedNode) {
@@ -86,11 +190,11 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
     }
   }, [selectedNode]);
 
-  if (!selectedNode) {
+  if (!selectedNode && !currentTree) {
     return (
       <div className="left-sidebar">
         <div className="section">
-          <h3>📖 Story Path</h3>
+          <h3>{viewMode === 'story' ? '📖 Story Path' : '🌳 Tree Hierarchy'}</h3>
           <div style={{ 
             fontSize: '12px', 
             color: '#888', 
@@ -98,7 +202,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
             marginTop: '50px',
             fontStyle: 'italic'
           }}>
-            Select a node to view its story path
+            {viewMode === 'story' ? 'Select a node to view its story path' : 'Select a tree to view its hierarchy'}
           </div>
         </div>
       </div>
@@ -110,36 +214,56 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
   return (
     <div className={`left-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
-        <h3>📖 Story Path</h3>
+        <h3>{viewMode === 'story' ? '📖 Story Path' : '🌳 Tree Hierarchy'}</h3>
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
-          Complete narrative from root to selected node
+          {viewMode === 'story' ? 'Complete narrative from root to selected node' : 'Tree structure view'}
         </div>
         
         <div className="path-content" ref={scrollRef}>
-          <div
-            style={{
-              fontSize: '14px',
-              lineHeight: '1.6',
-              fontFamily: "'Inconsolata', monospace",
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word'
-            }}
-          >
-            {pathData.segments.map((segment, index) => {
-              const isCurrentNode = segment.nodeId === pathData.selectedNodeId;
-              return (
-                <span 
-                  key={segment.nodeId}
-                  style={{
-                    color: isCurrentNode ? '#4CAF50' : '#ffffff'
-                  }}
-                >
-                  {segment.content}
-                  {index < pathData.segments.length - 1 ? ' ' : ''}
-                </span>
-              );
-            })}
-          </div>
+          {viewMode === 'story' ? (
+            // Story view
+            <div
+              style={{
+                fontSize: '14px',
+                lineHeight: '1.6',
+                fontFamily: "'Inconsolata', monospace",
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
+              }}
+            >
+              {selectedNode ? (
+                pathData.segments.map((segment, index) => {
+                  const isCurrentNode = segment.nodeId === pathData.selectedNodeId;
+                  return (
+                    <span 
+                      key={segment.nodeId}
+                      style={{
+                        color: isCurrentNode ? '#4CAF50' : '#ffffff'
+                      }}
+                    >
+                      {segment.content}
+                      {index < pathData.segments.length - 1 ? ' ' : ''}
+                    </span>
+                  );
+                })
+              ) : (
+                <div style={{ fontSize: '12px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Select a node to view its story path
+                </div>
+              )}
+            </div>
+          ) : (
+            // Hierarchy view
+            <div style={{ fontSize: '12px', lineHeight: '1.2' }}>
+              {hierarchyData.rootNode ? (
+                renderHierarchyNode(hierarchyData.rootNode)
+              ) : (
+                <div style={{ fontSize: '12px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  No tree structure available
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {(isGeneratingChildren || isGeneratingSiblings) && (

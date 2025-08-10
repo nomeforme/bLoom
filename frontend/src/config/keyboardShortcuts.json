@@ -55,5 +55,21 @@
       "category": "Editing",
       "requiresSelection": true
     }
+  },
+  "view": {
+    "storyView": {
+      "key": "q",
+      "modifiers": [],
+      "description": "Switch to story path view",
+      "symbol": "Q",
+      "category": "View"
+    },
+    "hierarchyView": {
+      "key": "e",
+      "modifiers": [],
+      "description": "Switch to hierarchy view", 
+      "symbol": "E",
+      "category": "View"
+    }
   }
 }
