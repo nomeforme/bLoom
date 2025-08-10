@@ -215,7 +215,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
     return (
       <div className="left-sidebar">
         <div className="section">
-          <h3>{viewMode === 'story' ? '📖 Story Path' : '🌳 Tree Hierarchy'}</h3>
+          <h3>{viewMode === 'story' ? 'Path View' : 'Tree View'}</h3>
           <div style={{ 
             fontSize: '12px', 
             color: '#888', 
@@ -235,7 +235,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
   return (
     <div className={`left-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
-        <h3>{viewMode === 'story' ? '📖 Story Path' : '🌳 Tree Hierarchy'}</h3>
+        <h3>{viewMode === 'story' ? 'Path View' : 'Tree View'}</h3>
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
           {viewMode === 'story' ? 'Complete narrative from root to selected node' : 'Tree structure view'}
         </div>
