@@ -91,7 +91,7 @@ const LoomGraph = forwardRef(({
 
     // Set proper canvas dimensions for high DPI displays
     const rect = canvasRef.current.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = (window.devicePixelRatio || 1) * 2; // Double the resolution for crisp graphics
     
     canvasRef.current.width = rect.width * dpr;
     canvasRef.current.height = rect.height * dpr;
@@ -1038,7 +1038,7 @@ const LoomGraph = forwardRef(({
     const handleResize = () => {
       if (canvasRef.current && canvasRef.current.parentElement) {
         const rect = canvasRef.current.parentElement.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = (window.devicePixelRatio || 1) * 2; // Double the resolution for crisp graphics
         
         canvasRef.current.width = rect.width * dpr;
         canvasRef.current.height = rect.height * dpr;
