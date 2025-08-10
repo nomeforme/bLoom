@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import io from 'socket.io-client';
 import LoomGraph from './components/LoomGraph';
-import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
+import LeftSidebar from './components/LeftSidebar';
 import { useBlockchain } from './hooks/useBlockchain';
 import modelsConfig from './config/models.json';
 import './App.css';
@@ -674,7 +674,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <Sidebar
+      <RightSidebar
         connected={connected}
         account={account}
         onConnect={connect}
@@ -752,7 +752,7 @@ function App() {
         />
       </div>
       
-      <RightSidebar
+      <LeftSidebar
         currentTree={currentTree}
         selectedNode={selectedNode}
         isGeneratingChildren={isGeneratingChildren}

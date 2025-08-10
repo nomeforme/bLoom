@@ -12,7 +12,8 @@
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
-  border-right: 1px solid #444;
+  border-left: 1px solid #444;
+  order: 3;
 }
 
 .right-sidebar {
@@ -21,13 +22,15 @@
   padding: 12px; /* reduced padding */
   box-sizing: border-box;
   overflow-y: auto; /* restore scrolling */
-  border-left: 1px solid #444;
+  border-right: 1px solid #444;
+  order: 1;
 }
 
 .graph-container {
   flex: 1;
   position: relative;
   overflow: hidden;
+  order: 2;
 }
 
 /* Loading overlay while fetching trees */
