@@ -158,13 +158,6 @@ const LoomGraph = forwardRef(({
     LoomNode.prototype.onDrawForeground = function(ctx) {
       if (this.flags.collapsed) return;
       
-      // Draw keyboard selection border
-      if (this.keyboardSelected) {
-        ctx.strokeStyle = "#4CAF50"; // Green color for keyboard selection
-        ctx.lineWidth = 1; // Very thin line
-        ctx.strokeRect(-1, -1, this.size[0] + 2, this.size[1] + 2);
-      }
-      
       const content = this.properties.content || "";
       const maxLength = 150; // Increased for better readability
       const displayContent = content.length > maxLength ? 
@@ -207,17 +200,18 @@ const LoomGraph = forwardRef(({
     };
 
     LoomNode.prototype.onMouseDown = function(e, localpos, canvas) {
-      // Update keyboard selection when clicking on a node
+      // Use LiteGraph built-in selection behavior
+      if (canvas && typeof canvas.selectNode === 'function') {
+        canvas.selectNode(this);
+      } else {
+        this.selected = true;
+      }
+      // Track selection for keyboard navigation
       const currentGraph = this.graph;
       if (currentGraph) {
-        currentGraph.findNodesByType("loom/node").forEach(n => {
-          n.keyboardSelected = false;
-        });
-        this.keyboardSelected = true;
-        // Update the selected node reference stored on the graph
         currentGraph.selectedNodeForKeyboard = this;
       }
-      
+
       if (onNodeSelect) {
         onNodeSelect({
           id: this.properties.nodeId,
@@ -427,6 +421,10 @@ const LoomGraph = forwardRef(({
 
     // Register the node type
     window.LiteGraph.registerNodeType("loom/node", LoomNode);
+    // Disable LiteGraph's box selection to make single select match mouse default
+    if (canvas) {
+      canvas.allow_multiselection = false;
+    }
 
     // Add context menu for creating nodes
     canvas.onMenuAdd = function(node, options, e, prev_menu, callback) {
@@ -1004,15 +1002,48 @@ const LoomGraph = forwardRef(({
       return siblings[currentIndex - 1];
     };
     
+    // High-DPI aware centering on a node (manual implementation)
+    const centerOnNodeHiDPI = (node) => {
+      if (!node || !canvas || !canvasRef.current) return;
+
+      const nodeCenter = [
+        node.pos[0] + node.size[0] / 2,
+        node.pos[1] + node.size[1] / 2
+      ];
+
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasCenter = [
+        canvasRect.width / 2,
+        canvasRect.height / 2
+      ];
+
+      const newOffset = [
+        canvasCenter[0] - nodeCenter[0],
+        canvasCenter[1] - nodeCenter[1]
+      ];
+
+      if (canvas.ds) {
+        canvas.ds.offset[0] = newOffset[0];
+        canvas.ds.offset[1] = newOffset[1];
+        canvas.setDirty(true, true);
+      } else if (typeof canvas.centerOnNode === 'function') {
+        // Fallback to built-in if drag-scale state not available
+        canvas.centerOnNode(node);
+        canvas.setDirty(true, true);
+      } else if (canvas.setDirty) {
+        canvas.setDirty(true, true);
+      }
+    };
+
     const selectNodeByKeyboard = (node) => {
-      // Clear previous selection visual
-      graph.findNodesByType("loom/node").forEach(n => {
-        n.keyboardSelected = false;
-      });
-      
-      // Mark new selection
-      node.keyboardSelected = true;
-      
+      // Use LiteGraph's built-in selection
+      if (canvas && typeof canvas.selectNode === 'function') {
+        canvas.selectNode(node);
+      } else {
+        // Fallback if API unavailable
+        graph.findNodesByType("loom/node").forEach(n => { n.selected = false; });
+        node.selected = true;
+      }
       // Trigger the node selection callback
       if (onNodeSelect) {
         onNodeSelect({
@@ -1023,38 +1054,8 @@ const LoomGraph = forwardRef(({
           parentId: node.properties.parentId
         });
       }
-      
-      // Center the canvas on the selected node
-      
-      // Manual centering implementation to handle high DPI correctly
-      const nodeCenter = [
-        node.pos[0] + node.size[0] / 2,
-        node.pos[1] + node.size[1] / 2
-      ];
-      
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const canvasCenter = [
-        canvasRect.width / 2,
-        canvasRect.height / 2
-      ];
-      
-      // Calculate the offset needed to center the node
-      const newOffset = [
-        canvasCenter[0] - nodeCenter[0],
-        canvasCenter[1] - nodeCenter[1]
-      ];
-      
-      
-      // Apply the offset to LiteGraph's display state
-      if (canvas.ds) {
-        canvas.ds.offset[0] = newOffset[0];
-        canvas.ds.offset[1] = newOffset[1];
-        canvas.setDirty(true, true);
-      } else {
-        // Fallback to original method if ds not available
-        canvas.centerOnNode(node);
-        canvas.setDirty(true);
-      }
+      // Center the canvas on the selected node with high-DPI aware method
+      centerOnNodeHiDPI(node);
     };
     
     // Add event listener for keyboard navigation
@@ -1104,9 +1105,14 @@ const LoomGraph = forwardRef(({
         // Update global canvas reference
         canvas = newCanvas;
         
-        // Restore keyboard selection if it existed
+        // Restore keyboard selection if it existed (and re-apply built-in selection)
         if (currentSelectedNode) {
           graph.selectedNodeForKeyboard = currentSelectedNode;
+          if (typeof canvas.selectNode === 'function') {
+            canvas.selectNode(currentSelectedNode);
+          }
+          // Re-center view on the selected node for consistency
+          centerOnNodeHiDPI(currentSelectedNode);
         }
       }
     };
