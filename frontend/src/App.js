@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import io from 'socket.io-client';
 import LoomGraph from './components/LoomGraph';
 import Sidebar from './components/Sidebar';
+import RightSidebar from './components/RightSidebar';
 import { useBlockchain } from './hooks/useBlockchain';
 import modelsConfig from './config/models.json';
 import './App.css';
@@ -740,6 +741,11 @@ function App() {
           setIsGeneratingSiblings={setIsGeneratingSiblings}
         />
       </div>
+      
+      <RightSidebar
+        currentTree={currentTree}
+        selectedNode={selectedNode}
+      />
     </div>
   );
 }

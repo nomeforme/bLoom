@@ -565,11 +565,20 @@ const Sidebar = ({
                   {(() => {
                     console.log('🔍 Parsing NFT content for description:', selectedNodeNFT.content);
                     const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    let content;
                     if (metadata) {
                       console.log('🔍 Parsed metadata for description:', metadata);
-                      return metadata.description || selectedNodeNFT.content;
+                      content = metadata.description || selectedNodeNFT.content;
+                    } else {
+                      content = selectedNodeNFT.content;
                     }
-                    return selectedNodeNFT.content;
+                    
+                    // Clip content to maximum 300 characters for left sidebar
+                    const maxLength = 300;
+                    if (content.length > maxLength) {
+                      return content.substring(0, maxLength) + '...';
+                    }
+                    return content;
                   })()}
                 </div>
                 
