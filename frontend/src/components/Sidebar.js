@@ -674,7 +674,7 @@ const Sidebar = ({
             )}
 
             {/* Token Bound Account (TBA) Information */}
-            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>🏦 Token Bound Account (TBA)</h4>
+            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>🏦 Token Bound Account</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
