@@ -368,10 +368,27 @@ const LoomGraph = forwardRef(({
             errorMsg.style.cssText = `
               color: #f44336;
               font-size: 12px;
-              margin-top: 5px;
+              margin: 10px 0;
               text-align: center;
+              width: 100%;
+              display: block;
             `;
-            errorMsg.textContent = `Failed to save: ${error.message}`;
+            // Extract clean error text from blockchain errors
+            let displayMessage = error.message;
+            
+            // Try to extract revert reason first
+            const reasonMatch = error.message.match(/reason="([^"]+)"/);
+            if (reasonMatch) {
+              displayMessage = reasonMatch[1];
+            } else if (error.message.includes('execution reverted')) {
+              // Look for other patterns in execution reverted errors
+              const revertMatch = error.message.match(/execution reverted: "?([^"]+)"?/);
+              if (revertMatch) {
+                displayMessage = revertMatch[1];
+              }
+            }
+            
+            errorMsg.textContent = displayMessage;
             saveBtn.parentElement.insertBefore(errorMsg, saveBtn.parentElement.firstChild);
             
             // Remove error message after 3 seconds
