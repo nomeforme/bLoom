@@ -106,6 +106,8 @@ const LoomGraph = forwardRef(({
     canvas.pixel_ratio = dpr;
     
     graphRef.current = graph;
+    // Expose canvas instance to other effects
+    graph.canvasInstance = canvas;
     
     // Configure LiteGraph settings
     canvas.background_image = null;
@@ -866,13 +868,27 @@ const LoomGraph = forwardRef(({
           if (generateChildren) {
             generateChildren(selectedNodeData.id, 3)
               .finally(() => {
+                console.log('[LoomGraph] generateChildren finally()', {
+                  nodeId: selectedNodeData?.id,
+                  parentId: selectedNodeData?.parentId
+                });
                 if (setIsGeneratingChildren) {
                   setIsGeneratingChildren(false);
                 }
                 // Reorganize nodes after generation completes - only the affected subtree
                 setTimeout(() => {
+                  console.log('[LoomGraph] gen-children reorg start', { nodeId: selectedNodeData?.id });
                   if (graph.reorganizeNodes && selectedNodeData) {
                     graph.reorganizeNodes(selectedNodeData.id);
+                  }
+                  console.log('[LoomGraph] gen-children reorg done', { nodeId: selectedNodeData?.id });
+                  // Re-select the same node to reapply native highlight/center
+                  const node = findNodeById(selectedNodeData.id);
+                  console.log('[LoomGraph] gen-children reselect lookup', { nodeId: selectedNodeData?.id, found: !!node });
+                  if (node) {
+                    graph.selectedNodeForKeyboard = node;
+                    selectNodeByKeyboard(node);
+                    console.log('[LoomGraph] gen-children reselect applied', { nodeNumericId: node.id });
                   }
                 }, 500); // Small delay to ensure nodes are fully added
               });
@@ -894,13 +910,27 @@ const LoomGraph = forwardRef(({
           if (generateSiblings) {
             generateSiblings(selectedNodeData.parentId, 3)
               .finally(() => {
+                console.log('[LoomGraph] generateSiblings finally()', {
+                  nodeId: selectedNodeData?.id,
+                  parentId: selectedNodeData?.parentId
+                });
                 if (setIsGeneratingSiblings) {
                   setIsGeneratingSiblings(false);
                 }
                 // Reorganize nodes after generation completes - only the affected subtree
                 setTimeout(() => {
+                  console.log('[LoomGraph] gen-siblings reorg start', { parentId: selectedNodeData?.parentId });
                   if (graph.reorganizeNodes && selectedNodeData) {
                     graph.reorganizeNodes(selectedNodeData.parentId);
+                  }
+                  console.log('[LoomGraph] gen-siblings reorg done', { parentId: selectedNodeData?.parentId });
+                  // Re-select the parent node to reapply native highlight/center
+                  const parentNode = findNodeById(selectedNodeData.parentId);
+                  console.log('[LoomGraph] gen-siblings reselect lookup', { parentId: selectedNodeData?.parentId, found: !!parentNode });
+                  if (parentNode) {
+                    graph.selectedNodeForKeyboard = parentNode;
+                    selectNodeByKeyboard(parentNode);
+                    console.log('[LoomGraph] gen-siblings reselect applied', { nodeNumericId: parentNode.id });
                   }
                 }, 500); // Small delay to ensure nodes are fully added
               });
@@ -1037,6 +1067,8 @@ const LoomGraph = forwardRef(({
         canvas.setDirty(true, true);
       }
     };
+    // Expose for use in deferred callbacks
+    graph.centerOnNodeHiDPI = centerOnNodeHiDPI;
 
     const selectNodeByKeyboard = (node) => {
       // Use LiteGraph's built-in selection
@@ -1108,6 +1140,7 @@ const LoomGraph = forwardRef(({
         
         // Update global canvas reference
         canvas = newCanvas;
+        graph.canvasInstance = canvas;
         
         // Restore keyboard selection if it existed (and re-apply built-in selection)
         if (currentSelectedNode) {
@@ -1207,8 +1240,40 @@ const LoomGraph = forwardRef(({
       // Auto-reorganize nodes after loading to fix any overlaps
       setTimeout(() => {
         if (graph.reorganizeNodes) {
+          console.log('[LoomGraph] reorganize after load');
           graph.reorganizeNodes();
         }
+        // If there is a pending node to reselect (post-generation), apply it now
+        setTimeout(() => {
+          if (graph.pendingReSelectNodeId) {
+            const node = graph.findNodesByType("loom/node").find(n => n.properties?.nodeId === graph.pendingReSelectNodeId);
+            console.log('[LoomGraph] pending reselect after load', {
+              targetId: graph.pendingReSelectNodeId,
+              found: !!node
+            });
+            if (node) {
+              console.log('[LoomGraph] applying pending reselect', { targetId: graph.pendingReSelectNodeId, numericId: node.id });
+              graph.selectedNodeForKeyboard = node;
+              const activeCanvas = graph.canvasInstance;
+              try {
+                if (activeCanvas && typeof activeCanvas.selectNode === 'function') {
+                  activeCanvas.selectNode(node);
+                }
+                // Center with high-DPI aware helper if available on graph, else via canvas API
+                if (typeof graph.centerOnNodeHiDPI === 'function') {
+                  graph.centerOnNodeHiDPI(node);
+                } else if (activeCanvas && typeof activeCanvas.centerOnNode === 'function') {
+                  activeCanvas.centerOnNode(node);
+                }
+                activeCanvas && activeCanvas.setDirty && activeCanvas.setDirty(true, true);
+              } catch (err) {
+                console.warn('[LoomGraph] pending reselect failed via direct calls, falling back to helper', err);
+                try { selectNodeByKeyboard(node); } catch {}
+              }
+            }
+            graph.pendingReSelectNodeId = null;
+          }
+        }, 200);
       }, 100); // Small delay to ensure all nodes are rendered
     }
   }, [currentTree]);
@@ -1224,6 +1289,39 @@ const LoomGraph = forwardRef(({
       }
     }
   }, [onUpdateNode, onGenerateSiblings]);
+
+  // Re-select active node after generation completes (works for UI or socket-driven flows)
+  useEffect(() => {
+    const graph = graphRef.current;
+    if (!graph) return;
+    if (!graph.__genPrev) {
+      graph.__genPrev = { children: !!isGeneratingChildren, siblings: !!isGeneratingSiblings };
+    }
+    const prev = graph.__genPrev;
+    const started = (!prev.children && isGeneratingChildren) || (!prev.siblings && isGeneratingSiblings);
+    const stopped = (prev.children && !isGeneratingChildren) || (prev.siblings && !isGeneratingSiblings);
+    if (started) {
+      const sel = graph.selectedNodeForKeyboard;
+      graph.lastGenerationSelectedNodeId = sel?.properties?.nodeId || null;
+      console.log('[LoomGraph] generation started; tracking', { nodeId: graph.lastGenerationSelectedNodeId });
+    }
+    if (stopped) {
+      // Schedule reselect after tree updates propagate
+      graph.pendingReSelectNodeId = graph.lastGenerationSelectedNodeId || graph.pendingReSelectNodeId;
+      console.log('[LoomGraph] generation stopped; will reselect', { nodeId: graph.pendingReSelectNodeId });
+      setTimeout(() => {
+        if (!graph.pendingReSelectNodeId) return;
+        const node = graph.findNodesByType('loom/node').find(n => n.properties?.nodeId === graph.pendingReSelectNodeId);
+        console.log('[LoomGraph] immediate reselect attempt', { targetId: graph.pendingReSelectNodeId, found: !!node });
+        if (node) {
+          graph.selectedNodeForKeyboard = node;
+          try { selectNodeByKeyboard(node); } catch {}
+          graph.pendingReSelectNodeId = null;
+        }
+      }, 300);
+    }
+    graph.__genPrev = { children: !!isGeneratingChildren, siblings: !!isGeneratingSiblings };
+  }, [isGeneratingChildren, isGeneratingSiblings]);
 
   const addLoomNode = (nodeData) => {
     if (graphRef.current && graphRef.current.addLoomNode) {
