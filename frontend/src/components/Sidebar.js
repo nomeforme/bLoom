@@ -85,70 +85,112 @@ const Sidebar = ({
   // Helper function to safely parse NFT metadata with control character fixes
   const parseNFTMetadata = (content) => {
     try {
-      // First attempt: Fix malformed JSON by escaping control characters
+      // First attempt: Fix malformed JSON by escaping control characters and LaTeX syntax
       let fixedContent = content
         .replace(/\n/g, '\\n')
         .replace(/\r/g, '\\r')
         .replace(/\t/g, '\\t')
         .replace(/\f/g, '\\f')
-        .replace(/\b/g, ''); // Remove backspace characters
+        .replace(/\b/g, '') // Remove backspace characters
+        // Escape LaTeX/TeX brackets and dollar signs within JSON string values
+        .replace(/(\[tex\])/g, '\\[tex\\]')
+        .replace(/(\[\/tex\])/g, '\\[\\/tex\\]')
+        .replace(/(\$)/g, '\\$');
       
       try {
         const parsed = JSON.parse(fixedContent);
         
-        // Clean up any backspace characters that made it through
+        // Clean up any backspace characters and unescape LaTeX syntax
         const cleanMetadata = {};
         for (const [key, value] of Object.entries(parsed)) {
-          cleanMetadata[key] = typeof value === 'string' ? value.replace(/\b/g, '') : value;
+          if (typeof value === 'string') {
+            cleanMetadata[key] = value
+              .replace(/\b/g, '')
+              .replace(/\\?\[tex\\?\]/g, '[tex]')
+              .replace(/\\?\[\\?\/?tex\\?\]/g, '[/tex]')
+              .replace(/\\?\$/g, '$');
+          } else {
+            cleanMetadata[key] = value;
+          }
         }
         
         return cleanMetadata;
       } catch (firstError) {
         console.log('🔍 First parse attempt failed:', firstError.message);
         
-        // Second attempt: Also escape unescaped quotes within string values
-        // This is more aggressive and tries to fix common JSON issues
+        // Second attempt: More aggressive fixing for nested quotes and LaTeX
         fixedContent = content
           .replace(/\n/g, '\\n')
           .replace(/\r/g, '\\r')
           .replace(/\t/g, '\\t')
           .replace(/\f/g, '\\f')
           .replace(/\b/g, '')
-          // Fix unescaped quotes within JSON string values (but not structural quotes)
-          .replace(/"([^"]*)"([^"]*)"([^"]*)":/g, '"$1\\"$2\\"$3":') // Fix quotes in keys
-          .replace(/:"([^"]*)"([^"]*)"([^"]*)"([,}])/g, ':"$1\\"$2\\"$3"$4'); // Fix quotes in values
+          // Handle LaTeX expressions more carefully
+          .replace(/\[tex\]/g, '\\u005Btex\\u005D')
+          .replace(/\[\/tex\]/g, '\\u005B/tex\\u005D')
+          .replace(/\$\$/g, '\\u0024\\u0024')
+          .replace(/\$/g, '\\u0024')
+          // Fix unescaped quotes within JSON string values
+          .replace(/"([^"]*)"([^"]*)"([^"]*)":/g, '"$1\\"$2\\"$3":')
+          .replace(/:"([^"]*)"([^"]*)"([^"]*)"([,}])/g, ':"$1\\"$2\\"$3"$4');
         
         try {
           const parsed = JSON.parse(fixedContent);
           
           const cleanMetadata = {};
           for (const [key, value] of Object.entries(parsed)) {
-            cleanMetadata[key] = typeof value === 'string' ? value.replace(/\b/g, '').replace(/\\"/g, '"') : value;
+            if (typeof value === 'string') {
+              cleanMetadata[key] = value
+                .replace(/\b/g, '')
+                .replace(/\\"/g, '"')
+                .replace(/\\u005Btex\\u005D/g, '[tex]')
+                .replace(/\\u005B\/tex\\u005D/g, '[/tex]')
+                .replace(/\\u0024/g, '$');
+            } else {
+              cleanMetadata[key] = value;
+            }
           }
           
           return cleanMetadata;
         } catch (secondError) {
           console.log('🔍 Second parse attempt failed:', secondError.message);
           
-          // Third attempt: Try to extract just the description using regex as fallback
+          // Third attempt: Smart regex parsing that handles nested content
           try {
-            const descriptionMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
-            const nodeIdMatch = content.match(/"nodeId"\s*:\s*"([^"]+)"/);
-            const tokenBoundAccountMatch = content.match(/"tokenBoundAccount"\s*:\s*"([^"]+)"/);
-            const nodeTokenContractMatch = content.match(/"nodeTokenContract"\s*:\s*"([^"]+)"/);
-            const tokenNameMatch = content.match(/"tokenName"\s*:\s*"([^"]+)"/);
-            const tokenSymbolMatch = content.match(/"tokenSymbol"\s*:\s*"([^"]+)"/);
-            const tokenSupplyMatch = content.match(/"tokenSupply"\s*:\s*"([^"]+)"/);
+            // More sophisticated regex that can handle complex content including LaTeX
+            const extractField = (fieldName, defaultValue = '') => {
+              const regex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'g');
+              const match = regex.exec(content);
+              if (match) {
+                // Unescape the matched content
+                return match[1]
+                  .replace(/\\"/g, '"')
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\r/g, '\r')
+                  .replace(/\\t/g, '\t')
+                  .replace(/\\\\/g, '\\')
+                  .replace(/\b/g, '');
+              }
+              return defaultValue;
+            };
             
-            if (descriptionMatch) {
+            const description = extractField('description');
+            const nodeId = extractField('nodeId');
+            const tokenBoundAccount = extractField('tokenBoundAccount');
+            const nodeTokenContract = extractField('nodeTokenContract');
+            const tokenName = extractField('tokenName', 'NODE');
+            const tokenSymbol = extractField('tokenSymbol', 'NODE');
+            const tokenSupply = extractField('tokenSupply', '1000');
+            
+            if (description || nodeId) {
               return {
-                description: descriptionMatch[1].replace(/\\n/g, '\n').replace(/\b/g, ''),
-                nodeId: nodeIdMatch?.[1] || '',
-                tokenBoundAccount: tokenBoundAccountMatch?.[1] || '',
-                nodeTokenContract: nodeTokenContractMatch?.[1] || '',
-                tokenName: tokenNameMatch?.[1] || 'NODE',
-                tokenSymbol: tokenSymbolMatch?.[1] || 'NODE',
-                tokenSupply: tokenSupplyMatch?.[1] || '1000'
+                description,
+                nodeId,
+                tokenBoundAccount,
+                nodeTokenContract,
+                tokenName,
+                tokenSymbol,
+                tokenSupply
               };
             }
           } catch (regexError) {
