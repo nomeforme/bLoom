@@ -92,7 +92,29 @@ export class KeyboardShortcutsManager {
     const shortcut = this.getShortcut(shortcutKey);
     if (!shortcut) return '';
 
-    let displayText = shortcut.symbol || shortcut.key;
+    // If symbol exists, check if it needs + formatting
+    if (shortcut.symbol) {
+      // Check if it's a combination (has modifier symbols followed by other keys)
+      const modifierSymbols = ['⇧', '⌃', '⌥', '⌘'];
+      const symbol = shortcut.symbol;
+      
+      // If it starts with a modifier and has more characters, add +
+      if (modifierSymbols.some(mod => symbol.startsWith(mod)) && symbol.length > 1) {
+        // Find the modifier and split
+        for (const mod of modifierSymbols) {
+          if (symbol.startsWith(mod)) {
+            const rest = symbol.substring(mod.length);
+            if (rest.length > 0) {
+              return mod + '+' + rest;
+            }
+          }
+        }
+      }
+      return symbol;
+    }
+
+    // Otherwise, build from key and modifiers
+    let displayText = shortcut.key;
     
     // Add modifier symbols
     if (shortcut.modifiers) {
@@ -105,8 +127,8 @@ export class KeyboardShortcutsManager {
         cmd: '⌘'
       };
       
-      const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('');
-      displayText = modifiers + displayText;
+      const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('+');
+      displayText = modifiers + '+' + displayText;
     }
 
     return displayText;
