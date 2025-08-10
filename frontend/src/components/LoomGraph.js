@@ -167,7 +167,7 @@ const LoomGraph = forwardRef(({
         content.substring(0, maxLength) + "..." : content;
       
       ctx.fillStyle = "#ffffff";
-      ctx.font = "14px Arial";
+      ctx.font = "14px Inconsolata, monospace";
       
       // Wrap text to fit in the larger node
       const words = displayContent.split(' ');
@@ -196,16 +196,9 @@ const LoomGraph = forwardRef(({
       
       // Draw metadata
       ctx.fillStyle = "#aaaaaa";
-      ctx.font = "11px Arial";
+      ctx.font = "11px Inconsolata, monospace";
       ctx.fillText(`Author: ${this.properties.author.substring(0, 10)}...`, 15, this.size[1] - 25);
       ctx.fillText(`Time: ${new Date(this.properties.timestamp * 1000).toLocaleTimeString()}`, 15, this.size[1] - 10);
-      
-      // Draw edit indicator in bottom right
-      ctx.fillStyle = "#4CAF50";
-      ctx.font = "10px Arial";
-      const editText = "✏️ Edit";
-      const editMetrics = ctx.measureText(editText);
-      ctx.fillText(editText, this.size[0] - editMetrics.width - 10, this.size[1] - 5);
       
     };
 
@@ -260,7 +253,7 @@ const LoomGraph = forwardRef(({
       `;
       
       editDialog.innerHTML = `
-        <div style="color: #fff; margin-bottom: 15px; font-family: Arial, sans-serif;">
+        <div style="color: #fff; margin-bottom: 15px; font-family: 'Inconsolata', monospace;">
           <h3 style="margin: 0 0 10px 0; color: #4CAF50;">Edit Node Content</h3>
           <p style="margin: 0; color: #ccc; font-size: 12px;">Modify the text content for this node. Changes will be automatically saved to the blockchain.</p>
         </div>
@@ -272,7 +265,7 @@ const LoomGraph = forwardRef(({
           border: 1px solid #555;
           border-radius: 4px;
           padding: 10px;
-          font-family: Arial, sans-serif;
+          font-family: 'Inconsolata', monospace;
           font-size: 14px;
           resize: vertical;
           box-sizing: border-box;
@@ -286,7 +279,7 @@ const LoomGraph = forwardRef(({
             border-radius: 4px;
             margin-right: 10px;
             cursor: pointer;
-            font-family: Arial, sans-serif;
+            font-family: 'Inconsolata', monospace;
           ">Cancel</button>
           <button id="saveEdit" style="
             background: #4CAF50;
@@ -295,7 +288,7 @@ const LoomGraph = forwardRef(({
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            font-family: Arial, sans-serif;
+            font-family: 'Inconsolata', monospace;
           ">Save Changes</button>
         </div>
       `;
