@@ -100,7 +100,10 @@ const LoomGraph = forwardRef(({
 
     // Initialize LiteGraph
     const graph = new window.LiteGraph.LGraph();
-    const canvas = new window.LiteGraph.LGraphCanvas(canvasRef.current, graph);
+    let canvas = new window.LiteGraph.LGraphCanvas(canvasRef.current, graph);
+    
+    // Set proper pixel ratio for LiteGraph to handle high DPI correctly
+    canvas.pixel_ratio = dpr;
     
     graphRef.current = graph;
     
@@ -109,6 +112,7 @@ const LoomGraph = forwardRef(({
     canvas.render_canvas_border = false;
     canvas.render_connections_shadows = false;
     canvas.render_connection_arrows = false;
+    
     
     // Constrain context menu to canvas bounds
     canvas.allow_dragnodes = true;
@@ -723,8 +727,6 @@ const LoomGraph = forwardRef(({
       
       // Extract clean content from NFT JSON metadata
       const cleanContent = extractCleanContent(nodeData.content);
-      console.log('🎨 LiteGraph: Raw content:', nodeData.content.substring(0, 50) + '...');
-      console.log('🎨 LiteGraph: Clean content:', cleanContent.substring(0, 50) + '...');
       node.title = cleanContent.substring(0, 20) + (cleanContent.length > 20 ? "..." : "");
       
       // Force the size after creation
@@ -812,6 +814,7 @@ const LoomGraph = forwardRef(({
           shortcutsManager.matchShortcut(e, 'down') || 
           shortcutsManager.matchShortcut(e, 'left') || 
           shortcutsManager.matchShortcut(e, 'right')) {
+        
         
         e.preventDefault();
         
@@ -1022,8 +1025,36 @@ const LoomGraph = forwardRef(({
       }
       
       // Center the canvas on the selected node
-      canvas.centerOnNode(node);
-      canvas.setDirty(true);
+      
+      // Manual centering implementation to handle high DPI correctly
+      const nodeCenter = [
+        node.pos[0] + node.size[0] / 2,
+        node.pos[1] + node.size[1] / 2
+      ];
+      
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasCenter = [
+        canvasRect.width / 2,
+        canvasRect.height / 2
+      ];
+      
+      // Calculate the offset needed to center the node
+      const newOffset = [
+        canvasCenter[0] - nodeCenter[0],
+        canvasCenter[1] - nodeCenter[1]
+      ];
+      
+      
+      // Apply the offset to LiteGraph's display state
+      if (canvas.ds) {
+        canvas.ds.offset[0] = newOffset[0];
+        canvas.ds.offset[1] = newOffset[1];
+        canvas.setDirty(true, true);
+      } else {
+        // Fallback to original method if ds not available
+        canvas.centerOnNode(node);
+        canvas.setDirty(true);
+      }
     };
     
     // Add event listener for keyboard navigation
@@ -1034,23 +1065,48 @@ const LoomGraph = forwardRef(({
       document.removeEventListener('keydown', handleKeyDown);
     };
 
-    // Handle window resize
+    // Handle window resize by recreating canvas from scratch
     const handleResize = () => {
-      if (canvasRef.current && canvasRef.current.parentElement) {
+      if (canvasRef.current && canvasRef.current.parentElement && graph) {
         const rect = canvasRef.current.parentElement.getBoundingClientRect();
-        const dpr = (window.devicePixelRatio || 1) * 2; // Double the resolution for crisp graphics
+        const newDpr = (window.devicePixelRatio || 1) * 2;
         
-        canvasRef.current.width = rect.width * dpr;
-        canvasRef.current.height = rect.height * dpr;
+        // Store current graph state
+        const currentSelectedNode = graph.selectedNodeForKeyboard;
+        
+        // Clean up old canvas
+        if (canvas) {
+          canvas.setGraph(null);
+        }
+        
+        // Set new canvas dimensions with high DPI
+        canvasRef.current.width = rect.width * newDpr;
+        canvasRef.current.height = rect.height * newDpr;
         canvasRef.current.style.width = rect.width + 'px';
         canvasRef.current.style.height = rect.height + 'px';
         
+        // Scale the context
         const ctx = canvasRef.current.getContext('2d');
-        ctx.scale(dpr, dpr);
+        ctx.scale(newDpr, newDpr);
         
-        if (canvas) {
-          canvas.resize();
-          canvas.setDirty(true);
+        // Create new LiteGraph canvas
+        const newCanvas = new window.LiteGraph.LGraphCanvas(canvasRef.current, graph);
+        newCanvas.pixel_ratio = newDpr;
+        
+        // Restore canvas settings
+        newCanvas.background_image = null;
+        newCanvas.render_canvas_border = false;
+        newCanvas.render_connections_shadows = false;
+        newCanvas.render_connection_arrows = false;
+        newCanvas.allow_dragnodes = true;
+        newCanvas.allow_interaction = true;
+        
+        // Update global canvas reference
+        canvas = newCanvas;
+        
+        // Restore keyboard selection if it existed
+        if (currentSelectedNode) {
+          graph.selectedNodeForKeyboard = currentSelectedNode;
         }
       }
     };
@@ -1085,7 +1141,6 @@ const LoomGraph = forwardRef(({
     
     // Add nodes from current tree in proper order (parents first)
     if (currentTree.nodes) {
-      console.log('Loading tree with nodes:', currentTree.nodes.length);
       
       // Sort nodes: root first, then by dependency order
       const sortedNodes = [...currentTree.nodes].sort((a, b) => {
@@ -1102,7 +1157,6 @@ const LoomGraph = forwardRef(({
       // Add root nodes first
       sortedNodes.filter(node => node.isRoot).forEach(nodeData => {
         if (graph.addLoomNode) {
-          console.log('Adding root node:', nodeData.nodeId, 'Raw content:', nodeData.content.substring(0, 50));
           graph.addLoomNode(nodeData);
         }
       });
@@ -1115,7 +1169,6 @@ const LoomGraph = forwardRef(({
       
       while (nonRootNodes.length > addedNodes.size && passes < maxPasses) {
         passes++;
-        console.log(`Pass ${passes}: trying to add ${nonRootNodes.length - addedNodes.size} remaining nodes`);
         
         nonRootNodes.forEach(nodeData => {
           if (addedNodes.has(nodeData.nodeId)) return;
@@ -1127,7 +1180,6 @@ const LoomGraph = forwardRef(({
                              graph.findNodesByType("loom/node").some(n => n.properties.nodeId === nodeData.parentId);
           
           if (parentExists) {
-            console.log('Adding child node:', nodeData.nodeId, nodeData.content.substring(0, 30));
             graph.addLoomNode(nodeData);
             addedNodes.add(nodeData.nodeId);
           } else {
