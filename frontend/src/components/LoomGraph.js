@@ -117,6 +117,9 @@ const LoomGraph = forwardRef(({
     // Constrain context menu to canvas bounds
     canvas.allow_dragnodes = true;
     canvas.allow_interaction = true;
+
+    // Global link color green
+    canvas.default_link_color = '#4CAF50';
     
     // Override context menu positioning to prevent full-screen dialog
     const originalShowContextMenu = canvas.showContextMenu;
@@ -1101,6 +1104,7 @@ const LoomGraph = forwardRef(({
         newCanvas.render_connection_arrows = false;
         newCanvas.allow_dragnodes = true;
         newCanvas.allow_interaction = true;
+        newCanvas.default_link_color = '#4CAF50';
         
         // Update global canvas reference
         canvas = newCanvas;
