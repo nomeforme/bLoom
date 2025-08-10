@@ -347,24 +347,51 @@ const RightSidebar = ({
 
   return (
     <div className="right-sidebar">
-      {/* Connection Status */}
-      <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-        {connected ? `Connected: ${ellipseAddress(account)}` : 'Disconnected'}
+      {/* Header Section */}
+      <div style={{ marginBottom: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+          <h2 style={{ 
+            color: '#4CAF50', 
+            fontSize: '24px', 
+            fontWeight: 'bold',
+            margin: '0'
+          }}>bLoom</h2>
+          
+          {connected ? (
+            <button 
+              className="btn btn-danger" 
+              onClick={onDisconnect}
+              style={{ 
+                padding: '4px 8px', 
+                fontSize: '12px',
+                minWidth: 'auto'
+              }}
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button className="btn" onClick={onConnect} style={{ fontSize: '12px', padding: '6px 12px' }}>
+              Connect Wallet
+            </button>
+          )}
+        </div>
+        
+        {connected && (
+          <div style={{ 
+            fontSize: '14px', 
+            color: '#4CAF50', 
+            marginBottom: '4px',
+            fontWeight: 'bold'
+          }}>
+            {ellipseAddress(account)}
+          </div>
+        )}
+        
+        <div style={{ borderBottom: '1px solid #444', paddingBottom: '5px' }}></div>
       </div>
 
-      {!connected ? (
-        <button className="btn" onClick={onConnect}>
-          Connect Wallet
-        </button>
-      ) : (
-        <button className="btn btn-secondary" onClick={onDisconnect}>
-          Disconnect
-        </button>
-      )}
-
       {/* AI Model Selector */}
-      <div className="section">
-        <h3>🤖 AI Model</h3>
+      <div style={{ marginBottom: '30px' }}>
         <select 
           value={selectedModel} 
           onChange={(e) => setSelectedModel(e.target.value)}
@@ -416,36 +443,12 @@ const RightSidebar = ({
           className="btn" 
           onClick={handleCreateTree}
           disabled={!connected || !newTreeContent.trim() || isCreatingTree}
+          style={{ width: '100%' }}
         >
           {isCreatingTree ? 'Creating Tree...' : 'Create Tree'}
         </button>
       </div>
 
-      {/* Save/Load Trees */}
-      <div className="section">
-        <h3>Backup & Restore</h3>
-        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={handleExportTrees}
-            disabled={!connected || trees.length === 0 || isExporting}
-            style={{ fontSize: '12px', padding: '8px 12px' }}
-          >
-            {isExporting ? 'Exporting...' : `💾 Save All Trees (${trees.length})`}
-          </button>
-          <button 
-            className="btn btn-secondary" 
-            onClick={handleImportTrees}
-            disabled={!connected || isImporting}
-            style={{ fontSize: '12px', padding: '8px 12px' }}
-          >
-            {isImporting ? 'Importing...' : '📂 Load Trees from JSON'}
-          </button>
-        </div>
-        <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
-          Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
-        </div>
-      </div>
 
       {/* Tree List */}
       <div className="section">
@@ -466,7 +469,7 @@ const RightSidebar = ({
               minWidth: 'auto'
             }}
           >
-            {showOnlyMyTrees ? '🌍 Show All' : '🌱 My Trees'}
+            {showOnlyMyTrees ? 'Show All' : 'My Trees'}
           </button>
         </div>
         {(() => {
@@ -494,7 +497,7 @@ const RightSidebar = ({
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span>🌳 Tree #{trees.findIndex(t => t.address === tree.address) + 1} {isMyTree ? '🌱' : ''}</span>
+                    <span>Tree #{trees.findIndex(t => t.address === tree.address) + 1} {isMyTree ? '*' : ''}</span>
                     <span style={{ fontSize: '9px', color: '#666', fontWeight: 'normal' }}>
                       {tree.address ? tree.address.substring(0, 6) + '...' : ''}
                     </span>
@@ -510,7 +513,7 @@ const RightSidebar = ({
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span>📊 Total: {tree.nodeCount || 0} nodes</span>
+                    <span>Total: {tree.nodeCount || 0} nodes</span>
                     <span style={{ color: '#888' }}>
                       {tree.nodes ? `(${tree.nodes.filter(n => !n.isRoot).length} children)` : ''}
                     </span>
@@ -527,17 +530,16 @@ const RightSidebar = ({
         <div className="section">
           <h3>Selected Node</h3>
           <div className="node-info">
-            <h4>Node Relationship Data</h4>
             <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '15px' }}>
               <div>Author: {ellipseAddress(selectedNode.author)}</div>
               <div>Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
               <div>ID: {selectedNode.id.substring(0, 8)}...</div>
               <div>Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? selectedNode.parentId.substring(0, 8) + '...' : 'Root Node'}</div>
-              <div>Children: {selectedNode.children ? selectedNode.children.length : 0}</div>
+              <div>Children: {currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</div>
             </div>
 
             {/* NFT Information - Now displays content and metadata */}
-            <h4 style={{ color: '#FF6B35', marginBottom: '8px' }}>🎨 Content (stored as NFT)</h4>
+            <h4 style={{ color: '#FF6B35', marginBottom: '8px' }}>ERC721: Node NFT</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -556,7 +558,8 @@ const RightSidebar = ({
                   border: '1px solid #333',
                   borderRadius: '4px',
                   padding: '8px',
-                  marginBottom: '8px'
+                  marginBottom: '8px',
+                  fontSize: '11px'
                 }}>
                   {(() => {
                     const metadata = parseNFTMetadata(selectedNodeNFT.content);
@@ -578,15 +581,6 @@ const RightSidebar = ({
                 
                 <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>
                   <div>NFT Owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
-                  <div style={{ 
-                    marginTop: '8px',
-                    fontSize: '10px',
-                    color: '#888',
-                    fontStyle: 'italic',
-                    textAlign: 'center'
-                  }}>
-                    💎 Content is permanently stored on-chain as NFT metadata
-                  </div>
                 </div>
               </div>
             ) : (
@@ -604,7 +598,7 @@ const RightSidebar = ({
             )}
 
             {/* Node Token Information */}
-            <h4 style={{ color: '#FFC107', marginBottom: '8px', marginTop: '15px' }}>🪙 Node Token (ERC20)</h4>
+            <h4 style={{ color: '#FFC107', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -621,7 +615,7 @@ const RightSidebar = ({
                       return (
                         <div>
                           <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            🪙 Token Contract:
+                            Token Contract:
                           </div>
                           <div style={{ 
                             backgroundColor: '#0a0a0a',
@@ -636,24 +630,24 @@ const RightSidebar = ({
                             {metadata.nodeTokenContract}
                           </div>
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>🏷️ Token Name: {metadata.tokenName || 'NODE'}</div>
-                            <div>🔤 Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>💰 Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>🏦 Held by Token Bound Account</div>
-                            <div>💎 ERC20 standard token for this node</div>
+                            <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
+                            <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>• Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>• Held by Token Bound Account</div>
+                            <div>• ERC20 standard token for this node</div>
                           </div>
                         </div>
                       );
                     } else if (metadata) {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          ⚠️ No Node Token found in NFT metadata
+                          No Node Token found in NFT metadata
                         </div>
                       );
                     } else {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          ⚠️ Could not parse NFT metadata for token info
+                          Could not parse NFT metadata for token info
                         </div>
                       );
                     }
@@ -675,7 +669,7 @@ const RightSidebar = ({
             )}
 
             {/* Token Bound Account (TBA) Information */}
-            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>🏦 Token Bound Account</h4>
+            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -692,7 +686,7 @@ const RightSidebar = ({
                       return (
                         <div>
                           <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            🏦 Account Address:
+                            Account Address:
                           </div>
                           <div style={{ 
                             backgroundColor: '#0a0a0a',
@@ -707,23 +701,23 @@ const RightSidebar = ({
                             {metadata.tokenBoundAccount}
                           </div>
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>✅ This NFT has its own Ethereum account</div>
-                            <div>💰 Can hold assets and execute transactions</div>
-                            <div>🔐 Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
-                            <div>🔄 Account transfers with NFT ownership</div>
+                            <div>• This NFT has its own Ethereum account</div>
+                            <div>• Can hold assets and execute transactions</div>
+                            <div>• Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                            <div>• Account transfers with NFT ownership</div>
                           </div>
                         </div>
                       );
                     } else if (metadata) {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          ⚠️ No Token Bound Account found in NFT metadata
+                          No Token Bound Account found in NFT metadata
                         </div>
                       );
                     } else {
                       return (
                         <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          ⚠️ Could not parse NFT metadata for TBA info
+                          Could not parse NFT metadata for TBA info
                         </div>
                       );
                     }
@@ -754,12 +748,29 @@ const RightSidebar = ({
           
           {/* Generate Children */}
           <div style={{ marginBottom: '15px' }}>
-            <h4 style={{ fontSize: '14px', color: '#4CAF50', marginBottom: '8px' }}>Generate Children</h4>
-            <div className="input-group">
-              <label>Number of children to generate:</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                className="btn"
+                onClick={handleGenerateChildren}
+                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+                style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
+              >
+                {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
+              </button>
               <select
                 value={childrenCount}
                 onChange={(e) => setChildrenCount(parseInt(e.target.value))}
+                style={{
+                  width: '60px',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #555',
+                  backgroundColor: '#3d3d3d',
+                  color: '#fff',
+                  fontSize: '12px',
+                  height: '36px',
+                  boxSizing: 'border-box'
+                }}
               >
                 <option value={1}>1</option>
                 <option value={2}>2</option>
@@ -767,28 +778,32 @@ const RightSidebar = ({
                 <option value={5}>5</option>
               </select>
             </div>
-            <button
-              className="btn"
-              onClick={handleGenerateChildren}
-              disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-              style={{ marginBottom: '10px' }}
-            >
-              {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
-            </button>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
-              Creates new nodes as children of the selected node
-            </div>
           </div>
           
           {/* Generate Siblings */}
           {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
             <div>
-              <h4 style={{ fontSize: '14px', color: '#4CAF50', marginBottom: '8px' }}>Generate Siblings</h4>
-              <div className="input-group">
-                <label>Number of siblings to generate:</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  className="btn"
+                  onClick={handleGenerateSiblings}
+                  disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+                  style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
+                >
+                  {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
+                </button>
                 <select
                   value={siblingCount}
                   onChange={(e) => setSiblingCount(parseInt(e.target.value))}
+                  style={{
+                    width: '60px',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #555',
+                    backgroundColor: '#3d3d3d',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
                 >
                   <option value={1}>1</option>
                   <option value={2}>2</option>
@@ -796,24 +811,40 @@ const RightSidebar = ({
                   <option value={5}>5</option>
                 </select>
               </div>
-              <button
-                className="btn"
-                onClick={handleGenerateSiblings}
-                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-              >
-                {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
-              </button>
-              <div style={{ fontSize: '11px', color: '#888' }}>
-                Creates new nodes at the same level as the selected node
-              </div>
             </div>
           )}
         </div>
       )}
 
+      {/* Backup & Restore */}
+      <div className="section">
+        <h3>Backup & Restore</h3>
+        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleExportTrees}
+            disabled={!connected || trees.length === 0 || isExporting}
+            style={{ fontSize: '12px', padding: '8px 12px' }}
+          >
+            {isExporting ? 'Exporting...' : `Save All Trees (${trees.length})`}
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleImportTrees}
+            disabled={!connected || isImporting}
+            style={{ fontSize: '12px', padding: '8px 12px' }}
+          >
+            {isImporting ? 'Importing...' : 'Load Trees from JSON'}
+          </button>
+        </div>
+        <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
+          Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
+        </div>
+      </div>
+
       {/* Keyboard Shortcuts */}
       <div className="section">
-        <h3>⌨️ Keyboard Shortcuts</h3>
+        <h3>Keyboard Shortcuts</h3>
         <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.3' }}>
           {Object.entries(shortcutsManager.getShortcutsByCategory()).map(([category, shortcuts]) => (
             <div key={category} style={{ marginBottom: '12px' }}>
@@ -839,12 +870,34 @@ const RightSidebar = ({
                     color: '#4CAF50',
                     padding: '2px 6px',
                     borderRadius: '3px',
-                    fontSize: '10px',
+                    fontSize: '14px',
                     fontFamily: 'monospace',
                     fontWeight: 'bold'
                   }}>
                     {(() => {
-                      let displayText = shortcut.symbol || shortcut.key;
+                      // If symbol exists, check if it needs + formatting
+                      if (shortcut.symbol) {
+                        // Check if it's a combination (has modifier symbols followed by other keys)
+                        const modifierSymbols = ['⇧', '⌃', '⌥', '⌘'];
+                        const symbol = shortcut.symbol;
+                        
+                        // If it starts with a modifier and has more characters, add +
+                        if (modifierSymbols.some(mod => symbol.startsWith(mod)) && symbol.length > 1) {
+                          // Find the modifier and split
+                          for (const mod of modifierSymbols) {
+                            if (symbol.startsWith(mod)) {
+                              const rest = symbol.substring(mod.length);
+                              if (rest.length > 0) {
+                                return mod + '+' + rest;
+                              }
+                            }
+                          }
+                        }
+                        return symbol;
+                      }
+                      
+                      // Otherwise, build from key and modifiers
+                      let displayText = shortcut.key;
                       if (shortcut.modifiers && shortcut.modifiers.length > 0) {
                         const modifierSymbols = {
                           shift: '⇧',
@@ -854,8 +907,8 @@ const RightSidebar = ({
                           meta: '⌘',
                           cmd: '⌘'
                         };
-                        const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('');
-                        displayText = modifiers + displayText;
+                        const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('+');
+                        displayText = modifiers + '+' + displayText;
                       }
                       return displayText;
                     })()}
