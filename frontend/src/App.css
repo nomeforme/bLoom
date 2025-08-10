@@ -30,6 +30,23 @@
   overflow: hidden;
 }
 
+/* Loading overlay while fetching trees */
+.graph-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+.graph-loading-text {
+  font-family: 'Inconsolata', monospace;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+}
+
 .section {
   margin-bottom: 30px; /* restore default spacing */
 }
