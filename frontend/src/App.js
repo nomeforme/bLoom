@@ -119,13 +119,6 @@ function App() {
     console.log('🎯 App: Setting up socket event handlers');
 
     const handleGenerationComplete = (data) => {
-      console.log('🎯 App: Global handleGenerationComplete called:', data);
-      
-      // Reset generation states immediately
-      setIsGeneratingChildren(false);
-      setIsGeneratingSiblings(false);
-      console.log('🎯 App: Reset generation states on completion');
-      
       // Show warnings if any generations failed
       if (data.warnings && data.warnings.length > 0) {
         data.warnings.forEach(warning => {
@@ -135,12 +128,18 @@ function App() {
       
       // Show success message if some succeeded
       if (data.successCount > 0) {
-        addNotification(data.message, 'success');
+        const kind = isGeneratingChildren ? 'children' : 'sibling';
+        const plural = data.successCount === 1 ? '' : 's';
+        const msg = `Generated ${data.successCount}/${data.totalRequested ?? data.successCount} ${kind} node${plural} successfully`;
+        addNotification(msg, 'success');
       } else {
         // Show error if all failed
         addNotification(data.message, 'error');
       }
       
+      // Reset generation states at the end
+      setIsGeneratingChildren(false);
+      setIsGeneratingSiblings(false);
       // Note: Tree refresh after generation removed to prevent unnecessary full redraws
       // The new nodes are already added to the graph via the generation process
     };
@@ -208,7 +207,7 @@ function App() {
       socket.off('nodeCreated', handleNodeCreated);
       socket.off('generationComplete', handleGenerationComplete);
     };
-  }, [socket, currentTree, getTree, addNotification]);
+  }, [socket, currentTree, getTree, addNotification, isGeneratingChildren, isGeneratingSiblings]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -695,11 +694,13 @@ function App() {
       {notifications.length > 0 && (
         <div style={{
           position: 'fixed',
-          top: '20px',
-          right: '20px',
+          left: '50%',
+          bottom: '24px',
+          transform: 'translateX(-50%)',
           zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'center',
           gap: '10px'
         }}>
           {notifications.map(notification => (
@@ -708,13 +709,15 @@ function App() {
               style={{
                 background: notification.type === 'error' ? '#ff4444' : 
                            notification.type === 'warning' ? '#ff8800' : 
-                           notification.type === 'success' ? '#44ff44' : '#4488ff',
-                color: 'white',
-                padding: '12px 16px',
-                borderRadius: '6px',
-                maxWidth: '300px',
+                           notification.type === 'success' ? '#4CAF50' : '#4488ff',
+                color: '#ffffff',
+                padding: '12px 18px',
+                borderRadius: '8px',
+                maxWidth: '480px',
                 fontSize: '14px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                fontFamily: "'Inconsolata', monospace",
+                letterSpacing: '0.3px',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
                 cursor: 'pointer'
               }}
               onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
@@ -743,6 +746,8 @@ function App() {
       <RightSidebar
         currentTree={currentTree}
         selectedNode={selectedNode}
+        isGeneratingChildren={isGeneratingChildren}
+        isGeneratingSiblings={isGeneratingSiblings}
       />
     </div>
   );
