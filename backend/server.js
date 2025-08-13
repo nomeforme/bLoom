@@ -58,9 +58,9 @@ const LLM_CONFIG = {
     maxTokens: 4000,
     defaultTemp: 0.8
   },
-  'gpt-4-turbo': {
-    name: 'GPT-4 Turbo',
-    id: 'gpt-4-turbo',
+  'gpt-5': {
+    name: 'GPT-5',
+    id: 'gpt-5',
     provider: 'openai',
     baseURL: 'https://api.openai.com/v1',
     apiKey: process.env.OPENAI_API_KEY,
@@ -69,6 +69,51 @@ const LLM_CONFIG = {
   },
   
   // Anthropic Models
+  'claude-3-7-sonnet': {
+    name: 'Claude 3.7 Sonnet',
+    id: 'claude-3-7-sonnet-20250219',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
+  'claude-3-5-sonnet': {
+    name: 'Claude 3.5 Sonnet',
+    id: 'claude-3-5-sonnet-20240620',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
+  'claude-sonnet-4': {
+    name: 'Claude Sonnet 4',
+    id: 'claude-sonnet-4-20250514',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
+  'claude-opus-4': {
+    name: 'Claude Opus 4',
+    id: 'claude-opus-4-20250514',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
+  'claude-opus-4-1': {
+    name: 'Claude Opus 4.1',
+    id: 'claude-opus-4-1-20250805',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
   'claude-3-opus': {
     name: 'Claude 3 Opus',
     id: 'claude-3-opus-20240229',
@@ -77,6 +122,7 @@ const LLM_CONFIG = {
     maxTokens: 4000,
     defaultTemp: 0.7
   },
+
   'claude-3-sonnet': {
     name: 'Claude 3 Sonnet',
     id: 'claude-3-sonnet-20240229',
@@ -85,6 +131,7 @@ const LLM_CONFIG = {
     maxTokens: 4000,
     defaultTemp: 0.7
   },
+
   'claude-3-haiku': {
     name: 'Claude 3 Haiku',
     id: 'claude-3-haiku-20240307',
@@ -114,6 +161,24 @@ const LLM_CONFIG = {
     apiKey: process.env.OPENROUTER_API_KEY,
     maxTokens: 4000,
     defaultTemp: 0.7
+  },
+
+  'z-ai/glm-4.5': {
+    name: 'GLM 4.5',
+    id: 'z-ai/glm-4.5',
+    provider: 'openai',
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.7
+  },
+
+  'kimi-k2': {
+    name: 'Kimi K2',
+    id: 'moonshotai/kimi-k2',
+    provider: 'openai',
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
   },
   
   // Local models
@@ -188,6 +253,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
     
     if (modelConfig.provider === 'anthropic') {
       // Anthropic API
+      console.log(`📤 Sending request to Anthropic API for model: ${modelConfig.id}`);
+      console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
+      
       response = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
@@ -204,8 +272,21 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
           }
         }
       );
+      
+      console.log(`📥 Anthropic API Response received:`, {
+        status: response.status,
+        model: response.data.model,
+        stopReason: response.data.stop_reason,
+        usage: response.data.usage
+      });
+      
       const generatedText = response.data.content[0].text.trim();
-      console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+      console.log(`✅ Generated text from Anthropic:`, {
+        length: generatedText.length,
+        words: generatedText.split(/\s+/).length,
+        preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
+        fullText: generatedText
+      });
       return generatedText;
       
     } else if (modelConfig.provider === 'openai') {
@@ -214,6 +295,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       
       if (isCompletionModel) {
         // Use completions endpoint for base models
+        console.log(`📤 Sending request to OpenAI-compatible completions API: ${modelConfig.baseURL}`);
+        console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
+        
         response = await axios.post(
           `${modelConfig.baseURL}/completions`,
           {
@@ -230,11 +314,28 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
             }
           }
         );
+        
+        console.log(`📥 Completions API Response received:`, {
+          status: response.status,
+          model: response.data.model,
+          choices: response.data.choices?.length,
+          usage: response.data.usage,
+          finishReason: response.data.choices?.[0]?.finish_reason
+        });
+        
         const generatedText = response.data.choices[0].text.trim();
-        console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+        console.log(`✅ Generated text from completions API:`, {
+          length: generatedText.length,
+          words: generatedText.split(/\s+/).length,
+          preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
+          fullText: generatedText
+        });
         return generatedText;
       } else {
         // Use chat completions endpoint for chat models
+        console.log(`📤 Sending request to OpenAI-compatible chat API: ${modelConfig.baseURL}`);
+        console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
+        
         response = await axios.post(
           `${modelConfig.baseURL}/chat/completions`,
           {
@@ -250,8 +351,22 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
             }
           }
         );
+        
+        console.log(`📥 Chat API Response received:`, {
+          status: response.status,
+          model: response.data.model,
+          choices: response.data.choices?.length,
+          usage: response.data.usage,
+          finishReason: response.data.choices?.[0]?.finish_reason
+        });
+        
         const generatedText = response.data.choices[0].message.content.trim();
-        console.log(`✅ Generated text (${generatedText.length} chars):`, generatedText.substring(0, 100) + '...');
+        console.log(`✅ Generated text from chat API:`, {
+          length: generatedText.length,
+          words: generatedText.split(/\s+/).length,
+          preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
+          fullText: generatedText
+        });
         return generatedText;
       }
     }
@@ -260,18 +375,6 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
     
   } catch (error) {
     console.error(`❌ Error generating text with ${modelKey}:`, error.message);
-    
-    // Try fallback model if original fails
-    if (modelKey !== 'claude-3-haiku') {
-      console.log('🔄 Falling back to Claude 3 Haiku...');
-      try {
-        return await generateText(prompt, 'claude-3-haiku', temperature, maxTokens);
-      } catch (fallbackError) {
-        console.error('❌ Fallback also failed:', fallbackError.message);
-      }
-    }
-    
-    // Return null instead of placeholder text
     return null;
   }
 }
@@ -305,15 +408,21 @@ io.on('connection', (socket) => {
           // Use specified model (no more auto mode)
           const selectedModel = model || 'claude-3-haiku';
           const generatedText = await generateText(contextContent, selectedModel, temperature, maxTokens);
-          console.log(`🔍 Generation ${i + 1} result:`, {
+          console.log(`🔍 Generation ${i + 1}/${count} result:`, {
+            model: selectedModel,
             hasText: !!generatedText,
             length: generatedText?.length || 0,
+            words: generatedText ? generatedText.split(/\s+/).length : 0,
             firstChars: generatedText?.substring(0, 50) || 'null/empty'
           });
           
           if (generatedText && generatedText.trim()) {
             generations.push(generatedText.trim());
-            console.log(`✅ Added generation ${i + 1} to array (${generations.length} total)`);
+            console.log(`✅ Added generation ${i + 1} to array:`, {
+              totalGenerations: generations.length,
+              textLength: generatedText.trim().length,
+              promptUsed: contextContent.substring(0, 100) + '...'
+            });
           } else {
             console.error(`❌ Empty response generating text ${i + 1} with model ${selectedModel}`);
             // Skip this generation - don't add to generations array
@@ -662,21 +771,51 @@ app.post('/api/generate', async (req, res) => {
   try {
     const { prompt, model = 'claude-3-haiku', temperature, maxTokens } = req.body;
     
+    console.log(`📨 /api/generate request received:`, {
+      model,
+      temperature,
+      maxTokens,
+      promptLength: prompt?.length || 0,
+      promptPreview: prompt ? prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '') : 'no prompt'
+    });
+    
     if (!prompt) {
+      console.error('❌ /api/generate: No prompt provided');
       return res.status(400).json({ error: 'Prompt is required' });
     }
     
+    const startTime = Date.now();
     const generatedText = await generateText(prompt, model, temperature, maxTokens);
+    const generationTime = Date.now() - startTime;
     
-    res.json({
-      success: true,
-      generatedText,
-      model: model,
-      modelName: LLM_CONFIG[model]?.name || model,
-      timestamp: new Date().toISOString()
-    });
+    if (generatedText) {
+      console.log(`✅ /api/generate successful:`, {
+        model,
+        generationTimeMs: generationTime,
+        responseLength: generatedText.length,
+        responseWords: generatedText.split(/\s+/).length,
+        responsePreview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : '')
+      });
+      
+      res.json({
+        success: true,
+        generatedText,
+        model: model,
+        modelName: LLM_CONFIG[model]?.name || model,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.error(`❌ /api/generate failed: No text generated from model ${model}`);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate text from model'
+      });
+    }
   } catch (error) {
-    console.error('Error in /api/generate:', error);
+    console.error('❌ Error in /api/generate:', {
+      error: error.message,
+      stack: error.stack?.substring(0, 500)
+    });
     res.status(500).json({
       success: false,
       error: error.message
