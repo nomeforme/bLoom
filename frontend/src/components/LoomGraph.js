@@ -883,23 +883,31 @@ const LoomGraph = forwardRef(({
           
           const generateChildren = graph.onGenerateSiblings;
           if (generateChildren) {
-            generateChildren(selectedNodeData.id, 3)
-              .finally(() => {
+            generateChildren(selectedNodeData.id, 3, true)
+              .then((result) => {
                 if (setIsGeneratingChildren) {
                   setIsGeneratingChildren(false);
                 }
-                // Reorganize nodes after generation completes - only the affected subtree
-                setTimeout(() => {
-                  if (graph.reorganizeNodes && selectedNodeData) {
-                    graph.reorganizeNodes(selectedNodeData.id);
-                  }
-                  // Re-select the same node to reapply native highlight/center
-                  const node = findNodeById(selectedNodeData.id);
-                  if (node) {
-                    graph.selectedNodeForKeyboard = node;
-                    selectNodeByKeyboard(node);
-                  }
-                }, 500); // Small delay to ensure nodes are fully added
+                // Only reorganize if nodes were actually created
+                if (result && result.successCount > 0) {
+                  // Reorganize nodes after generation completes - only the affected subtree
+                  setTimeout(() => {
+                    if (graph.reorganizeNodes && selectedNodeData) {
+                      graph.reorganizeNodes(selectedNodeData.id);
+                    }
+                    // Re-select the same node to reapply native highlight/center
+                    const node = findNodeById(selectedNodeData.id);
+                    if (node) {
+                      graph.selectedNodeForKeyboard = node;
+                      selectNodeByKeyboard(node);
+                    }
+                  }, 500); // Small delay to ensure nodes are fully added
+                }
+              })
+              .catch(() => {
+                if (setIsGeneratingChildren) {
+                  setIsGeneratingChildren(false);
+                }
               });
           }
         }
@@ -917,23 +925,31 @@ const LoomGraph = forwardRef(({
           
           const generateSiblings = graph.onGenerateSiblings;
           if (generateSiblings) {
-            generateSiblings(selectedNodeData.parentId, 3)
-              .finally(() => {
+            generateSiblings(selectedNodeData.parentId, 3, false)
+              .then((result) => {
                 if (setIsGeneratingSiblings) {
                   setIsGeneratingSiblings(false);
                 }
-                // Reorganize nodes after generation completes - only the affected subtree
-                setTimeout(() => {
-                  if (graph.reorganizeNodes && selectedNodeData) {
-                    graph.reorganizeNodes(selectedNodeData.parentId);
-                  }
-                  // Re-select the parent node to reapply native highlight/center
-                  const parentNode = findNodeById(selectedNodeData.parentId);
-                  if (parentNode) {
-                    graph.selectedNodeForKeyboard = parentNode;
-                    selectNodeByKeyboard(parentNode);
-                  }
-                }, 500); // Small delay to ensure nodes are fully added
+                // Only reorganize if nodes were actually created
+                if (result && result.successCount > 0) {
+                  // Reorganize nodes after generation completes - only the affected subtree
+                  setTimeout(() => {
+                    if (graph.reorganizeNodes && selectedNodeData) {
+                      graph.reorganizeNodes(selectedNodeData.parentId);
+                    }
+                    // Re-select the parent node to reapply native highlight/center
+                    const parentNode = findNodeById(selectedNodeData.parentId);
+                    if (parentNode) {
+                      graph.selectedNodeForKeyboard = parentNode;
+                      selectNodeByKeyboard(parentNode);
+                    }
+                  }, 500); // Small delay to ensure nodes are fully added
+                }
+              })
+              .catch(() => {
+                if (setIsGeneratingSiblings) {
+                  setIsGeneratingSiblings(false);
+                }
               });
           }
         }
