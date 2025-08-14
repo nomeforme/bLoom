@@ -235,10 +235,27 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
   return (
     <div className={`left-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
-        <h3>{viewMode === 'story' ? 'Path View' : 'Tree View'}</h3>
-        <div style={{ fontSize: '11px', color: '#888', marginBottom: '15px' }}>
-          {viewMode === 'story' ? 'Complete narrative from root to selected node' : 'Tree structure view'}
-        </div>
+        <h3>
+          <div>{viewMode === 'story' ? 'Path View' : 'Tree View'}</div>
+          
+          {/* Tree and Node IDs - Horizontal */}
+          <div style={{ 
+            fontSize: '10px', 
+            color: '#666', 
+            marginTop: '4px',
+            lineHeight: '1.4',
+            display: 'flex',
+            gap: '16px',
+            fontWeight: 'normal'
+          }}>
+            {currentTree && (
+              <div>Tree: <span style={{ color: '#4CAF50' }}>{currentTree.address ? `${currentTree.address.slice(0, 6)}...${currentTree.address.slice(-4)}` : 'N/A'}</span></div>
+            )}
+            {selectedNode && selectedNode.id && (
+              <div>Node: <span style={{ color: '#4CAF50' }}>{`${selectedNode.id.slice(0, 6)}...${selectedNode.id.slice(-4)}`}</span></div>
+            )}
+          </div>
+        </h3>
         
         <div className="path-content" ref={scrollRef}>
           {viewMode === 'story' ? (

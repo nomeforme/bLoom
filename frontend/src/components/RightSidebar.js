@@ -122,6 +122,7 @@ const RightSidebar = ({
         const filteredTrees = getFilteredTrees();
         const currentIndex = filteredTrees.findIndex(tree => tree.address === currentTree?.address);
         if (currentIndex > 0) {
+          console.log('⌨️ Keyboard: Switching to previous tree');
           onSelectTree(filteredTrees[currentIndex - 1]);
         }
         return;
@@ -132,6 +133,7 @@ const RightSidebar = ({
         const filteredTrees = getFilteredTrees();
         const currentIndex = filteredTrees.findIndex(tree => tree.address === currentTree?.address);
         if (currentIndex < filteredTrees.length - 1) {
+          console.log('⌨️ Keyboard: Switching to next tree');
           onSelectTree(filteredTrees[currentIndex + 1]);
         }
         return;
