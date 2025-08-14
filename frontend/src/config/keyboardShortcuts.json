@@ -71,5 +71,37 @@
       "symbol": "E",
       "category": "View"
     }
+  },
+  "models": {
+    "previousModel": {
+      "key": "z",
+      "modifiers": [],
+      "description": "Switch to previous model",
+      "symbol": "Z",
+      "category": "Models"
+    },
+    "nextModel": {
+      "key": "c",
+      "modifiers": [],
+      "description": "Switch to next model",
+      "symbol": "C",
+      "category": "Models"
+    }
+  },
+  "trees": {
+    "previousTree": {
+      "key": "j",
+      "modifiers": [],
+      "description": "Switch to previous tree",
+      "symbol": "J",
+      "category": "Trees"
+    },
+    "nextTree": {
+      "key": "l",
+      "modifiers": [],
+      "description": "Switch to next tree",
+      "symbol": "L",
+      "category": "Trees"
+    }
   }
 }
