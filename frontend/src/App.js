@@ -768,6 +768,7 @@ function App() {
         selectedNode={selectedNode}
         isGeneratingChildren={isGeneratingChildren}
         isGeneratingSiblings={isGeneratingSiblings}
+        selectedModel={selectedModel}
       />
     </div>
   );

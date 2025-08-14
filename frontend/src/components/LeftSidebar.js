@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
-const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings }) => {
+const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings, selectedModel }) => {
   const scrollRef = useRef(null);
   const selectedNodeRef = useRef(null);
   const [viewMode, setViewMode] = useState('story'); // 'story' or 'hierarchy'
@@ -291,12 +291,22 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
           <div style={{
             marginTop: '14px',
             textAlign: 'center',
-            fontFamily: "'Inconsolata', monospace",
-            fontSize: '16px'
+            fontFamily: "'Inconsolata', monospace"
           }}>
-            <span className="gen-fade">
-              {isGeneratingChildren ? 'Generating children…' : 'Generating siblings…'}
-            </span>
+            <div style={{ fontSize: '16px' }}>
+              <span className="gen-fade">
+                {isGeneratingChildren ? 'Generating children…' : 'Generating siblings…'}
+              </span>
+            </div>
+            {selectedModel && (
+              <div style={{
+                fontSize: '12px',
+                color: '#888',
+                marginTop: '4px'
+              }}>
+                {selectedModel}
+              </div>
+            )}
           </div>
         )}
       </div>
