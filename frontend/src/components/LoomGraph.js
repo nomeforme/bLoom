@@ -79,6 +79,52 @@ const LoomGraph = forwardRef(({
       if (graphRef.current && graphRef.current.reorganizeNodes) {
         graphRef.current.reorganizeNodes(targetNodeId);
       }
+    },
+    findNodeById: (nodeId) => {
+      if (graphRef.current) {
+        return graphRef.current.findNodesByType("loom/node")
+          .find(node => node.properties.nodeId === nodeId);
+      }
+      return null;
+    },
+    selectNodeByKeyboard: (node) => {
+      if (graphRef.current && node) {
+        const graph = graphRef.current;
+        const canvas = graph.canvasInstance;
+        
+        // Set keyboard selection
+        graph.selectedNodeForKeyboard = node;
+        
+        // Use LiteGraph's built-in selection
+        if (canvas && typeof canvas.selectNode === 'function') {
+          canvas.selectNode(node);
+        } else {
+          // Fallback selection
+          graph.findNodesByType("loom/node").forEach(n => { n.selected = false; });
+          node.selected = true;
+        }
+        
+        // Center on the node
+        if (typeof graph.centerOnNodeHiDPI === 'function') {
+          graph.centerOnNodeHiDPI(node);
+        } else if (canvas && typeof canvas.centerOnNode === 'function') {
+          canvas.centerOnNode(node);
+        }
+        
+        // Trigger selection callback
+        if (onNodeSelect) {
+          onNodeSelect({
+            id: node.properties.nodeId,
+            content: node.properties.content,
+            author: node.properties.author,
+            timestamp: node.properties.timestamp,
+            parentId: node.properties.parentId
+          });
+        }
+        
+        // Mark canvas as dirty
+        canvas && canvas.setDirty && canvas.setDirty(true, true);
+      }
     }
   }));
 
