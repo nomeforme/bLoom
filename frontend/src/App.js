@@ -215,7 +215,7 @@ function App() {
       socket.off('nodeCreated', handleNodeCreated);
       socket.off('generationComplete', handleGenerationComplete);
     };
-  }, [socket, currentTree?.address, getTree, addNotification, isGeneratingChildren, isGeneratingSiblings]);
+  }, [socket, currentTree?.address, getTree, addNotification]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -466,7 +466,7 @@ function App() {
     return fullContext;
   }, [currentTree]);
 
-  const handleGenerateSiblings = useCallback((parentId, count = 3, isForChildren = false) => {
+  const handleGenerateSiblings = useCallback((parentId, count = 3) => {
     if (!parentId) return Promise.resolve();
     
     return new Promise((resolve, reject) => {
@@ -475,7 +475,7 @@ function App() {
         return;
       }
 
-      console.log('🎯 App: Starting generation for parentId:', parentId, 'isForChildren:', isForChildren);
+      console.log('🎯 App: Starting generation for parentId:', parentId);
 
       // Set up one-time listeners for completion (for promise resolution only)
       const handleComplete = (data) => {
