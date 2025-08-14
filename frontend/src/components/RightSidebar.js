@@ -85,6 +85,12 @@ const RightSidebar = ({
         return;
       }
 
+      // Don't allow changes during generation
+      const isGenerating = isGeneratingChildren || isGeneratingSiblings;
+      if (isGenerating) {
+        return;
+      }
+
       // Handle model navigation shortcuts
       if (shortcutsManager.matchShortcut(e, 'previousModel')) {
         e.preventDefault();
@@ -136,7 +142,7 @@ const RightSidebar = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedModel, availableModels, currentTree, trees, showOnlyMyTrees, account, onSelectTree]);
+  }, [selectedModel, availableModels, currentTree, trees, showOnlyMyTrees, account, onSelectTree, isGeneratingChildren, isGeneratingSiblings]);
 
   // Helper function to get filtered trees (same logic as in render)
   const getFilteredTrees = () => {
@@ -466,6 +472,7 @@ const RightSidebar = ({
         <select 
           value={selectedModel} 
           onChange={(e) => setSelectedModel(e.target.value)}
+          disabled={isGeneratingChildren || isGeneratingSiblings}
           style={{
             width: '100%',
             padding: '8px 12px',

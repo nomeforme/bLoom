@@ -1,27 +1,27 @@
 {
   "navigation": {
     "up": {
-      "key": "ArrowUp",
+      "key": "w",
       "description": "Navigate to previous sibling",
-      "symbol": "↑",
+      "symbol": "W",
       "category": "Navigation"
     },
     "down": {
-      "key": "ArrowDown", 
+      "key": "s", 
       "description": "Navigate to next sibling",
-      "symbol": "↓",
+      "symbol": "S",
       "category": "Navigation"
     },
     "left": {
-      "key": "ArrowLeft",
+      "key": "a",
       "description": "Navigate to parent node",
-      "symbol": "←",
+      "symbol": "A",
       "category": "Navigation"
     },
     "right": {
-      "key": "ArrowRight",
+      "key": "d",
       "description": "Navigate to first child", 
-      "symbol": "→",
+      "symbol": "D",
       "category": "Navigation"
     }
   },
@@ -90,17 +90,17 @@
   },
   "trees": {
     "previousTree": {
-      "key": "j",
+      "key": "ArrowUp",
       "modifiers": [],
       "description": "Switch to previous tree",
-      "symbol": "J",
+      "symbol": "↑",
       "category": "Trees"
     },
     "nextTree": {
-      "key": "l",
+      "key": "ArrowDown",
       "modifiers": [],
       "description": "Switch to next tree",
-      "symbol": "L",
+      "symbol": "↓",
       "category": "Trees"
     }
   }
