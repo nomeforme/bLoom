@@ -559,7 +559,7 @@ function App() {
             if (graphRef.current) {
               const graphNode = graphRef.current.findNodeById?.(rememberedNodeId);
               if (graphNode) {
-                graphRef.current.selectNode?.(graphNode);
+                graphRef.current.selectNodeByKeyboard?.(graphNode);
               }
             }
           }, 100); // Small delay to ensure nodes are loaded
