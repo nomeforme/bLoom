@@ -120,6 +120,9 @@ function App() {
     console.log('🎯 App: Setting up socket event handlers');
 
     const handleGenerationComplete = (data) => {
+      console.log('🎯 App: Global handleGenerationComplete called:', data);
+      
+      // Handle notifications here in the global handler
       // Show warnings if any generations failed
       if (data.warnings && data.warnings.length > 0) {
         data.warnings.forEach(warning => {
@@ -127,15 +130,19 @@ function App() {
         });
       }
       
-      // Show success message if some succeeded
+      // Show appropriate message based on success/failure
       if (data.successCount > 0) {
+        // Success message
         const kind = isGeneratingChildren ? 'children' : 'sibling';
         const plural = data.successCount === 1 ? '' : 's';
         const msg = `Generated ${data.successCount}/${data.totalRequested ?? data.successCount} ${kind} node${plural} successfully`;
+        console.log('🎯 App: Adding success notification:', msg);
         addNotification(msg, 'success');
       } else {
-        // Show error if all failed
-        addNotification(data.message, 'error');
+        // Error message when all failed
+        const errorMsg = data.message || 'All generation attempts failed';
+        console.log('🎯 App: Adding error notification:', errorMsg);
+        addNotification(errorMsg, 'error');
       }
       
       // Reset generation states at the end
@@ -208,7 +215,7 @@ function App() {
       socket.off('nodeCreated', handleNodeCreated);
       socket.off('generationComplete', handleGenerationComplete);
     };
-  }, [socket, currentTree, getTree, addNotification]);
+  }, [socket, currentTree?.address, getTree, addNotification, isGeneratingChildren, isGeneratingSiblings]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -459,7 +466,7 @@ function App() {
     return fullContext;
   }, [currentTree]);
 
-  const handleGenerateSiblings = useCallback((parentId, count = 3) => {
+  const handleGenerateSiblings = useCallback((parentId, count = 3, isForChildren = false) => {
     if (!parentId) return Promise.resolve();
     
     return new Promise((resolve, reject) => {
@@ -468,14 +475,14 @@ function App() {
         return;
       }
 
-      // Set up one-time listeners for completion
+      console.log('🎯 App: Starting generation for parentId:', parentId, 'isForChildren:', isForChildren);
+
+      // Set up one-time listeners for completion (for promise resolution only)
       const handleComplete = (data) => {
-        console.log('🎯 App: Local handleComplete called in handleGenerateSiblings:', data);
-        console.log('🎯 App: Removing local socket listeners');
+        console.log('🎯 App: Local handleComplete called for promise resolution:', data);
         socket.off('generationComplete', handleComplete);
         socket.off('error', handleError);
-        // Always resolve - notifications will handle showing warnings/errors
-        // Only reject on actual socket/network errors, not generation failures
+        // Just resolve the promise, notifications handled by global listener
         resolve(data);
       };
 
@@ -504,7 +511,7 @@ function App() {
         maxTokens: modelsConfig.generationSettings.maxTokens
       });
     });
-  }, [socket, currentTree, buildFullPathContext, selectedModel]);
+  }, [socket, currentTree, buildFullPathContext, selectedModel, account]);
 
   // Handle model selection change
   const handleModelChange = useCallback((newModel) => {
@@ -711,10 +718,13 @@ function App() {
             <div
               key={notification.id}
               style={{
-                background: notification.type === 'error' ? '#ff4444' : 
-                           notification.type === 'warning' ? '#ff8800' : 
-                           notification.type === 'success' ? '#4CAF50' : '#4488ff',
-                color: '#ffffff',
+                background: '#2a2a2a',
+                border: `2px solid ${
+                  notification.type === 'error' ? '#ff4444' : 
+                  notification.type === 'warning' ? '#ff8800' : 
+                  notification.type === 'success' ? '#4CAF50' : '#4488ff'
+                }`,
+                color: '#e0e0e0',
                 padding: '12px 18px',
                 borderRadius: '8px',
                 maxWidth: '480px',
@@ -722,7 +732,8 @@ function App() {
                 fontFamily: "'Inconsolata', monospace",
                 letterSpacing: '0.3px',
                 boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
               }}
               onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
             >

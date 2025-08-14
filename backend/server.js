@@ -547,7 +547,8 @@ io.on('connection', (socket) => {
           'All generation attempts failed'
       };
 
-      if (failedCount > 0) {
+      // Only add warnings if SOME (not all) generations failed
+      if (failedCount > 0 && successCount > 0) {
         response.warnings = [`${failedCount} generation${failedCount > 1 ? 's' : ''} failed or returned empty responses`];
       }
 
