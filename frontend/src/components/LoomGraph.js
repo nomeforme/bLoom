@@ -883,7 +883,7 @@ const LoomGraph = forwardRef(({
           
           const generateChildren = graph.onGenerateSiblings;
           if (generateChildren) {
-            generateChildren(selectedNodeData.id, 3, true)
+            generateChildren(selectedNodeData.id, 3)
               .then((result) => {
                 if (setIsGeneratingChildren) {
                   setIsGeneratingChildren(false);
@@ -925,7 +925,7 @@ const LoomGraph = forwardRef(({
           
           const generateSiblings = graph.onGenerateSiblings;
           if (generateSiblings) {
-            generateSiblings(selectedNodeData.parentId, 3, false)
+            generateSiblings(selectedNodeData.parentId, 3)
               .then((result) => {
                 if (setIsGeneratingSiblings) {
                   setIsGeneratingSiblings(false);
