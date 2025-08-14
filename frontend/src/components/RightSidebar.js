@@ -77,6 +77,77 @@ const RightSidebar = ({
     }
   }, [selectedModel, onModelChange]);
 
+  // Handle keyboard shortcuts for model and tree navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't interfere if user is typing in an input field
+      if (shortcutsManager.isTypingInInput()) {
+        return;
+      }
+
+      // Handle model navigation shortcuts
+      if (shortcutsManager.matchShortcut(e, 'previousModel')) {
+        e.preventDefault();
+        const currentIndex = availableModels.findIndex(model => model.id === selectedModel);
+        if (currentIndex > 0) {
+          const newModel = availableModels[currentIndex - 1];
+          if (newModel.available !== false) {
+            setSelectedModel(newModel.id);
+          }
+        }
+        return;
+      }
+
+      if (shortcutsManager.matchShortcut(e, 'nextModel')) {
+        e.preventDefault();
+        const currentIndex = availableModels.findIndex(model => model.id === selectedModel);
+        if (currentIndex < availableModels.length - 1) {
+          const newModel = availableModels[currentIndex + 1];
+          if (newModel.available !== false) {
+            setSelectedModel(newModel.id);
+          }
+        }
+        return;
+      }
+
+      // Handle tree navigation shortcuts
+      if (shortcutsManager.matchShortcut(e, 'previousTree')) {
+        e.preventDefault();
+        const filteredTrees = getFilteredTrees();
+        const currentIndex = filteredTrees.findIndex(tree => tree.address === currentTree?.address);
+        if (currentIndex > 0) {
+          onSelectTree(filteredTrees[currentIndex - 1]);
+        }
+        return;
+      }
+
+      if (shortcutsManager.matchShortcut(e, 'nextTree')) {
+        e.preventDefault();
+        const filteredTrees = getFilteredTrees();
+        const currentIndex = filteredTrees.findIndex(tree => tree.address === currentTree?.address);
+        if (currentIndex < filteredTrees.length - 1) {
+          onSelectTree(filteredTrees[currentIndex + 1]);
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedModel, availableModels, currentTree, trees, showOnlyMyTrees, account, onSelectTree]);
+
+  // Helper function to get filtered trees (same logic as in render)
+  const getFilteredTrees = () => {
+    return trees.filter(tree => {
+      if (showOnlyMyTrees && account) {
+        return tree.creator && tree.creator.toLowerCase() === account.toLowerCase();
+      }
+      return true;
+    });
+  };
+
   const ellipseAddress = (address) => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
