@@ -20,6 +20,7 @@ function App() {
   const [isGeneratingSiblings, setIsGeneratingSiblings] = useState(false);
   const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
   const [notifications, setNotifications] = useState([]);
+  const [treeNodeMemory, setTreeNodeMemory] = useState(new Map()); // Store last selected node for each tree
   
   const {
     provider,
@@ -305,7 +306,16 @@ function App() {
 
   const handleNodeSelect = useCallback((node) => {
     setSelectedNode(node);
-  }, []);
+    
+    // Save node memory for current tree
+    if (currentTree && node && node.id) {
+      setTreeNodeMemory(prev => {
+        const newMemory = new Map(prev);
+        newMemory.set(currentTree.address, node.id);
+        return newMemory;
+      });
+    }
+  }, [currentTree]);
 
   // Fetch NFT information when a node is selected
   useEffect(() => {
@@ -513,6 +523,57 @@ function App() {
     });
   }, [socket, currentTree, buildFullPathContext, selectedModel, account]);
 
+  // Handle tree selection with node memory
+  const handleTreeSelect = useCallback((newTree) => {
+    // Save current node for the current tree
+    if (currentTree && selectedNode) {
+      setTreeNodeMemory(prev => {
+        const newMemory = new Map(prev);
+        newMemory.set(currentTree.address, selectedNode.id);
+        console.log(`💾 Saving node ${selectedNode.id.substring(0, 8)}... for tree ${currentTree.address.substring(0, 8)}...`);
+        return newMemory;
+      });
+    }
+
+    // Switch to new tree
+    setCurrentTree(newTree);
+    
+    // Restore the last selected node for this tree (if any)
+    const rememberedNodeId = treeNodeMemory.get(newTree.address);
+    if (rememberedNodeId) {
+      console.log(`🔄 Restoring node ${rememberedNodeId.substring(0, 8)}... for tree ${newTree.address.substring(0, 8)}...`);
+      // Find the node in the new tree
+      const rememberedNode = newTree.nodes?.find(node => node.nodeId === rememberedNodeId);
+      if (rememberedNode) {
+        setSelectedNode({
+          id: rememberedNode.nodeId,
+          content: rememberedNode.content,
+          parentId: rememberedNode.parentId,
+          author: rememberedNode.author,
+          timestamp: rememberedNode.timestamp
+        });
+        
+        // Also tell the graph to select this node
+        if (graphRef.current) {
+          setTimeout(() => {
+            if (graphRef.current) {
+              const graphNode = graphRef.current.findNodeById?.(rememberedNodeId);
+              if (graphNode) {
+                graphRef.current.selectNode?.(graphNode);
+              }
+            }
+          }, 100); // Small delay to ensure nodes are loaded
+        }
+      } else {
+        console.log(`⚠️ Remembered node not found in new tree, clearing selection`);
+        setSelectedNode(null);
+      }
+    } else {
+      console.log(`🆕 No remembered node for tree ${newTree.address.substring(0, 8)}..., clearing selection`);
+      setSelectedNode(null);
+    }
+  }, [currentTree, selectedNode, treeNodeMemory, graphRef]);
+
   // Handle model selection change
   const handleModelChange = useCallback((newModel) => {
     setSelectedModel(newModel);
@@ -689,7 +750,7 @@ function App() {
         onCreateTree={handleCreateTree}
         trees={trees}
         currentTree={currentTree}
-        onSelectTree={setCurrentTree}
+        onSelectTree={handleTreeSelect}
         selectedNode={selectedNode}
         selectedNodeNFT={selectedNodeNFT}
         onGenerateSiblings={handleGenerateSiblings}
