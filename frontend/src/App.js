@@ -5,6 +5,12 @@ import LoomGraph from './components/LoomGraph';
 import RightSidebar from './components/RightSidebar';
 import LeftSidebar from './components/LeftSidebar';
 import { useBlockchain } from './hooks/useBlockchain';
+import { createSocketHandlers } from './utils/socketHandlers';
+import { createGenerationHandler } from './utils/generationUtils';
+import { createNodeHandlers } from './utils/nodeUtils';
+import { createImportHandler } from './utils/importUtils';
+import { createMemoryHandlers } from './utils/memoryUtils';
+import { createNotificationSystem } from './utils/notificationUtils';
 import modelsConfig from './config/models.json';
 import './App.css';
 
@@ -44,72 +50,24 @@ function App() {
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
-    newSocket.on('treeCreated', async (data) => {
-      console.log('Socket: Tree created event received:', data);
-      
-      // Check if tree already exists (may have been added by handleCreateTree)
-      setTrees(prev => {
-        const exists = prev.some(tree => tree.address === data.treeAddress);
-        if (exists) {
-          console.log('Socket: Tree already exists in list, skipping socket update');
-          return prev;
-        }
-        
-        // Tree doesn't exist, this might be from another client or a missed immediate update
-        console.log('Socket: Adding tree from socket event');
-        try {
-          // Try to fetch full tree data
-          getTree(data.treeAddress).then(fullTree => {
-            setTrees(prevTrees => {
-              const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
-              if (stillExists) return prevTrees;
-              return [...prevTrees, fullTree];
-            });
-            setCurrentTree(fullTree);
-          }).catch(error => {
-            console.error('Socket: Error fetching full tree data:', error);
-            // Fallback to basic tree
-            const basicTree = {
-              address: data.treeAddress,
-              rootContent: data.rootContent,
-              nodeCount: 1,
-              nodes: [],
-              nftContract: null,
-              nftAddress: null
-            };
-            setTrees(prevTrees => {
-              const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
-              if (stillExists) return prevTrees;
-              return [...prevTrees, basicTree];
-            });
-            setCurrentTree(basicTree);
-          });
-        } catch (error) {
-          console.error('Socket: Error in tree creation handler:', error);
-        }
-        
-        return prev; // Return unchanged for now, async operations will update
-      });
-    });
-
     return () => newSocket.close();
-  }, [getTree, currentTree]);
-
-  // Add notification function
-  const addNotification = useCallback((message, type = 'info') => {
-    const notification = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
-      message,
-      type,
-      timestamp: new Date()
-    };
-    setNotifications(prev => [...prev, notification]);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== notification.id));
-    }, 5000);
   }, []);
+
+  // Initialize notification system
+  const { addNotification, removeNotification } = createNotificationSystem(setNotifications);
+
+  // Initialize socket handlers
+  const socketHandlers = createSocketHandlers(
+    socket,
+    currentTree,
+    setCurrentTree,
+    setTrees,
+    setIsGeneratingChildren,
+    setIsGeneratingSiblings,
+    addNotification,
+    graphRef,
+    getTree
+  );
 
   // Handle socket events that depend on currentTree
   useEffect(() => {
@@ -120,103 +78,18 @@ function App() {
 
     console.log('🎯 App: Setting up socket event handlers');
 
-    const handleGenerationComplete = (data) => {
-      console.log('🎯 App: Global handleGenerationComplete called:', data);
-      
-      // Handle notifications here in the global handler
-      // Show warnings if any generations failed
-      if (data.warnings && data.warnings.length > 0) {
-        data.warnings.forEach(warning => {
-          addNotification(warning, 'warning');
-        });
-      }
-      
-      // Show appropriate message based on success/failure
-      if (data.successCount > 0) {
-        // Success message
-        const kind = isGeneratingChildren ? 'children' : 'sibling';
-        const plural = data.successCount === 1 ? '' : 's';
-        const msg = `Generated ${data.successCount}/${data.totalRequested ?? data.successCount} ${kind} node${plural} successfully`;
-        console.log('🎯 App: Adding success notification:', msg);
-        addNotification(msg, 'success');
-      } else {
-        // Error message when all failed
-        const errorMsg = data.message || 'All generation attempts failed';
-        console.log('🎯 App: Adding error notification:', errorMsg);
-        addNotification(errorMsg, 'error');
-      }
-      
-      // Reset generation states at the end
-      setIsGeneratingChildren(false);
-      setIsGeneratingSiblings(false);
-      // Note: Tree refresh after generation removed to prevent unnecessary full redraws
-      // The new nodes are already added to the graph via the generation process
-    };
-
-    const handleNodeCreated = (data) => {
-      console.log('Socket nodeCreated event received:', {
-        nodeId: data.nodeId,
-        parentId: data.parentId,
-        content: data.content?.substring(0, 50) + '...',
-        treeAddress: data.treeAddress,
-        currentTreeAddress: currentTree?.address
-      });
-      
-      if (graphRef.current) {
-        graphRef.current.addNodeFromBlockchain(data);
-      }
-      
-      // Update current tree state with new node
-      if (currentTree && data.treeAddress === currentTree.address) {
-        console.log('Updating current tree with new node');
-        const newNode = {
-          nodeId: data.nodeId,
-          parentId: data.parentId,
-          content: data.content,
-          children: [],
-          author: data.author,
-          timestamp: data.timestamp,
-          isRoot: false
-        };
-
-        setCurrentTree(prevTree => {
-          console.log('Previous tree node count:', prevTree.nodeCount);
-          const updatedTree = {
-            ...prevTree,
-            nodes: [...(prevTree.nodes || []), newNode],
-            nodeCount: (prevTree.nodeCount || 0) + 1
-          };
-          console.log('Updated tree node count:', updatedTree.nodeCount);
-          return updatedTree;
-        });
-
-        // Also update the tree in the trees list to ensure persistence
-        setTrees(prevTrees => 
-          prevTrees.map(tree => 
-            tree.address === data.treeAddress 
-              ? {
-                  ...tree,
-                  nodes: [...(tree.nodes || []), newNode],
-                  nodeCount: (tree.nodeCount || 0) + 1
-                }
-              : tree
-          )
-        );
-      } else {
-        console.log('Not updating tree - currentTree mismatch or null');
-      }
-    };
-
-    socket.on('nodeCreated', handleNodeCreated);
-    socket.on('generationComplete', handleGenerationComplete);
+    socket.on('treeCreated', socketHandlers.handleTreeCreated);
+    socket.on('nodeCreated', socketHandlers.handleNodeCreated);
+    socket.on('generationComplete', socketHandlers.handleGenerationComplete);
     console.log('🎯 App: Added global socket event listeners');
 
     return () => {
       console.log('🎯 App: Removing global socket event listeners');
-      socket.off('nodeCreated', handleNodeCreated);
-      socket.off('generationComplete', handleGenerationComplete);
+      socket.off('treeCreated', socketHandlers.handleTreeCreated);
+      socket.off('nodeCreated', socketHandlers.handleNodeCreated);
+      socket.off('generationComplete', socketHandlers.handleGenerationComplete);
     };
-  }, [socket, currentTree?.address, getTree, addNotification]);
+  }, [socket, currentTree?.address, getTree, addNotification, socketHandlers]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -304,18 +177,18 @@ function App() {
     }
   };
 
+  // Initialize memory handlers
+  const memoryHandlers = createMemoryHandlers(
+    treeNodeMemory,
+    setTreeNodeMemory,
+    setSelectedNode,
+    setCurrentTree,
+    graphRef
+  );
+
   const handleNodeSelect = useCallback((node) => {
-    setSelectedNode(node);
-    
-    // Save node memory for current tree
-    if (currentTree && node && node.id) {
-      setTreeNodeMemory(prev => {
-        const newMemory = new Map(prev);
-        newMemory.set(currentTree.address, node.id);
-        return newMemory;
-      });
-    }
-  }, [currentTree]);
+    memoryHandlers.handleNodeSelect(node, currentTree);
+  }, [currentTree, memoryHandlers]);
 
   // Fetch NFT information when a node is selected
   useEffect(() => {
@@ -336,243 +209,43 @@ function App() {
     fetchNodeNFT();
   }, [selectedNode, currentTree, getNodeNFTInfo]);
 
+  // Initialize node handlers
+  const nodeHandlers = createNodeHandlers(
+    currentTree,
+    socket,
+    addNode,
+    getTree,
+    setCurrentTree,
+    setTrees
+  );
+
   const handleAddNode = useCallback(async (parentId, content) => {
-    if (!currentTree) return;
-    
-    try {
-      await addNode(currentTree.address, parentId, content);
-      // After adding a node, refresh the tree to get the latest state
-      setTimeout(async () => {
-        try {
-          const updatedTree = await getTree(currentTree.address);
-          setCurrentTree(updatedTree);
-          // Update trees list as well
-          setTrees(prevTrees => 
-            prevTrees.map(tree => 
-              tree.address === currentTree.address ? updatedTree : tree
-            )
-          );
-        } catch (error) {
-          console.error('Error refreshing tree after node addition:', error);
-        }
-      }, 1000); // Give some time for blockchain to process
-    } catch (error) {
-      console.error('Error adding node:', error);
-    }
-  }, [currentTree, addNode, getTree]);
+    return nodeHandlers.handleAddNode(parentId, content);
+  }, [nodeHandlers]);
 
   const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent) => {
-    if (!socket) {
-      throw new Error('Socket not connected - cannot update node');
-    }
+    return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent);
+  }, [nodeHandlers]);
 
-    if (!treeAddress) {
-      throw new Error('Tree address is required');
-    }
-    
-    if (!nodeId) {
-      throw new Error('Node ID is required');
-    }
-    
-    try {
-      // Use socket to send update request to backend
-      const updatePromise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          socket.off('updateComplete', handleComplete);
-          reject(new Error('Update timeout'));
-        }, 30000); // 30 second timeout
-        
-        const handleComplete = (data) => {
-          clearTimeout(timeout);
-          socket.off('updateComplete', handleComplete);
-          if (data.success) {
-            resolve(data);
-          } else {
-            reject(new Error(data.error || 'Update failed'));
-          }
-        };
-
-        socket.on('updateComplete', handleComplete);
-
-        // Send update request to backend
-        socket.emit('updateNode', {
-          treeAddress,
-          nodeId,
-          newContent
-        });
-      });
-
-      // Wait for backend to complete the update
-      await updatePromise;
-      
-      // Refresh the tree to get the updated content from blockchain
-      setTimeout(async () => {
-        try {
-          const updatedTree = await getTree(treeAddress);
-          
-          // Update current tree if it matches
-          if (currentTree?.address === treeAddress) {
-            setCurrentTree(updatedTree);
-          }
-          
-          // Update trees list
-          setTrees(prevTrees => 
-            prevTrees.map(tree => 
-              tree.address === treeAddress ? updatedTree : tree
-            )
-          );
-        } catch (error) {
-          console.error('Error refreshing tree after node update:', error);
-        }
-      }, 1000); // Give some time for blockchain to process
-      
-    } catch (error) {
-      console.error('Error updating node:', error);
-      throw error;
-    }
-  }, [socket, getTree, currentTree]);
-
-  // Helper function to build full narrative context from root to target node
-  const buildFullPathContext = useCallback((targetNodeId) => {
-    if (!currentTree || !currentTree.nodes) return '';
-    
-    // Build a map of nodes for quick lookup
-    const nodeMap = new Map();
-    currentTree.nodes.forEach(node => {
-      nodeMap.set(node.nodeId, node);
-    });
-    
-    // Find the target node
-    const targetNode = nodeMap.get(targetNodeId);
-    if (!targetNode) return '';
-    
-    // Build path from root to target
-    const path = [];
-    let currentNode = targetNode;
-    
-    // Trace back to root
-    while (currentNode) {
-      path.unshift(currentNode);
-      
-      // Check if this is the root node
-      if (currentNode.isRoot || 
-          currentNode.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000' ||
-          currentNode.parentId === '0x0') {
-        break;
-      }
-      
-      // Move to parent
-      currentNode = nodeMap.get(currentNode.parentId);
-      
-      // Prevent infinite loops
-      if (path.length > 50) {
-        console.warn('Path too long, breaking to prevent infinite loop');
-        break;
-      }
-    }
-    
-    // Combine all content in sequence
-    const fullContext = path.map(node => node.content.trim()).filter(content => content).join('\n\n');
-    return fullContext;
-  }, [currentTree]);
+  // Initialize generation handlers
+  const generationHandler = createGenerationHandler(
+    socket,
+    currentTree,
+    account,
+    selectedModel,
+    modelsConfig,
+    setIsGeneratingChildren,
+    setIsGeneratingSiblings
+  );
 
   const handleGenerateSiblings = useCallback((parentId, count = 3) => {
-    if (!parentId) return Promise.resolve();
-    
-    return new Promise((resolve, reject) => {
-      if (!socket) {
-        reject(new Error('Socket not connected'));
-        return;
-      }
-
-      console.log('🎯 App: Starting generation for parentId:', parentId);
-
-      // Set up one-time listeners for completion (for promise resolution only)
-      const handleComplete = (data) => {
-        console.log('🎯 App: Local handleComplete called for promise resolution:', data);
-        socket.off('generationComplete', handleComplete);
-        socket.off('error', handleError);
-        // Just resolve the promise, notifications handled by global listener
-        resolve(data);
-      };
-
-      const handleError = (error) => {
-        socket.off('generationComplete', handleComplete);
-        socket.off('error', handleError);
-        reject(error);
-      };
-
-      socket.on('generationComplete', handleComplete);
-      socket.on('error', handleError);
-      console.log('🎯 App: Added local socket listeners for generation promise');
-
-      // Build full narrative context from root to parent node
-      const fullPathContext = buildFullPathContext(parentId);
-
-      // Send generation request to backend with full context
-      socket.emit('generateSiblings', {
-        treeAddress: currentTree?.address,
-        parentId,
-        parentContent: fullPathContext, // Full narrative path context
-        count,
-        userAccount: account, // Pass the current user's account address
-        model: selectedModel, // Use the selected model from dropdown
-        temperature: modelsConfig.generationSettings.temperature,
-        maxTokens: modelsConfig.generationSettings.maxTokens
-      });
-    });
-  }, [socket, currentTree, buildFullPathContext, selectedModel, account]);
+    return generationHandler.generateNodes(parentId, count);
+  }, [generationHandler]);
 
   // Handle tree selection with node memory
   const handleTreeSelect = useCallback((newTree) => {
-    // Save current node for the current tree
-    if (currentTree && selectedNode) {
-      setTreeNodeMemory(prev => {
-        const newMemory = new Map(prev);
-        newMemory.set(currentTree.address, selectedNode.id);
-        console.log(`💾 Saving node ${selectedNode.id.substring(0, 8)}... for tree ${currentTree.address.substring(0, 8)}...`);
-        return newMemory;
-      });
-    }
-
-    // Switch to new tree
-    setCurrentTree(newTree);
-    
-    // Restore the last selected node for this tree (if any)
-    const rememberedNodeId = treeNodeMemory.get(newTree.address);
-    if (rememberedNodeId) {
-      console.log(`🔄 Restoring node ${rememberedNodeId.substring(0, 8)}... for tree ${newTree.address.substring(0, 8)}...`);
-      // Find the node in the new tree
-      const rememberedNode = newTree.nodes?.find(node => node.nodeId === rememberedNodeId);
-      if (rememberedNode) {
-        setSelectedNode({
-          id: rememberedNode.nodeId,
-          content: rememberedNode.content,
-          parentId: rememberedNode.parentId,
-          author: rememberedNode.author,
-          timestamp: rememberedNode.timestamp
-        });
-        
-        // Also tell the graph to select this node
-        if (graphRef.current) {
-          setTimeout(() => {
-            if (graphRef.current) {
-              const graphNode = graphRef.current.findNodeById?.(rememberedNodeId);
-              if (graphNode) {
-                graphRef.current.selectNodeByKeyboard?.(graphNode);
-              }
-            }
-          }, 100); // Small delay to ensure nodes are loaded
-        }
-      } else {
-        console.log(`⚠️ Remembered node not found in new tree, clearing selection`);
-        setSelectedNode(null);
-      }
-    } else {
-      console.log(`🆕 No remembered node for tree ${newTree.address.substring(0, 8)}..., clearing selection`);
-      setSelectedNode(null);
-    }
-  }, [currentTree, selectedNode, treeNodeMemory, graphRef]);
+    memoryHandlers.handleTreeSelect(newTree, currentTree, selectedNode);
+  }, [currentTree, selectedNode, memoryHandlers]);
 
   // Handle model selection change
   const handleModelChange = useCallback((newModel) => {
@@ -580,165 +253,21 @@ function App() {
     console.log('🤖 Model changed to:', newModel);
   }, []);
 
+  // Initialize import handlers
+  const importHandler = createImportHandler(
+    socket,
+    createTree,
+    getTree,
+    setTrees,
+    setCurrentTree,
+    currentTree,
+    account
+  );
+
   const handleImportTrees = useCallback(async (importData) => {
-    if (!socket) {
-      throw new Error('Socket not connected - cannot import trees');
-    }
+    return importHandler.handleImportTrees(importData);
+  }, [importHandler]);
 
-    try {
-      console.log('Starting import of', importData.trees.length, 'trees');
-      const importedTrees = [];
-      
-      for (let i = 0; i < importData.trees.length; i++) {
-        const treeData = importData.trees[i];
-        console.log(`Importing tree ${i + 1}/${importData.trees.length}:`, treeData.rootContent.substring(0, 50));
-        
-        try {
-          // Create the tree with root content (only wallet transaction needed)
-          const treeAddress = await createTree(treeData.rootContent);
-          let newTree = await getTree(treeAddress);
-          importedTrees.push(newTree);
-          
-          // Update UI with new tree
-          setTrees(prev => [...prev, newTree]);
-          
-          // Wait for tree creation to settle on blockchain
-          console.log('Waiting for tree deployment to settle...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          // Get the fresh tree data to get the new root ID
-          console.log('Fetching fresh tree data for import...');
-          newTree = await getTree(treeAddress);
-          const newRootId = newTree.rootId;
-          
-          console.log(`Tree ready for import - Address: ${treeAddress}, Root ID: ${newRootId.substring(0, 8)}`);
-          
-          // Find the old root node
-          const oldRootNode = treeData.nodes.find(node => node.isRoot);
-          
-          // Prepare all non-root nodes for import via backend
-          const nonRootNodes = treeData.nodes.filter(node => !node.isRoot);
-          
-          if (nonRootNodes.length > 0) {
-            console.log(`Importing ${nonRootNodes.length} nodes via backend for tree ${treeAddress}`);
-            
-            // Use socket to send import request to backend
-            const importPromise = new Promise((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                socket.off('importComplete', handleComplete);
-                socket.off('error', handleError);
-                reject(new Error('Import timeout'));
-              }, 300000); // 5 minute timeout
-              
-              const handleComplete = (data) => {
-                clearTimeout(timeout);
-                socket.off('importComplete', handleComplete);
-                socket.off('error', handleError);
-                if (data.success) {
-                  resolve(data);
-                } else {
-                  reject(new Error(data.error || 'Import failed'));
-                }
-              };
-
-              const handleError = (error) => {
-                clearTimeout(timeout);
-                socket.off('importComplete', handleComplete);
-                socket.off('error', handleError);
-                reject(error);
-              };
-
-              socket.on('importComplete', handleComplete);
-              socket.on('error', handleError);
-
-              // Send import request to backend
-              socket.emit('importNodes', {
-                treeAddress: treeAddress,
-                rootId: newRootId,
-                oldRootId: oldRootNode?.nodeId,
-                userAccount: account, // Pass the current user's account address
-                nodes: nonRootNodes.map(node => ({
-                  nodeId: node.nodeId,
-                  parentId: node.parentId,
-                  content: node.content,
-                  author: node.author,
-                  timestamp: node.timestamp
-                }))
-              });
-            });
-
-            // Wait for backend to complete the import
-            await importPromise;
-            console.log(`Backend import completed for tree ${treeAddress}`);
-          }
-          
-          // Refresh the tree after all nodes are added
-          setTimeout(async () => {
-            try {
-              const updatedTree = await getTree(treeAddress);
-              setTrees(prevTrees => 
-                prevTrees.map(tree => 
-                  tree.address === treeAddress ? updatedTree : tree
-                )
-              );
-              if (currentTree?.address === treeAddress) {
-                setCurrentTree(updatedTree);
-              }
-              console.log(`Tree ${treeAddress} refreshed with ${updatedTree.nodeCount} nodes`);
-            } catch (error) {
-              console.error('Error refreshing imported tree:', error);
-            }
-          }, 3000);
-          
-        } catch (treeError) {
-          console.error(`Failed to import tree ${i + 1}:`, treeError);
-          throw treeError; // Re-throw to handle in caller
-        }
-      }
-      
-      return importedTrees;
-    } catch (error) {
-      console.error('Error in handleImportTrees:', error);
-      throw error;
-    }
-  }, [createTree, getTree, currentTree, socket]);
-
-  // Helper function to sort nodes by dependency order
-  const sortNodesByDependency = (nodes) => {
-    const sorted = [];
-    const processed = new Set();
-    const rootParentId = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    
-    // Keep trying to add nodes until all are processed
-    let remainingNodes = [...nodes];
-    let maxIterations = nodes.length * 2; // Prevent infinite loops
-    let iteration = 0;
-    
-    while (remainingNodes.length > 0 && iteration < maxIterations) {
-      const initialLength = remainingNodes.length;
-      
-      remainingNodes = remainingNodes.filter(node => {
-        // Can add if parent is root or already processed
-        if (node.parentId === rootParentId || node.parentId === '0x0' || processed.has(node.parentId)) {
-          sorted.push(node);
-          processed.add(node.nodeId);
-          return false; // Remove from remaining
-        }
-        return true; // Keep in remaining
-      });
-      
-      // If no progress was made, break to avoid infinite loop
-      if (remainingNodes.length === initialLength) {
-        console.warn('Could not resolve all node dependencies, adding remaining nodes anyway');
-        sorted.push(...remainingNodes);
-        break;
-      }
-      
-      iteration++;
-    }
-    
-    return sorted;
-  };
 
   return (
     <div className="app-container">
@@ -796,7 +325,7 @@ function App() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease'
               }}
-              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
+              onClick={() => removeNotification(notification.id)}
             >
               {notification.message}
             </div>
