@@ -285,6 +285,10 @@ function App() {
         selectedNodeNFT={selectedNodeNFT}
         onGenerateSiblings={handleGenerateSiblings}
         onImportTrees={handleImportTrees}
+        getAllTrees={getAllTrees}
+        setTrees={setTrees}
+        setCurrentTree={setCurrentTree}
+        setIsLoadingTrees={setIsLoadingTrees}
         isGeneratingChildren={isGeneratingChildren}
         setIsGeneratingChildren={setIsGeneratingChildren}
         isGeneratingSiblings={isGeneratingSiblings}

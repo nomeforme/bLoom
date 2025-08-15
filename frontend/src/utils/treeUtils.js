@@ -65,3 +65,27 @@ export const sortNodesByDependency = (nodes) => {
   
   return sorted;
 };
+
+export const refreshTrees = async (getAllTrees, setTrees, setCurrentTree, setIsLoadingTrees, currentTree) => {
+  if (getAllTrees) {
+    try {
+      console.log('Refreshing all trees');
+      setIsLoadingTrees(true);
+      const allTrees = await getAllTrees();
+      console.log('Refreshed trees:', allTrees);
+      setTrees(allTrees);
+      
+      // Update current tree if it's in the refreshed list
+      if (currentTree) {
+        const updatedCurrentTree = allTrees.find(tree => tree.address === currentTree.address);
+        if (updatedCurrentTree) {
+          setCurrentTree(updatedCurrentTree);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing trees:', error);
+    } finally {
+      setIsLoadingTrees(false);
+    }
+  }
+};

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
+import { refreshTrees } from '../utils/treeUtils';
 import modelsConfig from '../config/models.json';
 
 const RightSidebar = ({
@@ -15,6 +16,10 @@ const RightSidebar = ({
   selectedNodeNFT,
   onGenerateSiblings,
   onImportTrees,
+  getAllTrees,
+  setTrees,
+  setCurrentTree,
+  setIsLoadingTrees,
   isGeneratingChildren,
   setIsGeneratingChildren,
   isGeneratingSiblings,
@@ -539,18 +544,33 @@ const RightSidebar = ({
               : trees;
             return filteredTrees.length;
           })()})</h3>
-          <button 
-            className={`btn ${showOnlyMyTrees ? '' : 'btn-secondary'}`}
-            onClick={() => setShowOnlyMyTrees(!showOnlyMyTrees)}
-            disabled={!connected}
-            style={{ 
-              fontSize: '11px', 
-              padding: '4px 8px',
-              minWidth: 'auto'
-            }}
-          >
-            {showOnlyMyTrees ? 'Show All' : 'My Trees'}
-          </button>
+          <div style={{ display: 'flex', gap: '2px' }}>
+            <button 
+              className={`btn ${showOnlyMyTrees ? '' : 'btn-secondary'}`}
+              onClick={() => setShowOnlyMyTrees(!showOnlyMyTrees)}
+              disabled={!connected}
+              style={{ 
+                fontSize: '11px', 
+                padding: '4px 8px',
+                minWidth: 'auto'
+              }}
+            >
+              {showOnlyMyTrees ? 'Show All' : 'My Trees'}
+            </button>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => refreshTrees(getAllTrees, setTrees, setCurrentTree, setIsLoadingTrees, currentTree)}
+              disabled={!connected}
+              style={{ 
+                fontSize: '11px', 
+                padding: '4px 8px',
+                minWidth: 'auto'
+              }}
+              title="Refresh trees from server"
+            >
+              ↻
+            </button>
+          </div>
         </div>
         {(() => {
           const filteredTrees = showOnlyMyTrees 

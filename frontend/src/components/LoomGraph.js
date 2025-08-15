@@ -1231,6 +1231,8 @@ const LoomGraph = forwardRef(({
   // Load tree data when currentTree changes
   useEffect(() => {
     if (!graphRef.current || !currentTree) return;
+    
+    console.log(`🌲 LoomGraph: Loading tree ${currentTree.address.substring(0, 8)}... with ${currentTree.nodes?.length || 0} nodes`);
 
     const graph = graphRef.current;
     
