@@ -583,6 +583,9 @@ const LoomGraph = forwardRef(({
         nodesToReorganize = allNodes;
       }
 
+      // nodesToReorganize = allNodes;
+
+
       // Group affected nodes by depth level (distance from root)
       const levels = new Map();
       const rootNodes = nodesToReorganize.filter(node => 
@@ -938,9 +941,6 @@ const LoomGraph = forwardRef(({
                 if (result && result.successCount > 0) {
                   // Reorganize nodes after generation completes - only the affected subtree
                   setTimeout(() => {
-                    if (graph.reorganizeNodes && selectedNodeData) {
-                      graph.reorganizeNodes(selectedNodeData.id);
-                    }
                     // Re-select the same node to reapply native highlight/center
                     const node = findNodeById(selectedNodeData.id);
                     if (node) {
@@ -980,9 +980,6 @@ const LoomGraph = forwardRef(({
                 if (result && result.successCount > 0) {
                   // Reorganize nodes after generation completes - only the affected subtree
                   setTimeout(() => {
-                    if (graph.reorganizeNodes && selectedNodeData) {
-                      graph.reorganizeNodes(selectedNodeData.parentId);
-                    }
                     // Re-select the parent node to reapply native highlight/center
                     const parentNode = findNodeById(selectedNodeData.parentId);
                     if (parentNode) {
