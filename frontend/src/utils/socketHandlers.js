@@ -26,7 +26,8 @@ export const createSocketHandlers = (
       currentTreeAddress: currentTree?.address
     });
     
-    if (graphRef.current) {
+    // Only add node to graph if it belongs to the currently displayed tree
+    if (currentTree && data.treeAddress === currentTree.address && graphRef.current) {
       graphRef.current.addNodeFromBlockchain(data);
     }
     
