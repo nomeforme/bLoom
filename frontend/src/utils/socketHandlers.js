@@ -12,24 +12,7 @@ export const createSocketHandlers = (
   const handleGenerationComplete = (data) => {
     console.log('🎯 App: Global handleGenerationComplete called:', data);
     
-    if (data.warnings && data.warnings.length > 0) {
-      data.warnings.forEach(warning => {
-        addNotification(warning, 'warning');
-      });
-    }
-    
-    if (data.successCount > 0) {
-      const kind = setIsGeneratingChildren ? 'children' : 'sibling';
-      const plural = data.successCount === 1 ? '' : 's';
-      const msg = `Generated ${data.successCount}/${data.totalRequested ?? data.successCount} ${kind} node${plural} successfully`;
-      console.log('🎯 App: Adding success notification:', msg);
-      addNotification(msg, 'success');
-    } else {
-      const errorMsg = data.message || 'All generation attempts failed';
-      console.log('🎯 App: Adding error notification:', errorMsg);
-      addNotification(errorMsg, 'error');
-    }
-    
+    // Only handle state updates here, notifications are handled by the promise-based handler
     setIsGeneratingChildren(false);
     setIsGeneratingSiblings(false);
   };

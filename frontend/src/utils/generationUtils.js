@@ -7,7 +7,8 @@ export const createGenerationHandler = (
   selectedModel,
   modelsConfig,
   setIsGeneratingChildren,
-  setIsGeneratingSiblings
+  setIsGeneratingSiblings,
+  addNotification
 ) => {
   const generateNodes = (parentId, count = 3) => {
     if (!parentId) return Promise.resolve();
@@ -24,6 +25,25 @@ export const createGenerationHandler = (
         console.log('🎯 App: Local handleComplete called for promise resolution:', data);
         socket.off('generationComplete', handleComplete);
         socket.off('error', handleError);
+        
+        // Handle notifications here
+        if (data.warnings && data.warnings.length > 0) {
+          data.warnings.forEach(warning => {
+            addNotification(warning, 'warning');
+          });
+        }
+        
+        if (data.successCount > 0) {
+          // Determine if we're generating children or siblings based on generation state
+          const kind = 'node'; // Generic since this handles both
+          const plural = data.successCount === 1 ? '' : 's';
+          const msg = `Generated ${data.successCount}/${data.totalRequested ?? data.successCount} ${kind}${plural} successfully`;
+          addNotification(msg, 'success');
+        } else {
+          const errorMsg = data.message || 'All generation attempts failed';
+          addNotification(errorMsg, 'error');
+        }
+        
         resolve(data);
       };
 

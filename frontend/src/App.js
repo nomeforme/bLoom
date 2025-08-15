@@ -235,7 +235,8 @@ function App() {
     selectedModel,
     modelsConfig,
     setIsGeneratingChildren,
-    setIsGeneratingSiblings
+    setIsGeneratingSiblings,
+    addNotification
   );
 
   const handleGenerateSiblings = useCallback((parentId, count = 3) => {
