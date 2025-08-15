@@ -35,6 +35,7 @@ const FACTORY_ABI = [
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
   "function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, uint256 tokenSupply) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
@@ -281,13 +282,15 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       });
       
       const generatedText = response.data.content[0].text.trim();
+      const completionTokens = response.data.usage?.output_tokens || 0;
       console.log(`✅ Generated text from Anthropic:`, {
         length: generatedText.length,
         words: generatedText.split(/\s+/).length,
+        completionTokens: completionTokens,
         preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
         fullText: generatedText
       });
-      return generatedText;
+      return { text: generatedText, completionTokens };
       
     } else if (modelConfig.provider === 'openai') {
       // OpenAI-compatible API (covers OpenAI, DeepSeek via Chutes, Llama via OpenRouter, Local)
@@ -324,13 +327,15 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
         });
         
         const generatedText = response.data.choices[0].text.trim();
+        const completionTokens = response.data.usage?.completion_tokens || 0;
         console.log(`✅ Generated text from completions API:`, {
           length: generatedText.length,
           words: generatedText.split(/\s+/).length,
+          completionTokens: completionTokens,
           preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
           fullText: generatedText
         });
-        return generatedText;
+        return { text: generatedText, completionTokens };
       } else {
         // Use chat completions endpoint for chat models
         console.log(`📤 Sending request to OpenAI-compatible chat API: ${modelConfig.baseURL}`);
@@ -361,13 +366,15 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
         });
         
         const generatedText = response.data.choices[0].message.content.trim();
+        const completionTokens = response.data.usage?.completion_tokens || 0;
         console.log(`✅ Generated text from chat API:`, {
           length: generatedText.length,
           words: generatedText.split(/\s+/).length,
+          completionTokens: completionTokens,
           preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
           fullText: generatedText
         });
-        return generatedText;
+        return { text: generatedText, completionTokens };
       }
     }
     
@@ -407,20 +414,30 @@ io.on('connection', (socket) => {
         try {
           // Use specified model (no more auto mode)
           const selectedModel = model || 'claude-3-haiku';
-          const generatedText = await generateText(contextContent, selectedModel, temperature, maxTokens);
+          const result = await generateText(contextContent, selectedModel, temperature, maxTokens);
+          
+          // Handle both old string format and new object format for backward compatibility
+          const generatedText = typeof result === 'string' ? result : result?.text;
+          const completionTokens = typeof result === 'object' ? (result?.completionTokens || 0) : 0;
+          
           console.log(`🔍 Generation ${i + 1}/${count} result:`, {
             model: selectedModel,
             hasText: !!generatedText,
             length: generatedText?.length || 0,
             words: generatedText ? generatedText.split(/\s+/).length : 0,
+            completionTokens: completionTokens,
             firstChars: generatedText?.substring(0, 50) || 'null/empty'
           });
           
           if (generatedText && generatedText.trim()) {
-            generations.push(generatedText.trim());
+            generations.push({
+              text: generatedText.trim(),
+              completionTokens: Math.max(completionTokens, 1) // Ensure at least 1 token for supply
+            });
             console.log(`✅ Added generation ${i + 1} to array:`, {
               totalGenerations: generations.length,
               textLength: generatedText.trim().length,
+              completionTokens: completionTokens,
               promptUsed: contextContent.substring(0, 100) + '...'
             });
           } else {
@@ -438,9 +455,13 @@ io.on('connection', (socket) => {
       console.log(`🔗 Starting blockchain node creation for ${generations.length} generated texts`);
       
       for (let i = 0; i < generations.length; i++) {
-        const content = generations[i];
+        const generation = generations[i];
+        const content = generation.text;
+        const tokenSupply = generation.completionTokens;
+        
         console.log(`🔗 Creating node ${i + 1}/${generations.length}:`, {
           contentLength: content.length,
+          completionTokens: tokenSupply,
           hasUserAccount: !!userAccount,
           userAccount: userAccount
         });
@@ -451,10 +472,14 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeForUser if userAccount is provided, otherwise use addNode
-          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000" 
-            ? await treeContract.addNodeForUser(parentId, content, userAccount)
-            : await treeContract.addNode(parentId, content);
+          // Use addNodeWithToken to specify completion tokens as supply
+          const tx = await treeContract.addNodeWithToken(
+            parentId, 
+            content, 
+            "NODE", 
+            "NODE", 
+            tokenSupply
+          );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
           const receipt = await tx.wait();
@@ -786,8 +811,12 @@ app.post('/api/generate', async (req, res) => {
     }
     
     const startTime = Date.now();
-    const generatedText = await generateText(prompt, model, temperature, maxTokens);
+    const result = await generateText(prompt, model, temperature, maxTokens);
     const generationTime = Date.now() - startTime;
+    
+    // Handle both old string format and new object format for backward compatibility
+    const generatedText = typeof result === 'string' ? result : result?.text;
+    const completionTokens = typeof result === 'object' ? (result?.completionTokens || 0) : 0;
     
     if (generatedText) {
       console.log(`✅ /api/generate successful:`, {
@@ -795,12 +824,14 @@ app.post('/api/generate', async (req, res) => {
         generationTimeMs: generationTime,
         responseLength: generatedText.length,
         responseWords: generatedText.split(/\s+/).length,
+        completionTokens: completionTokens,
         responsePreview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : '')
       });
       
       res.json({
         success: true,
         generatedText,
+        completionTokens,
         model: model,
         modelName: LLM_CONFIG[model]?.name || model,
         timestamp: new Date().toISOString()
