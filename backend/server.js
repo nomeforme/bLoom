@@ -390,7 +390,7 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  socket.on('generateSiblings', async (data) => {
+  socket.on('generateNodes', async (data) => {
     const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens } = data;
     
     try {
@@ -587,7 +587,7 @@ io.on('connection', (socket) => {
       io.emit('generationComplete', response);
       
     } catch (error) {
-      console.error('Error in generateSiblings:', {
+      console.error('Error in generateNodes:', {
         error: error.message,
         stack: error.stack?.substring(0, 300),
         socketId: socket.id
