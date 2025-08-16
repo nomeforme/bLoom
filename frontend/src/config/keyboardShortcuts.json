@@ -60,6 +60,27 @@
       "symbol": "F2",
       "category": "Editing",
       "requiresSelection": true
+    },
+    "childAtCursor": {
+      "key": "z",
+      "modifiers": ["alt"],
+      "description": "Child at cursor (edit mode)",
+      "symbol": "⌥Z",
+      "category": "Editing"
+    },
+    "siblingAtCursor": {
+      "key": "x",
+      "modifiers": ["alt"],
+      "description": "Sibling at cursor (edit mode)",
+      "symbol": "⌥X",
+      "category": "Editing"
+    },
+    "updateText": {
+      "key": "c",
+      "modifiers": ["alt"],
+      "description": "Update node text (edit mode)",
+      "symbol": "⌥C",
+      "category": "Editing"
     }
   },
   "view": {

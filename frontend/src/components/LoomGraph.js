@@ -320,28 +320,6 @@ const LoomGraph = forwardRef(({
           box-sizing: border-box;
         ">${originalContent}</textarea>
         <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; gap: 8px;">
-            <button id="childAtCursor" style="
-              background: #2196F3;
-              color: #fff;
-              border: none;
-              padding: 8px 12px;
-              border-radius: 4px;
-              cursor: pointer;
-              font-family: 'Inconsolata', monospace;
-              font-size: 11px;
-            ">Child at Cursor</button>
-            <button id="siblingAtCursor" style="
-              background: #FF9800;
-              color: #fff;
-              border: none;
-              padding: 8px 12px;
-              border-radius: 4px;
-              cursor: pointer;
-              font-family: 'Inconsolata', monospace;
-              font-size: 11px;
-            ">Sibling at Cursor</button>
-          </div>
           <div>
             <button id="cancelEdit" style="
               background: #666;
@@ -349,10 +327,32 @@ const LoomGraph = forwardRef(({
               border: none;
               padding: 8px 16px;
               border-radius: 4px;
-              margin-right: 10px;
               cursor: pointer;
               font-family: 'Inconsolata', monospace;
+              font-size: 12px;
             ">Cancel</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="childAtCursor" style="
+              background: #4CAF50;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 12px;
+            ">Child at Cursor</button>
+            <button id="siblingAtCursor" style="
+              background: #4CAF50;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 12px;
+            ">Sibling at Cursor</button>
             <button id="saveEdit" style="
               background: #4CAF50;
               color: #fff;
@@ -361,7 +361,8 @@ const LoomGraph = forwardRef(({
               border-radius: 4px;
               cursor: pointer;
               font-family: 'Inconsolata', monospace;
-            ">Save Changes</button>
+              font-size: 12px;
+            ">Update Text</button>
           </div>
         </div>
       `;
@@ -386,6 +387,8 @@ const LoomGraph = forwardRef(({
           document.removeEventListener('click', clickOutsideHandler);
           clickOutsideHandler = null;
         }
+        // Remove keyboard handler
+        document.removeEventListener('keydown', handleEditModalKeydown);
       };
       
       const closeDialog = () => {
@@ -566,7 +569,7 @@ const LoomGraph = forwardRef(({
               errorMsg.parentElement.removeChild(errorMsg);
             }
             siblingAtCursorBtn.textContent = 'Sibling at Cursor';
-            siblingAtCursorBtn.style.background = '#FF9800';
+            siblingAtCursorBtn.style.background = '#4CAF50';
           }, 3000);
         }
       };
@@ -652,7 +655,7 @@ const LoomGraph = forwardRef(({
               errorMsg.parentElement.removeChild(errorMsg);
             }
             childAtCursorBtn.textContent = 'Child at Cursor';
-            childAtCursorBtn.style.background = '#2196F3';
+            childAtCursorBtn.style.background = '#4CAF50';
           }, 3000);
         }
       };
@@ -663,8 +666,35 @@ const LoomGraph = forwardRef(({
       childAtCursorBtn.addEventListener('click', createChildAtCursor);
       siblingAtCursorBtn.addEventListener('click', createSiblingAtCursor);
       
-      // Save on Enter (Ctrl+Enter or Cmd+Enter)
-      textarea.addEventListener('keydown', (e) => {
+      // Keyboard shortcuts for edit modal
+      const handleEditModalKeydown = (e) => {
+        // Import shortcutsManager for these checks
+        const shortcutsManager = this.graph?.shortcutsManager;
+        if (!shortcutsManager) return;
+        
+        // Check for edit modal specific shortcuts
+        if (shortcutsManager.matchShortcut(e, 'childAtCursor')) {
+          e.preventDefault();
+          e.stopPropagation();
+          createChildAtCursor();
+          return;
+        }
+        
+        if (shortcutsManager.matchShortcut(e, 'siblingAtCursor')) {
+          e.preventDefault();
+          e.stopPropagation();
+          createSiblingAtCursor();
+          return;
+        }
+        
+        if (shortcutsManager.matchShortcut(e, 'updateText')) {
+          e.preventDefault();
+          e.stopPropagation();
+          saveChanges();
+          return;
+        }
+        
+        // Existing shortcuts
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           saveChanges();
@@ -672,7 +702,11 @@ const LoomGraph = forwardRef(({
           e.preventDefault();
           closeDialog();
         }
-      });
+      };
+      
+      // Add keyboard listeners to both textarea and document for modal-wide shortcuts
+      textarea.addEventListener('keydown', handleEditModalKeydown);
+      document.addEventListener('keydown', handleEditModalKeydown);
       
       // Close on click outside
       setTimeout(() => {
@@ -1072,6 +1106,9 @@ const LoomGraph = forwardRef(({
     // Add keyboard navigation with shortcuts manager
     graph.selectedNodeForKeyboard = null;
     const shortcutsManager = new KeyboardShortcutsManager();
+    
+    // Store shortcutsManager on graph for access from edit modal
+    graph.shortcutsManager = shortcutsManager;
     
     const handleKeyDown = (e) => {
       // Don't interfere if user is typing in an input field
