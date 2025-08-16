@@ -528,7 +528,7 @@ const RightSidebar = ({
           <h3>Selected Node</h3>
           <div className="node-info">
             {/* Node Info */}
-            <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>Node Info</h4>
+            <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>LoomTree: Node Info</h4>
             <div style={{ 
               backgroundColor: '#1a1a1a', 
               border: '1px solid #4CAF50',
