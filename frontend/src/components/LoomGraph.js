@@ -98,6 +98,19 @@ const LoomGraph = forwardRef(({
           } else if (typeof graph.canvasInstance?.selectNodeByKeyboard === 'function') {
             graph.canvasInstance.selectNodeByKeyboard(updatedNode);
           }
+          
+          // IMPORTANT: Update React state by calling onNodeSelect
+          if (onNodeSelect && updatedNode.properties) {
+            const nodeData = {
+              id: updatedNode.properties.nodeId,
+              content: updatedNode.properties.content,
+              parentId: updatedNode.properties.parentId,
+              author: updatedNode.properties.author,
+              timestamp: updatedNode.properties.timestamp
+            };
+            onNodeSelect(nodeData);
+          }
+          
           return true;
         }
       }
@@ -1560,7 +1573,6 @@ const LoomGraph = forwardRef(({
   useEffect(() => {
     if (!graphRef.current || !currentTree) return;
     
-    console.log(`🌲 LoomGraph: Loading tree ${currentTree.address.substring(0, 8)}... with ${currentTree.nodes?.length || 0} nodes`);
 
     const graph = graphRef.current;
     
