@@ -316,7 +316,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
                 })
               ) : (
                 <div style={{ fontSize: '12px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Select a node to view its story path
+                  Select a node to view its text path
                 </div>
               )}
             </div>
