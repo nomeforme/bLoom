@@ -611,22 +611,61 @@ io.on('connection', (socket) => {
   });
 
   socket.on('updateNode', async (data) => {
-    const { treeAddress, nodeId, newContent } = data;
+    const { treeAddress, nodeId, newContent, options } = data;
+    
+    console.log('Received updateNode request:', { treeAddress, nodeId, newContent, options });
     
     try {
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
       // Update the node content
-      const tx = await treeContract.updateNodeContent(nodeId, newContent);
-      const receipt = await tx.wait();
+      const updateTx = await treeContract.updateNodeContent(nodeId, newContent);
+      const updateReceipt = await updateTx.wait();
+      
+      let childNodeId = null;
+      let childTxHash = null;
+      
+      // If options indicate we should create a child node
+      if (options && options.createChild && options.childContent) {
+        console.log('Creating child node as part of update operation...');
+        
+        // Wait a moment to avoid nonce conflicts
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Create the child node
+        const childTx = await treeContract.addNode(nodeId, options.childContent);
+        const childReceipt = await childTx.wait();
+        childTxHash = childReceipt.hash;
+        
+        // Find the NodeCreated event to get the new child node ID
+        const nodeCreatedEvent = childReceipt.logs.find(log => {
+          try {
+            const parsed = treeContract.interface.parseLog(log);
+            return parsed.name === 'NodeCreated';
+          } catch {
+            return false;
+          }
+        });
+        
+        if (nodeCreatedEvent) {
+          const parsedEvent = treeContract.interface.parseLog(nodeCreatedEvent);
+          childNodeId = parsedEvent.args.nodeId;
+          console.log('Child node created with ID:', childNodeId);
+        }
+      }
       
       // Emit success response
       socket.emit('updateComplete', {
         success: true,
         nodeId,
         newContent,
-        txHash: receipt.hash
+        txHash: updateReceipt.hash,
+        childNode: childNodeId ? {
+          nodeId: childNodeId,
+          content: options.childContent,
+          txHash: childTxHash
+        } : null
       });
       
     } catch (error) {
