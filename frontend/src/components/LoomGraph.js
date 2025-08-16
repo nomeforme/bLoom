@@ -328,7 +328,7 @@ const LoomGraph = forwardRef(({
         left: 50%;
         transform: translate(-50%, -50%);
         background: #2a2a2a;
-        border: 2px solid #4CAF50;
+        border: 1px solid #666;
         border-radius: 8px;
         padding: 20px;
         z-index: 10000;
@@ -347,13 +347,14 @@ const LoomGraph = forwardRef(({
           height: 90px;
           background: #1a1a1a;
           color: #fff;
-          border: 1px solid #555;
+          border: 2px solid #4CAF50;
           border-radius: 4px;
           padding: 10px;
           font-family: 'Inconsolata', monospace;
           font-size: 14px;
           resize: vertical;
           box-sizing: border-box;
+          outline: none;
         ">${originalContent}</textarea>
         <style>
           #nodeContentEditor::selection {

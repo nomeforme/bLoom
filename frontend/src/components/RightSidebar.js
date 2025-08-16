@@ -633,10 +633,10 @@ const RightSidebar = ({
                   <div>• Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
                   <div>• Author: {ellipseAddress(selectedNode.author)}</div>
                   <div>• Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? ellipseAddress(selectedNode.parentId) : 'Root Node'}</div>
-                  <div>• Children: {currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</div>
+                  <div>• Children: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</span></div>
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  Node Author: <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span>
+                  Node Author: <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span>
                 </div>
               </div>
             </div>
@@ -702,7 +702,7 @@ const RightSidebar = ({
                 </div>
                 
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
+                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
                 </div>
               </div>
             ) : (
@@ -738,7 +738,7 @@ const RightSidebar = ({
                   {selectedNode ? 'Loading content from NFT...' : 'No content available'}
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
+                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
                 </div>
               </div>
             )}
@@ -782,19 +782,21 @@ const RightSidebar = ({
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
                             <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
                             <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>• Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
-                            <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                              • Current Balance: {
-                                isLoadingBalance ? 'Loading...' : 
-                                currentTokenBalance !== null ? `${currentTokenBalance} ${metadata.tokenSymbol || 'NODE'}` : 
-                                'N/A'
-                              }
+                            <div>• Initial Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>
+                              • Current Balance: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                                {
+                                  isLoadingBalance ? 'Loading...' : 
+                                  currentTokenBalance !== null ? currentTokenBalance : 
+                                  'N/A'
+                                }
+                              </span> {currentTokenBalance !== null && !isLoadingBalance ? (metadata.tokenSymbol || 'NODE') : ''}
                             </div>
                             <div>• Token Type: ERC20</div>
                             <div>• Held by Token Bound Account</div>
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            Held by TBA: {metadata.tokenBoundAccount ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(metadata.tokenBoundAccount)} title="Click to copy full address">{ellipseAddress(metadata.tokenBoundAccount)}</span> : 'N/A'}
+                            Held by TBA: {metadata.tokenBoundAccount ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(metadata.tokenBoundAccount)} title="Click to copy full address">{ellipseAddress(metadata.tokenBoundAccount)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -805,7 +807,7 @@ const RightSidebar = ({
                             No Node Token found in NFT metadata
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -816,7 +818,7 @@ const RightSidebar = ({
                             Could not parse NFT metadata for token info
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -836,7 +838,7 @@ const RightSidebar = ({
                   Loading Node Token info...
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  Held by TBA: N/A
+                  Held by TBA: <span style={{ fontWeight: 'bold' }}>N/A</span>
                 </div>
               </div>
             )}
@@ -884,7 +886,7 @@ const RightSidebar = ({
                             <div>• Account transfers with NFT ownership</div>
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -895,7 +897,7 @@ const RightSidebar = ({
                             No Token Bound Account found in NFT metadata
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -906,7 +908,7 @@ const RightSidebar = ({
                             Could not parse NFT metadata for TBA info
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -926,7 +928,7 @@ const RightSidebar = ({
                   Loading Token Bound Account info...
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                  NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
                 </div>
               </div>
             )}
