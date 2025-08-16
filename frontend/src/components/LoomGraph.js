@@ -319,26 +319,38 @@ const LoomGraph = forwardRef(({
           resize: vertical;
           box-sizing: border-box;
         ">${originalContent}</textarea>
-        <div style="margin-top: 15px; text-align: right;">
-          <button id="cancelEdit" style="
-            background: #666;
-            color: #fff;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            margin-right: 10px;
-            cursor: pointer;
-            font-family: 'Inconsolata', monospace;
-          ">Cancel</button>
-          <button id="saveEdit" style="
-            background: #4CAF50;
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+          <button id="childAtCursor" style="
+            background: #2196F3;
             color: #fff;
             border: none;
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
             font-family: 'Inconsolata', monospace;
-          ">Save Changes</button>
+            font-size: 12px;
+          ">Child at Cursor</button>
+          <div>
+            <button id="cancelEdit" style="
+              background: #666;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              margin-right: 10px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+            ">Cancel</button>
+            <button id="saveEdit" style="
+              background: #4CAF50;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+            ">Save Changes</button>
+          </div>
         </div>
       `;
       
@@ -347,6 +359,7 @@ const LoomGraph = forwardRef(({
       const textarea = document.getElementById('nodeContentEditor');
       const saveBtn = document.getElementById('saveEdit');
       const cancelBtn = document.getElementById('cancelEdit');
+      const childAtCursorBtn = document.getElementById('childAtCursor');
       
       // Focus and select text
       textarea.focus();
@@ -451,9 +464,96 @@ const LoomGraph = forwardRef(({
         }
       };
       
+      const createChildAtCursor = async () => {
+        const cursorPosition = textarea.selectionStart;
+        const textBeforeCursor = textarea.value.substring(0, cursorPosition).trim();
+        const textAfterCursor = textarea.value.substring(cursorPosition).trim();
+        
+        if (!textBeforeCursor && !textAfterCursor) {
+          alert('Cannot split empty content');
+          return;
+        }
+        
+        if (!textAfterCursor) {
+          alert('No text after cursor to create child node');
+          return;
+        }
+        
+        // Show processing state
+        childAtCursorBtn.textContent = 'Creating...';
+        childAtCursorBtn.disabled = true;
+        saveBtn.disabled = true;
+        textarea.disabled = true;
+        
+        try {
+          const graph = this.graph;
+          const treeAddress = graph?.currentTreeAddress;
+          const currentUpdateNode = graph?.onUpdateNode;
+          
+          if (!treeAddress || !currentUpdateNode) {
+            throw new Error('Required functions not available');
+          }
+          
+          // Use the backend update function with additional child creation data
+          // This will update the current node and create a child in a single backend operation
+          const options = {
+            createChild: true,
+            childContent: textAfterCursor
+          };
+          console.log('Calling currentUpdateNode with options:', options);
+          await currentUpdateNode(treeAddress, this.properties.nodeId, textBeforeCursor, options);
+          
+          closeDialog();
+        } catch (error) {
+          console.error('Failed to create child at cursor:', error);
+          
+          // Show error state
+          childAtCursorBtn.textContent = 'Failed - Retry';
+          childAtCursorBtn.style.background = '#f44336';
+          childAtCursorBtn.disabled = false;
+          saveBtn.disabled = false;
+          textarea.disabled = false;
+          
+          // Create error message
+          const errorMsg = document.createElement('div');
+          errorMsg.style.cssText = `
+            color: #f44336;
+            font-size: 12px;
+            margin: 10px 0;
+            text-align: center;
+            width: 100%;
+            display: block;
+          `;
+          
+          let displayMessage = error.message;
+          const reasonMatch = error.message.match(/reason="([^"]+)"/);
+          if (reasonMatch) {
+            displayMessage = reasonMatch[1];
+          } else if (error.message.includes('execution reverted')) {
+            const revertMatch = error.message.match(/execution reverted: "?([^"]+)"?/);
+            if (revertMatch) {
+              displayMessage = revertMatch[1];
+            }
+          }
+          
+          errorMsg.textContent = displayMessage;
+          childAtCursorBtn.parentElement.parentElement.insertBefore(errorMsg, childAtCursorBtn.parentElement);
+          
+          // Remove error message after 3 seconds
+          setTimeout(() => {
+            if (errorMsg.parentElement) {
+              errorMsg.parentElement.removeChild(errorMsg);
+            }
+            childAtCursorBtn.textContent = 'Child at Cursor';
+            childAtCursorBtn.style.background = '#2196F3';
+          }, 3000);
+        }
+      };
+
       // Event listeners
       saveBtn.addEventListener('click', saveChanges);
       cancelBtn.addEventListener('click', closeDialog);
+      childAtCursorBtn.addEventListener('click', createChildAtCursor);
       
       // Save on Enter (Ctrl+Enter or Cmd+Enter)
       textarea.addEventListener('keydown', (e) => {
@@ -1279,6 +1379,7 @@ const LoomGraph = forwardRef(({
     // Store current tree address and functions on the graph for access in node functions
     graph.currentTreeAddress = currentTree.address;
     graph.onUpdateNode = onUpdateNode;
+    graph.onAddNode = onAddNode;
     graph.onGenerateSiblings = onGenerateSiblings;
     
     // Clear existing nodes
@@ -1379,11 +1480,14 @@ const LoomGraph = forwardRef(({
       if (onUpdateNode) {
         graphRef.current.onUpdateNode = onUpdateNode;
       }
+      if (onAddNode) {
+        graphRef.current.onAddNode = onAddNode;
+      }
       if (onGenerateSiblings) {
         graphRef.current.onGenerateSiblings = onGenerateSiblings;
       }
     }
-  }, [onUpdateNode, onGenerateSiblings]);
+  }, [onUpdateNode, onAddNode, onGenerateSiblings]);
 
   // Re-select active node after generation completes (works for UI or socket-driven flows)
   useEffect(() => {

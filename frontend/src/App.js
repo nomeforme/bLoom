@@ -230,8 +230,8 @@ function App() {
     return nodeHandlers.handleAddNode(parentId, content);
   }, [nodeHandlers]);
 
-  const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent) => {
-    return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent);
+  const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent, options) => {
+    return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent, options);
   }, [nodeHandlers]);
 
   // Initialize generation handlers
