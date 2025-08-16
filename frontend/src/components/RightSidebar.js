@@ -521,7 +521,7 @@ const RightSidebar = ({
           <textarea
             value={newTreeContent}
             onChange={(e) => setNewTreeContent(e.target.value)}
-            placeholder="Enter the root content for your new narrative tree..."
+            placeholder="Enter root text for new tree..."
           />
         </div>
         <button 
