@@ -23,6 +23,12 @@
       "description": "Navigate to first child", 
       "symbol": "D",
       "category": "Navigation"
+    },
+    "deselect": {
+      "key": "Escape",
+      "description": "Clear node selection",
+      "symbol": "Esc",
+      "category": "Navigation"
     }
   },
   "generation": {

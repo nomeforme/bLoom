@@ -452,12 +452,26 @@ const RightSidebar = ({
           
           {connected ? (
             <button 
-              className="btn btn-danger" 
               onClick={onDisconnect}
               style={{ 
                 padding: '4px 8px', 
                 fontSize: '12px',
-                minWidth: 'auto'
+                minWidth: 'auto',
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #4CAF50',
+                borderRadius: '4px',
+                color: '#4CAF50',
+                cursor: 'pointer',
+                fontFamily: "'Inconsolata', monospace",
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#2a2a2a';
+                e.target.style.borderColor = '#45a049';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#1a1a1a';
+                e.target.style.borderColor = '#4CAF50';
               }}
             >
               Disconnect
