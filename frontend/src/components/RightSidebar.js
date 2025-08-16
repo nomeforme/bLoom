@@ -454,7 +454,7 @@ const RightSidebar = ({
             <button 
               onClick={onDisconnect}
               style={{ 
-                padding: '4px 8px', 
+                padding: '6px 12px', 
                 fontSize: '12px',
                 minWidth: 'auto',
                 backgroundColor: '#1a1a1a',
@@ -1065,7 +1065,7 @@ const RightSidebar = ({
           <h3>Backup & Restore</h3>
           <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
             <button 
-              className="btn btn-secondary" 
+              className={`btn ${trees.length > 0 ? '' : 'btn-secondary'}`}
               onClick={handleExportTrees}
               disabled={!connected || trees.length === 0 || isExporting}
               style={{ fontSize: '12px', padding: '8px 12px' }}
@@ -1073,7 +1073,7 @@ const RightSidebar = ({
               {isExporting ? 'Exporting...' : `Save All Trees (${trees.length})`}
             </button>
             <button 
-              className="btn btn-secondary" 
+              className={`btn ${trees.length === 0 ? '' : 'btn-secondary'}`}
               onClick={handleImportTrees}
               disabled={!connected || isImporting}
               style={{ fontSize: '12px', padding: '8px 12px' }}
