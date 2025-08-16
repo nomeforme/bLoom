@@ -193,7 +193,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
       // Story view: scroll to bottom
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     } else if (viewMode === 'hierarchy' && selectedNodeRef.current) {
-      // Hierarchy view: scroll to center on selected node
+      // Hierarchy view: scroll to center on selected node and left-align tree characters
       const container = scrollRef.current;
       const selectedElement = selectedNodeRef.current;
       
@@ -201,13 +201,43 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
       const elementTop = selectedElement.offsetTop;
       const elementHeight = selectedElement.clientHeight;
       
-      // Calculate scroll position to center the selected element
+      // Calculate vertical scroll position to center the selected element
       const centerPosition = elementTop - (containerHeight / 2) + (elementHeight / 2);
       
-      container.scrollTo({
-        top: Math.max(0, centerPosition),
-        behavior: 'smooth'
-      });
+      // For horizontal scroll, we want to bring the tree characters (├── └──) as far left as possible
+      // We need to find where the tree characters start in the text content
+      const textContent = selectedElement.textContent || '';
+      const treeCharMatch = textContent.match(/[├└]/); // Find first tree character
+      
+      if (treeCharMatch) {
+        // Calculate the character position where tree characters start
+        const treeCharIndex = treeCharMatch.index;
+        
+        // Get the computed style to calculate character width
+        const computedStyle = window.getComputedStyle(selectedElement);
+        const fontSize = parseFloat(computedStyle.fontSize);
+        
+        // For monospace fonts, character width is roughly 0.6 * fontSize
+        const charWidth = fontSize * 0.6;
+        
+        // Calculate pixel position of the tree character
+        const treeCharPixelPosition = treeCharIndex * charWidth;
+        
+        // Scroll to position the tree character near the left edge (with small padding)
+        const leftPosition = Math.max(0, treeCharPixelPosition - 10);
+        
+        container.scrollTo({
+          top: Math.max(0, centerPosition),
+          left: leftPosition,
+          behavior: 'smooth'
+        });
+      } else {
+        // Fallback: just center vertically if no tree characters found
+        container.scrollTo({
+          top: Math.max(0, centerPosition),
+          behavior: 'smooth'
+        });
+      }
     }
   }, [selectedNode, viewMode]);
 
