@@ -320,16 +320,28 @@ const LoomGraph = forwardRef(({
           box-sizing: border-box;
         ">${originalContent}</textarea>
         <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-          <button id="childAtCursor" style="
-            background: #2196F3;
-            color: #fff;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: 'Inconsolata', monospace;
-            font-size: 12px;
-          ">Child at Cursor</button>
+          <div style="display: flex; gap: 8px;">
+            <button id="childAtCursor" style="
+              background: #2196F3;
+              color: #fff;
+              border: none;
+              padding: 8px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 11px;
+            ">Child at Cursor</button>
+            <button id="siblingAtCursor" style="
+              background: #FF9800;
+              color: #fff;
+              border: none;
+              padding: 8px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 11px;
+            ">Sibling at Cursor</button>
+          </div>
           <div>
             <button id="cancelEdit" style="
               background: #666;
@@ -360,6 +372,7 @@ const LoomGraph = forwardRef(({
       const saveBtn = document.getElementById('saveEdit');
       const cancelBtn = document.getElementById('cancelEdit');
       const childAtCursorBtn = document.getElementById('childAtCursor');
+      const siblingAtCursorBtn = document.getElementById('siblingAtCursor');
       
       // Focus and select text
       textarea.focus();
@@ -464,6 +477,100 @@ const LoomGraph = forwardRef(({
         }
       };
       
+      const createSiblingAtCursor = async () => {
+        const cursorPosition = textarea.selectionStart;
+        const textBeforeCursor = textarea.value.substring(0, cursorPosition).trim();
+        const textAfterCursor = textarea.value.substring(cursorPosition).trim();
+        
+        if (!textBeforeCursor && !textAfterCursor) {
+          alert('Cannot split empty content');
+          return;
+        }
+        
+        if (!textAfterCursor) {
+          alert('No text after cursor to create sibling node');
+          return;
+        }
+        
+        // Check if this node has a parent (root nodes cannot have siblings)
+        if (!this.properties.parentId || this.properties.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+          alert('Root node cannot have siblings');
+          return;
+        }
+        
+        // Show processing state
+        siblingAtCursorBtn.textContent = 'Creating...';
+        siblingAtCursorBtn.disabled = true;
+        childAtCursorBtn.disabled = true;
+        saveBtn.disabled = true;
+        textarea.disabled = true;
+        
+        try {
+          const graph = this.graph;
+          const treeAddress = graph?.currentTreeAddress;
+          const currentUpdateNode = graph?.onUpdateNode;
+          
+          if (!treeAddress || !currentUpdateNode) {
+            throw new Error('Required functions not available');
+          }
+          
+          // Use the backend update function with additional sibling creation data
+          const options = {
+            createSibling: true,
+            siblingContent: textAfterCursor,
+            parentId: this.properties.parentId
+          };
+          console.log('Calling currentUpdateNode with sibling options:', options);
+          await currentUpdateNode(treeAddress, this.properties.nodeId, textBeforeCursor, options);
+          
+          closeDialog();
+        } catch (error) {
+          console.error('Failed to create sibling at cursor:', error);
+          
+          // Show error state
+          siblingAtCursorBtn.textContent = 'Failed - Retry';
+          siblingAtCursorBtn.style.background = '#f44336';
+          siblingAtCursorBtn.disabled = false;
+          childAtCursorBtn.disabled = false;
+          saveBtn.disabled = false;
+          textarea.disabled = false;
+          
+          // Create error message
+          const errorMsg = document.createElement('div');
+          errorMsg.style.cssText = `
+            color: #f44336;
+            font-size: 12px;
+            margin: 10px 0;
+            text-align: center;
+            width: 100%;
+            display: block;
+          `;
+          
+          let displayMessage = error.message;
+          const reasonMatch = error.message.match(/reason="([^"]+)"/);
+          if (reasonMatch) {
+            displayMessage = reasonMatch[1];
+          } else if (error.message.includes('execution reverted')) {
+            const revertMatch = error.message.match(/execution reverted: "?([^"]+)"?/);
+            if (revertMatch) {
+              displayMessage = revertMatch[1];
+            }
+          }
+          
+          errorMsg.textContent = displayMessage;
+          siblingAtCursorBtn.parentElement.parentElement.insertBefore(errorMsg, siblingAtCursorBtn.parentElement);
+          
+          // Remove error message after 3 seconds
+          setTimeout(() => {
+            if (errorMsg.parentElement) {
+              errorMsg.parentElement.removeChild(errorMsg);
+            }
+            siblingAtCursorBtn.textContent = 'Sibling at Cursor';
+            siblingAtCursorBtn.style.background = '#FF9800';
+          }, 3000);
+        }
+      };
+
       const createChildAtCursor = async () => {
         const cursorPosition = textarea.selectionStart;
         const textBeforeCursor = textarea.value.substring(0, cursorPosition).trim();
@@ -554,6 +661,7 @@ const LoomGraph = forwardRef(({
       saveBtn.addEventListener('click', saveChanges);
       cancelBtn.addEventListener('click', closeDialog);
       childAtCursorBtn.addEventListener('click', createChildAtCursor);
+      siblingAtCursorBtn.addEventListener('click', createSiblingAtCursor);
       
       // Save on Enter (Ctrl+Enter or Cmd+Enter)
       textarea.addEventListener('keydown', (e) => {

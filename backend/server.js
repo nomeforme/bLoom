@@ -655,18 +655,62 @@ io.on('connection', (socket) => {
         }
       }
       
+      // If options indicate we should create a sibling node
+      if (options && options.createSibling && options.siblingContent && options.parentId) {
+        console.log('Creating sibling node as part of update operation...');
+        
+        // Wait a moment to avoid nonce conflicts
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Create the sibling node (same parent as current node)
+        const siblingTx = await treeContract.addNode(options.parentId, options.siblingContent);
+        const siblingReceipt = await siblingTx.wait();
+        childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
+        
+        // Find the NodeCreated event to get the new sibling node ID
+        const nodeCreatedEvent = siblingReceipt.logs.find(log => {
+          try {
+            const parsed = treeContract.interface.parseLog(log);
+            return parsed.name === 'NodeCreated';
+          } catch {
+            return false;
+          }
+        });
+        
+        if (nodeCreatedEvent) {
+          const parsedEvent = treeContract.interface.parseLog(nodeCreatedEvent);
+          childNodeId = parsedEvent.args.nodeId; // Reuse the childNodeId variable for consistency
+          console.log('Sibling node created with ID:', childNodeId);
+        }
+      }
+      
       // Emit success response
-      socket.emit('updateComplete', {
+      const response = {
         success: true,
         nodeId,
         newContent,
-        txHash: updateReceipt.hash,
-        childNode: childNodeId ? {
+        txHash: updateReceipt.hash
+      };
+      
+      // Add child node info if one was created
+      if (childNodeId && options?.createChild) {
+        response.childNode = {
           nodeId: childNodeId,
           content: options.childContent,
           txHash: childTxHash
-        } : null
-      });
+        };
+      }
+      
+      // Add sibling node info if one was created
+      if (childNodeId && options?.createSibling) {
+        response.siblingNode = {
+          nodeId: childNodeId,
+          content: options.siblingContent,
+          txHash: childTxHash
+        };
+      }
+      
+      socket.emit('updateComplete', response);
       
     } catch (error) {
       console.error('Error updating node via backend:', error);
