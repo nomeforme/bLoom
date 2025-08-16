@@ -25,7 +25,8 @@ const RightSidebar = ({
   setIsGeneratingChildren,
   isGeneratingSiblings,
   setIsGeneratingSiblings,
-  onModelChange
+  onModelChange,
+  socket
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
   const [childrenCount, setChildrenCount] = useState(3);
@@ -87,37 +88,58 @@ const RightSidebar = ({
 
   // Fetch token balance when selected node changes
   useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (!selectedNode || !currentTree?.address || !connected) {
+    const fetchTokenBalance = () => {
+      if (!selectedNode || !currentTree?.address || !connected || !socket) {
         setCurrentTokenBalance(null);
         return;
       }
 
       setIsLoadingBalance(true);
-      try {
-        const response = await fetch(`http://localhost:3001/api/token-balance/${currentTree.address}/${selectedNode.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setCurrentTokenBalance(data.balance);
-          } else {
-            console.error('Error fetching token balance:', data.error);
-            setCurrentTokenBalance(null);
-          }
-        } else {
-          console.error('Failed to fetch token balance');
-          setCurrentTokenBalance(null);
-        }
-      } catch (error) {
-        console.error('Error fetching token balance:', error);
-        setCurrentTokenBalance(null);
-      } finally {
+      socket.emit('getTokenBalance', {
+        treeAddress: currentTree.address,
+        nodeId: selectedNode.id
+      });
+    };
+
+    fetchTokenBalance();
+  }, [selectedNode?.id, currentTree?.address, connected, socket]);
+
+  // Set up socket listeners for token balance updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTokenBalance = (data) => {
+      if (data.nodeId === selectedNode?.id) {
+        setCurrentTokenBalance(data.balance);
         setIsLoadingBalance(false);
       }
     };
 
-    fetchTokenBalance();
-  }, [selectedNode?.id, currentTree?.address, connected]);
+    const handleTokenBalanceUpdate = (data) => {
+      if (data.nodeId === selectedNode?.id) {
+        setCurrentTokenBalance(data.balance);
+        console.log(`Token balance updated for node ${data.nodeId}: ${data.balance}`);
+      }
+    };
+
+    const handleTokenBalanceError = (data) => {
+      if (selectedNode?.id) {
+        console.error('Token balance error:', data.error);
+        setCurrentTokenBalance(null);
+        setIsLoadingBalance(false);
+      }
+    };
+
+    socket.on('tokenBalance', handleTokenBalance);
+    socket.on('tokenBalanceUpdate', handleTokenBalanceUpdate);
+    socket.on('tokenBalanceError', handleTokenBalanceError);
+
+    return () => {
+      socket.off('tokenBalance', handleTokenBalance);
+      socket.off('tokenBalanceUpdate', handleTokenBalanceUpdate);
+      socket.off('tokenBalanceError', handleTokenBalanceError);
+    };
+  }, [socket, selectedNode?.id]);
 
   // Handle keyboard shortcuts for model and tree navigation
   useEffect(() => {
