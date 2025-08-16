@@ -80,6 +80,29 @@ const LoomGraph = forwardRef(({
         graphRef.current.reorganizeNodes(targetNodeId);
       }
     },
+    reselectNode: (nodeId) => {
+      if (graphRef.current) {
+        const graph = graphRef.current;
+        // Find the node by nodeId
+        const updatedNode = graph.findNodesByType("loom/node").find(node => 
+          node.properties?.nodeId === nodeId
+        );
+        
+        if (updatedNode) {
+          console.log('Re-selecting edited node:', nodeId.substring(0, 8) + '...');
+          graph.selectedNodeForKeyboard = updatedNode;
+          
+          // Use the same selection method as post-generation
+          if (typeof graph.canvasInstance?.selectNode === 'function') {
+            graph.canvasInstance.selectNode(updatedNode);
+          } else if (typeof graph.canvasInstance?.selectNodeByKeyboard === 'function') {
+            graph.canvasInstance.selectNodeByKeyboard(updatedNode);
+          }
+          return true;
+        }
+      }
+      return false;
+    },
     findNodeById: (nodeId) => {
       if (graphRef.current) {
         return graphRef.current.findNodesByType("loom/node")

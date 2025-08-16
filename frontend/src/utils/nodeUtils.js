@@ -4,7 +4,8 @@ export const createNodeHandlers = (
   addNode,
   getTree,
   setCurrentTree,
-  setTrees
+  setTrees,
+  graphRef = null // Optional: only needed for re-selection after edits
 ) => {
   const handleAddNode = async (parentId, content) => {
     if (!currentTree) return;
@@ -91,6 +92,16 @@ export const createNodeHandlers = (
               tree.address === treeAddress ? updatedTree : tree
             )
           );
+          
+          // Re-select the edited node after tree update, similar to post-generation
+          if (graphRef?.current?.reselectNode) {
+            setTimeout(() => {
+              const success = graphRef.current.reselectNode(nodeId);
+              if (!success) {
+                console.warn('Failed to re-select edited node:', nodeId.substring(0, 8) + '...');
+              }
+            }, 100); // Small delay to ensure tree is fully updated
+          }
         } catch (error) {
           console.error('Error refreshing tree after node update:', error);
         }
