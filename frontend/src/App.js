@@ -72,19 +72,14 @@ function App() {
   // Handle socket events that depend on currentTree
   useEffect(() => {
     if (!socket) {
-      console.log('🎯 App: No socket available for event handlers');
       return;
     }
-
-    console.log('🎯 App: Setting up socket event handlers');
 
     socket.on('treeCreated', socketHandlers.handleTreeCreated);
     socket.on('nodeCreated', socketHandlers.handleNodeCreated);
     socket.on('generationComplete', socketHandlers.handleGenerationComplete);
-    console.log('🎯 App: Added global socket event listeners');
 
     return () => {
-      console.log('🎯 App: Removing global socket event listeners');
       socket.off('treeCreated', socketHandlers.handleTreeCreated);
       socket.off('nodeCreated', socketHandlers.handleNodeCreated);
       socket.off('generationComplete', socketHandlers.handleGenerationComplete);

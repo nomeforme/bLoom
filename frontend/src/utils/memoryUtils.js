@@ -14,9 +14,6 @@ export const createMemoryHandlers = (
         newMemory.set(currentTree.address, node.id);
         return newMemory;
       });
-    } else if (node === null) {
-      // Clear selection - don't update memory, just clear current selection
-      console.log('🔄 Node deselected, clearing selection state');
     }
   };
 
