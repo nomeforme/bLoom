@@ -51,6 +51,9 @@ contract LoomNodeNFT is ERC721, Ownable {
         registry = IERC6551Registry(_registry);
         accountImplementation = _accountImplementation;
         salt = _salt;
+        
+        // Add the deployer as an authorized minter by default
+        authorizedMinters[msg.sender] = true;
     }
     
     modifier onlyAuthorizedMinter() {
@@ -140,6 +143,8 @@ contract LoomNodeNFT is ERC721, Ownable {
         
         // Transfer all tokens to the token bound account
         nodeToken.transfer(tokenBoundAccount, nodeToken.totalSupply());
+        
+        // Note: NodeToken contract ownership remains with this NFT contract for mint/burn operations
         
         // Create metadata JSON with essential info
         tokenURIs[newTokenId] = string(abi.encodePacked(
@@ -245,6 +250,75 @@ contract LoomNodeNFT is ERC721, Ownable {
             NodeToken token = NodeToken(tokenContract);
             tokenBalance = token.balanceOf(tokenBoundAccount);
         }
+    }
+    
+    /**
+     * @dev Mint tokens to a node's token bound account
+     * @param nodeId The node ID to mint tokens for
+     * @param amount Amount of tokens to mint (in units, not wei)
+     * @param reason Reason for minting
+     */
+    function mintTokensToNode(bytes32 nodeId, uint256 amount, string memory reason) external {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        
+        // Only authorized minters or the NFT owner can mint tokens
+        require(authorizedMinters[msg.sender] || msg.sender == owner() || msg.sender == ownerOf(tokenId), 
+                "Not authorized to mint tokens to this node");
+        
+        address tokenContract = nodeTokenContracts[tokenId];
+        address tokenBoundAccount = tokenBoundAccounts[tokenId];
+        require(tokenContract != address(0), "No token contract for this node");
+        require(tokenBoundAccount != address(0), "No TBA for this node");
+        
+        NodeToken token = NodeToken(tokenContract);
+        uint256 weiAmount = token.toWei(amount);
+        token.mint(tokenBoundAccount, weiAmount, reason);
+    }
+    
+    /**
+     * @dev Burn tokens from a node's token bound account
+     * @param nodeId The node ID to burn tokens from
+     * @param amount Amount of tokens to burn (in units, not wei)
+     * @param reason Reason for burning
+     */
+    function burnTokensFromNode(bytes32 nodeId, uint256 amount, string memory reason) external {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        
+        // Only authorized minters or the NFT owner can burn tokens
+        require(authorizedMinters[msg.sender] || msg.sender == owner() || msg.sender == ownerOf(tokenId), 
+                "Not authorized to burn tokens from this node");
+        
+        address tokenContract = nodeTokenContracts[tokenId];
+        address tokenBoundAccount = tokenBoundAccounts[tokenId];
+        require(tokenContract != address(0), "No token contract for this node");
+        require(tokenBoundAccount != address(0), "No TBA for this node");
+        
+        NodeToken token = NodeToken(tokenContract);
+        uint256 weiAmount = token.toWei(amount);
+        require(token.balanceOf(tokenBoundAccount) >= weiAmount, "Insufficient token balance");
+        
+        token.burn(tokenBoundAccount, weiAmount, reason);
+    }
+    
+    /**
+     * @dev Get the current token balance for a node in units (not wei)
+     * @param nodeId The node ID to check balance for
+     */
+    function getNodeTokenBalance(bytes32 nodeId) external view returns (uint256) {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        
+        address tokenContract = nodeTokenContracts[tokenId];
+        address tokenBoundAccount = tokenBoundAccounts[tokenId];
+        
+        if (tokenContract == address(0) || tokenBoundAccount == address(0)) {
+            return 0;
+        }
+        
+        NodeToken token = NodeToken(tokenContract);
+        return token.balanceOf(tokenBoundAccount) / 10**token.decimals();
     }
     
     // Helper function to convert uint to string

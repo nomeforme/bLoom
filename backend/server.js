@@ -23,6 +23,69 @@ const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://local
 const privateKey = process.env.PRIVATE_KEY || 'REDACTED_PRIVATE_KEY';
 const wallet = new ethers.Wallet(privateKey, provider);
 
+// Transaction queue to prevent nonce conflicts
+let transactionQueue = Promise.resolve();
+let lastUsedNonce = null;
+
+/**
+ * Get the next nonce for transactions
+ * @returns {Promise<number>} - The next nonce to use
+ */
+async function getNextNonce() {
+  const currentNonce = await wallet.getNonce('pending');
+  
+  // If we have a last used nonce and the blockchain nonce is behind, use our tracked nonce
+  if (lastUsedNonce !== null && currentNonce <= lastUsedNonce) {
+    lastUsedNonce = lastUsedNonce + 1;
+    console.log(`Using tracked nonce: ${lastUsedNonce} (blockchain nonce: ${currentNonce})`);
+    return lastUsedNonce;
+  }
+  
+  lastUsedNonce = currentNonce;
+  console.log(`Using blockchain nonce: ${currentNonce}`);
+  return currentNonce;
+}
+
+/**
+ * Queue a transaction to prevent nonce conflicts
+ * @param {Function} transactionFn - Function that returns a transaction promise
+ * @returns {Promise} - Promise that resolves when the transaction is complete
+ */
+async function queueTransaction(transactionFn) {
+  return new Promise((resolve, reject) => {
+    transactionQueue = transactionQueue.then(async () => {
+      try {
+        let retries = 3;
+        let result;
+        
+        while (retries > 0) {
+          try {
+            const nonce = await getNextNonce();
+            result = await transactionFn(nonce);
+            break; // Success, exit retry loop
+          } catch (error) {
+            if (error.code === 'NONCE_EXPIRED' && retries > 1) {
+              console.log(`Nonce expired, retrying... (${retries - 1} retries left)`);
+              lastUsedNonce = null; // Reset nonce tracking
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+              retries--;
+            } else {
+              throw error;
+            }
+          }
+        }
+        
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }).catch((error) => {
+      // Don't let one failed transaction break the queue
+      console.error('Transaction in queue failed:', error);
+    });
+  });
+}
+
 // Contract addresses and ABIs
 const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
@@ -41,11 +104,37 @@ const TREE_ABI = [
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
+  "function getNFTContract() external view returns (address)",
   "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, address indexed author, uint256 timestamp)",
   "event NodeUpdated(bytes32 indexed nodeId, address indexed author)"
 ];
 
+const NFT_ABI = [
+  "function mintTokensToNode(bytes32 nodeId, uint256 amount, string memory reason) external",
+  "function burnTokensFromNode(bytes32 nodeId, uint256 amount, string memory reason) external",
+  "function getNodeTokenBalance(bytes32 nodeId) external view returns (uint256)"
+];
+
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
+
+/**
+ * Helper function to calculate token supply approximation based on content length
+ * Formula: Math.max(1, Math.floor(content.length / 4))
+ * Used for split operations and direct text edits (not AI generation)
+ * 
+ * Examples:
+ * - 4 characters = 1 token (minimum)
+ * - 20 characters = 5 tokens  
+ * - 100 characters = 25 tokens
+ * - 1000 characters = 250 tokens
+ * 
+ * @param {string} content - The content to calculate tokens for
+ * @returns {number} - The approximate number of tokens (minimum 1)
+ */
+function calculateTokenApproximation(content) {
+  if (!content) return 1;
+  return Math.max(1, Math.floor(content.length / 4));
+}
 
 // Enhanced LLM Configuration with multiple providers
 const LLM_CONFIG = {
@@ -619,9 +708,56 @@ io.on('connection', (socket) => {
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
+      // Handle token mint/burn for direct text edits (not split operations)
+      if (!options || (!options.createChild && !options.createSibling)) {
+        console.log('Processing direct text edit - calculating token adjustment...');
+        
+        try {
+          // Get NFT contract
+          const nftContractAddress = await treeContract.getNFTContract();
+          const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+          
+          // Get current token balance (returns BigInt, convert to number)
+          // Add small delay to ensure blockchain state is consistent
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const currentBalanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+          const currentBalance = Number(currentBalanceBigInt);
+          
+          // Calculate new token supply using helper function
+          const newTokenSupply = calculateTokenApproximation(newContent);
+          
+          console.log(`Token adjustment: current=${currentBalance}, new=${newTokenSupply}, diff=${newTokenSupply - currentBalance}`);
+          
+          if (newTokenSupply > currentBalance) {
+            // Mint additional tokens
+            const tokensToMint = newTokenSupply - currentBalance;
+            console.log(`Minting ${tokensToMint} tokens due to content increase`);
+            await queueTransaction(async (nonce) => {
+              const mintTx = await nftContract.mintTokensToNode(nodeId, tokensToMint, "Content length increase", { nonce });
+              return await mintTx.wait();
+            });
+          } else if (newTokenSupply < currentBalance) {
+            // Burn excess tokens
+            const tokensToBurn = currentBalance - newTokenSupply;
+            console.log(`Burning ${tokensToBurn} tokens due to content decrease`);
+            await queueTransaction(async (nonce) => {
+              const burnTx = await nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content length decrease", { nonce });
+              return await burnTx.wait();
+            });
+          } else {
+            console.log('No token adjustment needed - same content length');
+          }
+        } catch (tokenError) {
+          console.warn(`Could not adjust tokens for direct edit: ${tokenError.message}`);
+          // Continue with content update even if token adjustment fails
+        }
+      }
+      
       // Update the node content
-      const updateTx = await treeContract.updateNodeContent(nodeId, newContent);
-      const updateReceipt = await updateTx.wait();
+      const updateReceipt = await queueTransaction(async (nonce) => {
+        const updateTx = await treeContract.updateNodeContent(nodeId, newContent, { nonce });
+        return await updateTx.wait();
+      });
       
       let childNodeId = null;
       let childTxHash = null;
@@ -633,19 +769,38 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Create the child node with token functionality
-        // Calculate token supply based on character count / 4
-        const childTokenSupply = Math.max(1, Math.floor(options.childContent.length / 4));
+        // Calculate token supply using helper function
+        const childTokenSupply = calculateTokenApproximation(options.childContent);
         console.log(`Child node token supply: ${childTokenSupply} (based on ${options.childContent.length} characters)`);
         
-        const childTx = await treeContract.addNodeWithToken(
-          nodeId, 
-          options.childContent,
-          "NODE",
-          "NODE", 
-          childTokenSupply
-        );
-        const childReceipt = await childTx.wait();
+        // Get NFT contract to burn tokens from parent node
+        const nftContractAddress = await treeContract.getNFTContract();
+        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+        
+        // Burn tokens from parent node (split operation)
+        try {
+          console.log(`Burning ${childTokenSupply} tokens from parent node ${nodeId} for child split`);
+          await queueTransaction(async (nonce) => {
+            const burnTx = await nftContract.burnTokensFromNode(nodeId, childTokenSupply, "Child node split operation", { nonce });
+            return await burnTx.wait();
+          });
+        } catch (burnError) {
+          console.warn(`Could not burn tokens from parent node: ${burnError.message}`);
+          // Continue with node creation even if burn fails
+        }
+        
+        // Create the child node with token functionality
+        const childReceipt = await queueTransaction(async (nonce) => {
+          const childTx = await treeContract.addNodeWithToken(
+            nodeId, 
+            options.childContent,
+            "NODE",
+            "NODE", 
+            childTokenSupply,
+            { nonce }
+          );
+          return await childTx.wait();
+        });
         childTxHash = childReceipt.hash;
         
         // Find the NodeCreated event to get the new child node ID
@@ -672,19 +827,38 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Create the sibling node with token functionality (same parent as current node)
-        // Calculate token supply based on character count / 4
-        const siblingTokenSupply = Math.max(1, Math.floor(options.siblingContent.length / 4));
+        // Calculate token supply using helper function
+        const siblingTokenSupply = calculateTokenApproximation(options.siblingContent);
         console.log(`Sibling node token supply: ${siblingTokenSupply} (based on ${options.siblingContent.length} characters)`);
         
-        const siblingTx = await treeContract.addNodeWithToken(
-          options.parentId, 
-          options.siblingContent,
-          "NODE",
-          "NODE", 
-          siblingTokenSupply
-        );
-        const siblingReceipt = await siblingTx.wait();
+        // Get NFT contract to burn tokens from current node (for sibling split)
+        const nftContractAddress = await treeContract.getNFTContract();
+        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+        
+        // Burn tokens from current node (split operation)
+        try {
+          console.log(`Burning ${siblingTokenSupply} tokens from current node ${nodeId} for sibling split`);
+          await queueTransaction(async (nonce) => {
+            const burnTx = await nftContract.burnTokensFromNode(nodeId, siblingTokenSupply, "Sibling node split operation", { nonce });
+            return await burnTx.wait();
+          });
+        } catch (burnError) {
+          console.warn(`Could not burn tokens from current node: ${burnError.message}`);
+          // Continue with node creation even if burn fails
+        }
+        
+        // Create the sibling node with token functionality (same parent as current node)
+        const siblingReceipt = await queueTransaction(async (nonce) => {
+          const siblingTx = await treeContract.addNodeWithToken(
+            options.parentId, 
+            options.siblingContent,
+            "NODE",
+            "NODE", 
+            siblingTokenSupply,
+            { nonce }
+          );
+          return await siblingTx.wait();
+        });
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
         
         // Find the NodeCreated event to get the new sibling node ID
@@ -875,6 +1049,45 @@ io.on('connection', (socket) => {
 // REST API endpoints
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Get node token balance
+app.get('/api/token-balance/:treeAddress/:nodeId', async (req, res) => {
+  try {
+    const { treeAddress, nodeId } = req.params;
+    
+    if (!treeAddress || !nodeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Tree address and node ID are required'
+      });
+    }
+
+    // Get the tree contract
+    const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
+    
+    // Get NFT contract address
+    const nftContractAddress = await treeContract.getNFTContract();
+    const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+    
+    // Get current token balance
+    const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+    const balance = Number(balanceBigInt);
+    
+    res.json({
+      success: true,
+      balance,
+      nodeId,
+      treeAddress,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Get available models
