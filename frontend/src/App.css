@@ -264,8 +264,12 @@
 }
 
 /* Left sidebar specific styles */
+.left-sidebar .section {
+  margin-bottom: 0; /* Remove bottom margin in sidebar to maximize space */
+}
+
 .path-content {
-  height: calc(100vh - 160px); /* default when not generating */
+  height: calc(100vh - 120px); /* default when not generating */
   overflow-y: auto;
   padding-right: 10px;
 }
