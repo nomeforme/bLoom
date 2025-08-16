@@ -60,7 +60,7 @@
     "storyView": {
       "key": "q",
       "modifiers": [],
-      "description": "Switch to story path view",
+      "description": "Switch to text path view",
       "symbol": "Q",
       "category": "View"
     },
