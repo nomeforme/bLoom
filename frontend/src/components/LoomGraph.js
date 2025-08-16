@@ -342,6 +342,16 @@ const LoomGraph = forwardRef(({
           resize: vertical;
           box-sizing: border-box;
         ">${originalContent}</textarea>
+        <style>
+          #nodeContentEditor::selection {
+            background-color: #4CAF50;
+            color: #fff;
+          }
+          #nodeContentEditor::-moz-selection {
+            background-color: #4CAF50;
+            color: #fff;
+          }
+        </style>
         <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <button id="cancelEdit" style="
@@ -397,6 +407,16 @@ const LoomGraph = forwardRef(({
       const cancelBtn = document.getElementById('cancelEdit');
       const childAtCursorBtn = document.getElementById('childAtCursor');
       const siblingAtCursorBtn = document.getElementById('siblingAtCursor');
+      
+      // Auto-resize textarea to fit content on modal open
+      const autoResize = () => {
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(Math.max(textarea.scrollHeight, 90), 400);
+        textarea.style.height = newHeight + 'px';
+      };
+      
+      // Resize on modal open
+      autoResize();
       
       // Focus and select text
       textarea.focus();
