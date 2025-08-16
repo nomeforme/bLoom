@@ -513,30 +513,324 @@ const RightSidebar = ({
         )}
       </div>
 
-      {/* Create New Tree */}
-      <div className="section">
-        <h3>Create New Tree</h3>
-        <div className="input-group">
-          <label>Root Content:</label>
-          <textarea
-            value={newTreeContent}
-            onChange={(e) => setNewTreeContent(e.target.value)}
-            placeholder="Enter root text for new tree..."
-          />
+      {/* Selected Node Info */}
+      {selectedNode && (
+        <div className="section">
+          <h3>Selected Node</h3>
+          <div className="node-info">
+            <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '15px' }}>
+              <div>Author: {ellipseAddress(selectedNode.author)}</div>
+              <div>Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
+              <div>ID: {selectedNode.id.substring(0, 8)}...</div>
+              <div>Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? selectedNode.parentId.substring(0, 8) + '...' : 'Root Node'}</div>
+              <div>Children: {currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</div>
+            </div>
+
+            {/* NFT Information - Now displays content and metadata */}
+            <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>ERC721: Node NFT</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #4CAF50',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 'bold' }}>NFT Token ID: #{selectedNodeNFT.tokenId}</div>
+                </div>
+                
+                {/* Display the actual content from NFT */}
+                <div style={{ 
+                  backgroundColor: '#0a0a0a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '8px',
+                  marginBottom: '8px',
+                  fontSize: '11px'
+                }}>
+                  {(() => {
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    let content;
+                    if (metadata) {
+                      content = metadata.description || selectedNodeNFT.content;
+                    } else {
+                      content = selectedNodeNFT.content;
+                    }
+                    
+                    // Clip content to maximum 300 characters for right sidebar
+                    const maxLength = 300;
+                    if (content.length > maxLength) {
+                      return content.substring(0, maxLength) + '...';
+                    }
+                    return content;
+                  })()}
+                </div>
+                
+                <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>
+                  <div>NFT Owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  {selectedNode ? 'Loading content from NFT...' : 'No content available'}
+                </div>
+              </div>
+            )}
+
+            {/* Node Token Information */}
+            <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #4CAF50',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
+                  {(() => {
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    
+                    if (metadata && metadata.nodeTokenContract) {
+                      return (
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                            Token Contract:
+                          </div>
+                          <div style={{ 
+                            backgroundColor: '#0a0a0a',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            padding: '6px',
+                            fontFamily: 'monospace',
+                            fontSize: '10px',
+                            wordBreak: 'break-all',
+                            marginBottom: '8px'
+                          }}>
+                            {metadata.nodeTokenContract}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                            <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
+                            <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>• Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>• Held by Token Bound Account</div>
+                            <div>• ERC20 standard token for this node</div>
+                          </div>
+                        </div>
+                      );
+                    } else if (metadata) {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          No Node Token found in NFT metadata
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          Could not parse NFT metadata for token info
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Loading Node Token info...
+                </div>
+              </div>
+            )}
+
+            {/* Token Bound Account (TBA) Information */}
+            <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
+            {selectedNodeNFT ? (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #4CAF50',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
+                  {(() => {
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    
+                    if (metadata && metadata.tokenBoundAccount) {
+                      return (
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                            Account Address:
+                          </div>
+                          <div style={{ 
+                            backgroundColor: '#0a0a0a',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            padding: '6px',
+                            fontFamily: 'monospace',
+                            fontSize: '10px',
+                            wordBreak: 'break-all',
+                            marginBottom: '8px'
+                          }}>
+                            {metadata.tokenBoundAccount}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                            <div>• This NFT has its own Ethereum account</div>
+                            <div>• Can hold assets and execute transactions</div>
+                            <div>• Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
+                            <div>• Account transfers with NFT ownership</div>
+                          </div>
+                        </div>
+                      );
+                    } else if (metadata) {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          No Token Bound Account found in NFT metadata
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                          Could not parse NFT metadata for TBA info
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #555',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Loading Token Bound Account info...
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <button 
-          className="btn" 
-          onClick={handleCreateTree}
-          disabled={!connected || !newTreeContent.trim() || isCreatingTree}
-          style={{ width: '100%' }}
-        >
-          {isCreatingTree ? 'Creating Tree...' : 'Create Tree'}
-        </button>
-      </div>
+      )}
+
+      {/* AI Generation Controls */}
+      {selectedNode && (
+        <div className="section">
+          <h3>AI Generation</h3>
+          
+          {/* Generate Children */}
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                className="btn"
+                onClick={handleGenerateChildren}
+                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+                style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
+              >
+                {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
+              </button>
+              <select
+                value={childrenCount}
+                onChange={(e) => setChildrenCount(parseInt(e.target.value))}
+                style={{
+                  width: '60px',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #555',
+                  backgroundColor: '#3d3d3d',
+                  color: '#fff',
+                  fontSize: '12px',
+                  height: '36px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={5}>5</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Generate Siblings */}
+          {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+            <div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  className="btn"
+                  onClick={handleGenerateSiblings}
+                  disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
+                  style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
+                >
+                  {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
+                </button>
+                <select
+                  value={siblingCount}
+                  onChange={(e) => setSiblingCount(parseInt(e.target.value))}
+                  style={{
+                    width: '60px',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #555',
+                    backgroundColor: '#3d3d3d',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={5}>5</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create New Tree - only show when connected */}
+      {connected && (
+        <div className="section">
+          <h3>Create New Tree</h3>
+          <div className="input-group">
+            <label>Root Content:</label>
+            <textarea
+              value={newTreeContent}
+              onChange={(e) => setNewTreeContent(e.target.value)}
+              placeholder="Enter root text for new tree..."
+            />
+          </div>
+          <button 
+            className="btn" 
+            onClick={handleCreateTree}
+            disabled={!connected || !newTreeContent.trim() || isCreatingTree}
+            style={{ width: '100%' }}
+          >
+            {isCreatingTree ? 'Creating Tree...' : 'Create Tree'}
+          </button>
+        </div>
+      )}
 
 
-      {/* Tree List */}
-      <div className="section">
+      {/* Tree List - only show when connected */}
+      {connected && (
+        <div className="section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <h3>Trees ({(() => {
             const filteredTrees = showOnlyMyTrees 
@@ -623,324 +917,36 @@ const RightSidebar = ({
             })
           );
         })()}
-      </div>
-
-      {/* Selected Node Info */}
-      {selectedNode && (
-        <div className="section">
-          <h3>Selected Node</h3>
-          <div className="node-info">
-            <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '15px' }}>
-              <div>Author: {ellipseAddress(selectedNode.author)}</div>
-              <div>Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
-              <div>ID: {selectedNode.id.substring(0, 8)}...</div>
-              <div>Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? selectedNode.parentId.substring(0, 8) + '...' : 'Root Node'}</div>
-              <div>Children: {currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</div>
-            </div>
-
-            {/* NFT Information - Now displays content and metadata */}
-            <h4 style={{ color: '#FF6B35', marginBottom: '8px' }}>ERC721: Node NFT</h4>
-            {selectedNodeNFT ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #FF6B35',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#FF6B35', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 'bold' }}>NFT Token ID: #{selectedNodeNFT.tokenId}</div>
-                </div>
-                
-                {/* Display the actual content from NFT */}
-                <div style={{ 
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  marginBottom: '8px',
-                  fontSize: '11px'
-                }}>
-                  {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    let content;
-                    if (metadata) {
-                      content = metadata.description || selectedNodeNFT.content;
-                    } else {
-                      content = selectedNodeNFT.content;
-                    }
-                    
-                    // Clip content to maximum 300 characters for right sidebar
-                    const maxLength = 300;
-                    if (content.length > maxLength) {
-                      return content.substring(0, maxLength) + '...';
-                    }
-                    return content;
-                  })()}
-                </div>
-                
-                <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>
-                  <div>NFT Owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  {selectedNode ? 'Loading content from NFT...' : 'No content available'}
-                </div>
-              </div>
-            )}
-
-            {/* Node Token Information */}
-            <h4 style={{ color: '#FFC107', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
-            {selectedNodeNFT ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #FFC107',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#FFC107', marginBottom: '8px' }}>
-                  {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    
-                    if (metadata && metadata.nodeTokenContract) {
-                      return (
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            Token Contract:
-                          </div>
-                          <div style={{ 
-                            backgroundColor: '#0a0a0a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            padding: '6px',
-                            fontFamily: 'monospace',
-                            fontSize: '10px',
-                            wordBreak: 'break-all',
-                            marginBottom: '8px'
-                          }}>
-                            {metadata.nodeTokenContract}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
-                            <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>• Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>• Held by Token Bound Account</div>
-                            <div>• ERC20 standard token for this node</div>
-                          </div>
-                        </div>
-                      );
-                    } else if (metadata) {
-                      return (
-                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          No Node Token found in NFT metadata
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          Could not parse NFT metadata for token info
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Loading Node Token info...
-                </div>
-              </div>
-            )}
-
-            {/* Token Bound Account (TBA) Information */}
-            <h4 style={{ color: '#9C27B0', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
-            {selectedNodeNFT ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #9C27B0',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#9C27B0', marginBottom: '8px' }}>
-                  {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    
-                    if (metadata && metadata.tokenBoundAccount) {
-                      return (
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            Account Address:
-                          </div>
-                          <div style={{ 
-                            backgroundColor: '#0a0a0a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            padding: '6px',
-                            fontFamily: 'monospace',
-                            fontSize: '10px',
-                            wordBreak: 'break-all',
-                            marginBottom: '8px'
-                          }}>
-                            {metadata.tokenBoundAccount}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>• This NFT has its own Ethereum account</div>
-                            <div>• Can hold assets and execute transactions</div>
-                            <div>• Controlled by NFT owner: {ellipseAddress(selectedNodeNFT.owner)}</div>
-                            <div>• Account transfers with NFT ownership</div>
-                          </div>
-                        </div>
-                      );
-                    } else if (metadata) {
-                      return (
-                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          No Token Bound Account found in NFT metadata
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                          Could not parse NFT metadata for TBA info
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Loading Token Bound Account info...
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Generation Controls */}
-      {selectedNode && (
+      {/* Backup & Restore - only show when connected */}
+      {connected && (
         <div className="section">
-          <h3>AI Generation</h3>
-          
-          {/* Generate Children */}
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <button
-                className="btn"
-                onClick={handleGenerateChildren}
-                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-                style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
-              >
-                {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
-              </button>
-              <select
-                value={childrenCount}
-                onChange={(e) => setChildrenCount(parseInt(e.target.value))}
-                style={{
-                  width: '60px',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #555',
-                  backgroundColor: '#3d3d3d',
-                  color: '#fff',
-                  fontSize: '12px',
-                  height: '36px',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={5}>5</option>
-              </select>
-            </div>
+          <h3>Backup & Restore</h3>
+          <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={handleExportTrees}
+              disabled={!connected || trees.length === 0 || isExporting}
+              style={{ fontSize: '12px', padding: '8px 12px' }}
+            >
+              {isExporting ? 'Exporting...' : `Save All Trees (${trees.length})`}
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              onClick={handleImportTrees}
+              disabled={!connected || isImporting}
+              style={{ fontSize: '12px', padding: '8px 12px' }}
+            >
+              {isImporting ? 'Importing...' : 'Load Trees from JSON'}
+            </button>
           </div>
-          
-          {/* Generate Siblings */}
-          {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-            <div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button
-                  className="btn"
-                  onClick={handleGenerateSiblings}
-                  disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-                  style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
-                >
-                  {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
-                </button>
-                <select
-                  value={siblingCount}
-                  onChange={(e) => setSiblingCount(parseInt(e.target.value))}
-                  style={{
-                    width: '60px',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    border: '1px solid #555',
-                    backgroundColor: '#3d3d3d',
-                    color: '#fff',
-                    fontSize: '12px'
-                  }}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                  <option value={5}>5</option>
-                </select>
-              </div>
-            </div>
-          )}
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
+            Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
+          </div>
         </div>
       )}
-
-      {/* Backup & Restore */}
-      <div className="section">
-        <h3>Backup & Restore</h3>
-        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={handleExportTrees}
-            disabled={!connected || trees.length === 0 || isExporting}
-            style={{ fontSize: '12px', padding: '8px 12px' }}
-          >
-            {isExporting ? 'Exporting...' : `Save All Trees (${trees.length})`}
-          </button>
-          <button 
-            className="btn btn-secondary" 
-            onClick={handleImportTrees}
-            disabled={!connected || isImporting}
-            style={{ fontSize: '12px', padding: '8px 12px' }}
-          >
-            {isImporting ? 'Importing...' : 'Load Trees from JSON'}
-          </button>
-        </div>
-        <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
-          Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
-        </div>
-      </div>
 
       {/* Keyboard Shortcuts */}
       <div className="section">

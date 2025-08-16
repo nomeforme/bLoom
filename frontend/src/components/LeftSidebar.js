@@ -253,7 +253,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
             marginTop: '50px',
             fontStyle: 'italic'
           }}>
-            {viewMode === 'story' ? 'Select a node to view its story path' : 'Select a tree to view its hierarchy'}
+            {viewMode === 'story' ? 'Select a node to view its text completion path' : 'Select a tree to view its hierarchy'}
           </div>
         </div>
       </div>
