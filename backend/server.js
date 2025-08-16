@@ -633,8 +633,14 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Create the child node
-        const childTx = await treeContract.addNode(nodeId, options.childContent);
+        // Create the child node with token functionality
+        const childTx = await treeContract.addNodeWithToken(
+          nodeId, 
+          options.childContent,
+          "NODE",
+          "NODE", 
+          1000 // Default token supply for split nodes
+        );
         const childReceipt = await childTx.wait();
         childTxHash = childReceipt.hash;
         
@@ -662,8 +668,14 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Create the sibling node (same parent as current node)
-        const siblingTx = await treeContract.addNode(options.parentId, options.siblingContent);
+        // Create the sibling node with token functionality (same parent as current node)
+        const siblingTx = await treeContract.addNodeWithToken(
+          options.parentId, 
+          options.siblingContent,
+          "NODE",
+          "NODE", 
+          1000 // Default token supply for split nodes
+        );
         const siblingReceipt = await siblingTx.wait();
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
         

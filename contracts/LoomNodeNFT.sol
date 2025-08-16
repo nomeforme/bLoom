@@ -70,14 +70,31 @@ contract LoomNodeNFT is ERC721, Ownable {
         uint256 tokenId = nodeIdToTokenId[nodeId];
         require(tokenId != 0, "No token exists for this node");
         
-        // Create updated metadata JSON
+        // Retrieve all the stored metadata for this token to preserve it
+        address tokenBoundAccount = tokenBoundAccounts[tokenId];
+        address nodeTokenContract = nodeTokenContracts[tokenId];
+        string memory tokenName = nodeTokenNames[tokenId];
+        string memory tokenSymbol = nodeTokenSymbols[tokenId];
+        uint256 tokenSupply = nodeTokenSupplies[tokenId];
+        
+        // Create updated metadata JSON preserving all ERC20 and TBA information
         string memory metadata = string(abi.encodePacked(
-            '{"name": "LoomNode #',
+            '{"name":"LoomNode #',
             toString(tokenId),
-            '", "description": "',
+            '","description":"',
             newContent,
-            '", "nodeId": "',
+            '","nodeId":"',
             toHexString(uint256(nodeId)),
+            '","tokenBoundAccount":"',
+            toHexStringAddress(tokenBoundAccount),
+            '","nodeTokenContract":"',
+            toHexStringAddress(nodeTokenContract),
+            '","tokenName":"',
+            tokenName,
+            '","tokenSymbol":"',
+            tokenSymbol,
+            '","tokenSupply":"',
+            toString(tokenSupply),
             '"}'
         ));
         
