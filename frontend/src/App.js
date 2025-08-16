@@ -187,7 +187,14 @@ function App() {
   );
 
   const handleNodeSelect = useCallback((node) => {
-    memoryHandlers.handleNodeSelect(node, currentTree);
+    if (node === null) {
+      // Handle deselection - clear the selected node state
+      setSelectedNode(null);
+      setSelectedNodeNFT(null);
+    } else {
+      // Handle selection - use existing memory handler
+      memoryHandlers.handleNodeSelect(node, currentTree);
+    }
   }, [currentTree, memoryHandlers]);
 
   // Fetch NFT information when a node is selected
