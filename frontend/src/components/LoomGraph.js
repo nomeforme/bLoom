@@ -494,6 +494,8 @@ const LoomGraph = forwardRef(({
       canvas.allow_multiselection = false;
     }
 
+
+
     // Add context menu for creating nodes
     canvas.onMenuAdd = function(node, options, e, prev_menu, callback) {
       const menu = [
@@ -1005,6 +1007,38 @@ const LoomGraph = forwardRef(({
           e.preventDefault();
           if (selectedNode && selectedNode.onDblClick) {
             selectedNode.onDblClick();
+          }
+        }
+        return;
+      }
+
+      // Handle deselect shortcut (Escape)
+      if (shortcutsManager.matchShortcut(e, 'deselect')) {
+        if (selectedNode) {
+          e.preventDefault();
+          
+          const canvas = graph.canvasInstance;
+          
+          // Use LiteGraph's native deselection method
+          if (canvas && typeof canvas.deselectAllNodes === 'function') {
+            canvas.deselectAllNodes();
+          } else {
+            // Fallback: manually clear selection
+            const allNodes = graph.findNodesByType("loom/node");
+            allNodes.forEach(node => { node.selected = false; });
+          }
+          
+          // Clear our custom selection state
+          graph.selectedNodeForKeyboard = null;
+          
+          // Clear the sidebar selection state
+          if (onNodeSelect) {
+            onNodeSelect(null);
+          }
+          
+          // Mark canvas as dirty to redraw
+          if (canvas && canvas.setDirty) {
+            canvas.setDirty(true, true);
           }
         }
         return;
