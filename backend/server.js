@@ -634,12 +634,16 @@ io.on('connection', (socket) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Create the child node with token functionality
+        // Calculate token supply based on character count / 4
+        const childTokenSupply = Math.max(1, Math.floor(options.childContent.length / 4));
+        console.log(`Child node token supply: ${childTokenSupply} (based on ${options.childContent.length} characters)`);
+        
         const childTx = await treeContract.addNodeWithToken(
           nodeId, 
           options.childContent,
           "NODE",
           "NODE", 
-          1000 // Default token supply for split nodes
+          childTokenSupply
         );
         const childReceipt = await childTx.wait();
         childTxHash = childReceipt.hash;
@@ -669,12 +673,16 @@ io.on('connection', (socket) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Create the sibling node with token functionality (same parent as current node)
+        // Calculate token supply based on character count / 4
+        const siblingTokenSupply = Math.max(1, Math.floor(options.siblingContent.length / 4));
+        console.log(`Sibling node token supply: ${siblingTokenSupply} (based on ${options.siblingContent.length} characters)`);
+        
         const siblingTx = await treeContract.addNodeWithToken(
           options.parentId, 
           options.siblingContent,
           "NODE",
           "NODE", 
-          1000 // Default token supply for split nodes
+          siblingTokenSupply
         );
         const siblingReceipt = await siblingTx.wait();
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
