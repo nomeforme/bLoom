@@ -29,7 +29,7 @@ export const createNodeHandlers = (
     }
   };
 
-  const handleUpdateNode = async (treeAddress, nodeId, newContent) => {
+  const handleUpdateNode = async (treeAddress, nodeId, newContent, options = null) => {
     if (!socket) {
       throw new Error('Socket not connected - cannot update node');
     }
@@ -61,11 +61,19 @@ export const createNodeHandlers = (
 
         socket.on('updateComplete', handleComplete);
 
-        socket.emit('updateNode', {
+        const payload = {
           treeAddress,
           nodeId,
           newContent
-        });
+        };
+        
+        // Add options if provided
+        if (options) {
+          payload.options = options;
+        }
+
+        console.log('Sending updateNode with payload:', payload);
+        socket.emit('updateNode', payload);
       });
 
       await updatePromise;
