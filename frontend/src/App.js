@@ -297,6 +297,7 @@ function App() {
         isGeneratingSiblings={isGeneratingSiblings}
         setIsGeneratingSiblings={setIsGeneratingSiblings}
         onModelChange={handleModelChange}
+        socket={socket}
       />
       
       {/* Notifications */}

@@ -736,6 +736,15 @@ io.on('connection', (socket) => {
               const mintTx = await nftContract.mintTokensToNode(nodeId, tokensToMint, "Content length increase", { nonce });
               return await mintTx.wait();
             });
+            
+            // Emit updated balance to all clients
+            const newBalance = await nftContract.getNodeTokenBalance(nodeId);
+            io.emit('tokenBalanceUpdate', {
+              balance: Number(newBalance),
+              nodeId,
+              treeAddress,
+              timestamp: new Date().toISOString()
+            });
           } else if (newTokenSupply < currentBalance) {
             // Burn excess tokens
             const tokensToBurn = currentBalance - newTokenSupply;
@@ -743,6 +752,15 @@ io.on('connection', (socket) => {
             await queueTransaction(async (nonce) => {
               const burnTx = await nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content length decrease", { nonce });
               return await burnTx.wait();
+            });
+            
+            // Emit updated balance to all clients
+            const newBalance = await nftContract.getNodeTokenBalance(nodeId);
+            io.emit('tokenBalanceUpdate', {
+              balance: Number(newBalance),
+              nodeId,
+              treeAddress,
+              timestamp: new Date().toISOString()
             });
           } else {
             console.log('No token adjustment needed - same content length');
@@ -783,6 +801,15 @@ io.on('connection', (socket) => {
           await queueTransaction(async (nonce) => {
             const burnTx = await nftContract.burnTokensFromNode(nodeId, childTokenSupply, "Child node split operation", { nonce });
             return await burnTx.wait();
+          });
+          
+          // Emit updated balance for parent node after burning
+          const parentNewBalance = await nftContract.getNodeTokenBalance(nodeId);
+          io.emit('tokenBalanceUpdate', {
+            balance: Number(parentNewBalance),
+            nodeId,
+            treeAddress,
+            timestamp: new Date().toISOString()
           });
         } catch (burnError) {
           console.warn(`Could not burn tokens from parent node: ${burnError.message}`);
@@ -841,6 +868,15 @@ io.on('connection', (socket) => {
           await queueTransaction(async (nonce) => {
             const burnTx = await nftContract.burnTokensFromNode(nodeId, siblingTokenSupply, "Sibling node split operation", { nonce });
             return await burnTx.wait();
+          });
+          
+          // Emit updated balance for current node after burning
+          const currentNewBalance = await nftContract.getNodeTokenBalance(nodeId);
+          io.emit('tokenBalanceUpdate', {
+            balance: Number(currentNewBalance),
+            nodeId,
+            treeAddress,
+            timestamp: new Date().toISOString()
           });
         } catch (burnError) {
           console.warn(`Could not burn tokens from current node: ${burnError.message}`);
@@ -1038,6 +1074,38 @@ io.on('connection', (socket) => {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  socket.on('getTokenBalance', async (data) => {
+    try {
+      const { treeAddress, nodeId } = data;
+      
+      if (!treeAddress || !nodeId) {
+        socket.emit('tokenBalanceError', { error: 'Tree address and node ID are required' });
+        return;
+      }
+
+      // Get the tree contract
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
+      
+      // Get NFT contract address
+      const nftContractAddress = await treeContract.getNFTContract();
+      const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+      
+      // Get current token balance
+      const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+      const balance = Number(balanceBigInt);
+      
+      socket.emit('tokenBalance', {
+        balance,
+        nodeId,
+        treeAddress,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching token balance via socket:', error);
+      socket.emit('tokenBalanceError', { error: error.message });
     }
   });
 
