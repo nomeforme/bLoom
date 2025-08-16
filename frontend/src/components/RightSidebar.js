@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 import { refreshTrees } from '../utils/treeUtils';
+import { getNodeTokenBalance } from '../utils/tokenUtils';
 import modelsConfig from '../config/models.json';
 
 const RightSidebar = ({
@@ -35,6 +36,8 @@ const RightSidebar = ({
   const [showOnlyMyTrees, setShowOnlyMyTrees] = useState(false);
   const [selectedModel, setSelectedModel] = useState(modelsConfig.defaultModel);
   const [availableModels, setAvailableModels] = useState([]);
+  const [currentTokenBalance, setCurrentTokenBalance] = useState(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
   // Initialize keyboard shortcuts manager
   const shortcutsManager = new KeyboardShortcutsManager();
@@ -81,6 +84,40 @@ const RightSidebar = ({
       onModelChange(selectedModel);
     }
   }, [selectedModel, onModelChange]);
+
+  // Fetch token balance when selected node changes
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (!selectedNode || !currentTree?.address || !connected) {
+        setCurrentTokenBalance(null);
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const response = await fetch(`http://localhost:3001/api/token-balance/${currentTree.address}/${selectedNode.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setCurrentTokenBalance(data.balance);
+          } else {
+            console.error('Error fetching token balance:', data.error);
+            setCurrentTokenBalance(null);
+          }
+        } else {
+          console.error('Failed to fetch token balance');
+          setCurrentTokenBalance(null);
+        }
+      } catch (error) {
+        console.error('Error fetching token balance:', error);
+        setCurrentTokenBalance(null);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchTokenBalance();
+  }, [selectedNode?.id, currentTree?.address, connected]);
 
   // Handle keyboard shortcuts for model and tree navigation
   useEffect(() => {
@@ -724,6 +761,13 @@ const RightSidebar = ({
                             <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
                             <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
                             <div>• Total Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                              • Current Balance: {
+                                isLoadingBalance ? 'Loading...' : 
+                                currentTokenBalance !== null ? `${currentTokenBalance} ${metadata.tokenSymbol || 'NODE'}` : 
+                                'N/A'
+                              }
+                            </div>
                             <div>• Token Type: ERC20</div>
                             <div>• Held by Token Bound Account</div>
                           </div>
