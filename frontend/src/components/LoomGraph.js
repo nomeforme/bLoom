@@ -104,7 +104,7 @@ const LoomGraph = forwardRef(({
           node.selected = true;
         }
         
-        // Center on the node
+        // Center on the node for keyboard navigation
         if (typeof graph.centerOnNodeHiDPI === 'function') {
           graph.centerOnNodeHiDPI(node);
         } else if (canvas && typeof canvas.centerOnNode === 'function') {
@@ -941,11 +941,11 @@ const LoomGraph = forwardRef(({
                 if (result && result.successCount > 0) {
                   // Reorganize nodes after generation completes - only the affected subtree
                   setTimeout(() => {
-                    // Re-select the same node to reapply native highlight/center
+                    // Re-select the same node without moving camera
                     const node = findNodeById(selectedNodeData.id);
                     if (node) {
                       graph.selectedNodeForKeyboard = node;
-                      selectNodeByKeyboard(node);
+                      selectNodeProgrammatically(node);
                     }
                   }, 500); // Small delay to ensure nodes are fully added
                 }
@@ -980,11 +980,11 @@ const LoomGraph = forwardRef(({
                 if (result && result.successCount > 0) {
                   // Reorganize nodes after generation completes - only the affected subtree
                   setTimeout(() => {
-                    // Re-select the parent node to reapply native highlight/center
+                    // Re-select the parent node without moving camera
                     const parentNode = findNodeById(selectedNodeData.parentId);
                     if (parentNode) {
                       graph.selectedNodeForKeyboard = parentNode;
-                      selectNodeByKeyboard(parentNode);
+                      selectNodeProgrammatically(parentNode);
                     }
                   }, 500); // Small delay to ensure nodes are fully added
                 }
@@ -1130,7 +1130,15 @@ const LoomGraph = forwardRef(({
     // Expose for use in deferred callbacks
     graph.centerOnNodeHiDPI = centerOnNodeHiDPI;
 
+    // Function for keyboard navigation (with camera centering)
     const selectNodeByKeyboard = (node) => {
+      selectNodeProgrammatically(node);
+      // Center the canvas on the selected node with high-DPI aware method
+      centerOnNodeHiDPI(node);
+    };
+    
+    // Function for programmatic selection (without camera centering)
+    const selectNodeProgrammatically = (node) => {
       // Use LiteGraph's built-in selection
       if (canvas && typeof canvas.selectNode === 'function') {
         canvas.selectNode(node);
@@ -1149,8 +1157,6 @@ const LoomGraph = forwardRef(({
           parentId: node.properties.parentId
         });
       }
-      // Center the canvas on the selected node with high-DPI aware method
-      centerOnNodeHiDPI(node);
     };
     
     // Add event listener for keyboard navigation
@@ -1208,8 +1214,8 @@ const LoomGraph = forwardRef(({
           if (typeof canvas.selectNode === 'function') {
             canvas.selectNode(currentSelectedNode);
           }
-          // Re-center view on the selected node for consistency
-          centerOnNodeHiDPI(currentSelectedNode);
+          // Re-center view on the selected node for consistency - DISABLED
+          // centerOnNodeHiDPI(currentSelectedNode);
         }
       }
     };
@@ -1315,15 +1321,15 @@ const LoomGraph = forwardRef(({
                 if (activeCanvas && typeof activeCanvas.selectNode === 'function') {
                   activeCanvas.selectNode(node);
                 }
-                // Center with high-DPI aware helper if available on graph, else via canvas API
-                if (typeof graph.centerOnNodeHiDPI === 'function') {
-                  graph.centerOnNodeHiDPI(node);
-                } else if (activeCanvas && typeof activeCanvas.centerOnNode === 'function') {
-                  activeCanvas.centerOnNode(node);
-                }
+                // Center with high-DPI aware helper if available on graph, else via canvas API - DISABLED
+                // if (typeof graph.centerOnNodeHiDPI === 'function') {
+                //   graph.centerOnNodeHiDPI(node);
+                // } else if (activeCanvas && typeof activeCanvas.centerOnNode === 'function') {
+                //   activeCanvas.centerOnNode(node);
+                // }
                 activeCanvas && activeCanvas.setDirty && activeCanvas.setDirty(true, true);
               } catch (err) {
-                try { selectNodeByKeyboard(node); } catch {}
+                try { selectNodeProgrammatically(node); } catch {}
               }
             }
             graph.pendingReSelectNodeId = null;
@@ -1367,7 +1373,7 @@ const LoomGraph = forwardRef(({
         const node = graph.findNodesByType('loom/node').find(n => n.properties?.nodeId === graph.pendingReSelectNodeId);
         if (node) {
           graph.selectedNodeForKeyboard = node;
-          try { selectNodeByKeyboard(node); } catch {}
+          try { selectNodeProgrammatically(node); } catch {}
           graph.pendingReSelectNodeId = null;
         }
       }, 300);
