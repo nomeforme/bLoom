@@ -576,7 +576,7 @@ const RightSidebar = ({
                 border: '1px solid #4CAF50',
                 borderRadius: '6px',
                 padding: '10px',
-                marginBottom: '8px'
+                marginBottom: '15px'
               }}>
                 <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
@@ -628,7 +628,7 @@ const RightSidebar = ({
                   })()}
                 </div>
                 
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                   NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
                 </div>
               </div>
@@ -664,7 +664,7 @@ const RightSidebar = ({
                 <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
                   {selectedNode ? 'Loading content from NFT...' : 'No content available'}
                 </div>
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                   NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
                 </div>
               </div>
@@ -678,7 +678,7 @@ const RightSidebar = ({
                 border: '1px solid #4CAF50',
                 borderRadius: '6px',
                 padding: '10px',
-                marginBottom: '8px'
+                marginBottom: '15px'
               }}>
                 <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
                   {(() => {
@@ -769,7 +769,7 @@ const RightSidebar = ({
                 border: '1px solid #4CAF50',
                 borderRadius: '6px',
                 padding: '10px',
-                marginBottom: '8px'
+                marginBottom: '15px'
               }}>
                 <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
                   {(() => {
