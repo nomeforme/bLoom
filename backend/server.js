@@ -112,7 +112,8 @@ const TREE_ABI = [
 const NFT_ABI = [
   "function mintTokensToNode(bytes32 nodeId, uint256 amount, string memory reason) external",
   "function burnTokensFromNode(bytes32 nodeId, uint256 amount, string memory reason) external",
-  "function getNodeTokenBalance(bytes32 nodeId) external view returns (uint256)"
+  "function getNodeTokenBalance(bytes32 nodeId) external view returns (uint256)",
+  "function getTextContent(bytes32 nodeId) external view returns (string memory)"
 ];
 
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
@@ -707,68 +708,7 @@ io.on('connection', (socket) => {
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
-      // Handle token mint/burn for direct text edits (not split operations)
-      if (!options || (!options.createChild && !options.createSibling)) {
-        console.log('Processing direct text edit - calculating token adjustment...');
-        
-        try {
-          // Get NFT contract
-          const nftContractAddress = await treeContract.getNFTContract();
-          const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
-          
-          // Get current token balance (returns BigInt, convert to number)
-          // Add small delay to ensure blockchain state is consistent
-          await new Promise(resolve => setTimeout(resolve, 100));
-          const currentBalanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
-          const currentBalance = Number(currentBalanceBigInt);
-          
-          // Calculate new token supply using helper function
-          const newTokenSupply = calculateTokenApproximation(newContent);
-          
-          console.log(`Token adjustment: current=${currentBalance}, new=${newTokenSupply}, diff=${newTokenSupply - currentBalance}`);
-          
-          if (newTokenSupply > currentBalance) {
-            // Mint additional tokens
-            const tokensToMint = newTokenSupply - currentBalance;
-            console.log(`Minting ${tokensToMint} tokens due to content increase`);
-            await queueTransaction(async (nonce) => {
-              const mintTx = await nftContract.mintTokensToNode(nodeId, tokensToMint, "Content length increase", { nonce });
-              return await mintTx.wait();
-            });
-            
-            // Emit updated balance to all clients
-            const newBalance = await nftContract.getNodeTokenBalance(nodeId);
-            io.emit('tokenBalanceUpdate', {
-              balance: Number(newBalance),
-              nodeId,
-              treeAddress,
-              timestamp: new Date().toISOString()
-            });
-          } else if (newTokenSupply < currentBalance) {
-            // Burn excess tokens
-            const tokensToBurn = currentBalance - newTokenSupply;
-            console.log(`Burning ${tokensToBurn} tokens due to content decrease`);
-            await queueTransaction(async (nonce) => {
-              const burnTx = await nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content length decrease", { nonce });
-              return await burnTx.wait();
-            });
-            
-            // Emit updated balance to all clients
-            const newBalance = await nftContract.getNodeTokenBalance(nodeId);
-            io.emit('tokenBalanceUpdate', {
-              balance: Number(newBalance),
-              nodeId,
-              treeAddress,
-              timestamp: new Date().toISOString()
-            });
-          } else {
-            console.log('No token adjustment needed - same content length');
-          }
-        } catch (tokenError) {
-          console.warn(`Could not adjust tokens for direct edit: ${tokenError.message}`);
-          // Continue with content update even if token adjustment fails
-        }
-      }
+      // Token adjustments for direct edits are now handled automatically by the contract
       
       // Update the node content
       const updateReceipt = await queueTransaction(async (nonce) => {
@@ -786,34 +726,7 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Calculate token supply using helper function
-        const childTokenSupply = calculateTokenApproximation(options.childContent);
-        console.log(`Child node token supply: ${childTokenSupply} (based on ${options.childContent.length} characters)`);
-        
-        // Get NFT contract to burn tokens from parent node
-        const nftContractAddress = await treeContract.getNFTContract();
-        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
-        
-        // Burn tokens from parent node (split operation)
-        try {
-          console.log(`Burning ${childTokenSupply} tokens from parent node ${nodeId} for child split`);
-          await queueTransaction(async (nonce) => {
-            const burnTx = await nftContract.burnTokensFromNode(nodeId, childTokenSupply, "Child node split operation", { nonce });
-            return await burnTx.wait();
-          });
-          
-          // Emit updated balance for parent node after burning
-          const parentNewBalance = await nftContract.getNodeTokenBalance(nodeId);
-          io.emit('tokenBalanceUpdate', {
-            balance: Number(parentNewBalance),
-            nodeId,
-            treeAddress,
-            timestamp: new Date().toISOString()
-          });
-        } catch (burnError) {
-          console.warn(`Could not burn tokens from parent node: ${burnError.message}`);
-          // Continue with node creation even if burn fails
-        }
+        // Create child node - no manual token burning needed
         
         // Create the child node with token functionality
         const childReceipt = await queueTransaction(async (nonce) => {
@@ -852,34 +765,7 @@ io.on('connection', (socket) => {
         // Wait a moment to avoid nonce conflicts
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Calculate token supply using helper function
-        const siblingTokenSupply = calculateTokenApproximation(options.siblingContent);
-        console.log(`Sibling node token supply: ${siblingTokenSupply} (based on ${options.siblingContent.length} characters)`);
-        
-        // Get NFT contract to burn tokens from current node (for sibling split)
-        const nftContractAddress = await treeContract.getNFTContract();
-        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
-        
-        // Burn tokens from current node (split operation)
-        try {
-          console.log(`Burning ${siblingTokenSupply} tokens from current node ${nodeId} for sibling split`);
-          await queueTransaction(async (nonce) => {
-            const burnTx = await nftContract.burnTokensFromNode(nodeId, siblingTokenSupply, "Sibling node split operation", { nonce });
-            return await burnTx.wait();
-          });
-          
-          // Emit updated balance for current node after burning
-          const currentNewBalance = await nftContract.getNodeTokenBalance(nodeId);
-          io.emit('tokenBalanceUpdate', {
-            balance: Number(currentNewBalance),
-            nodeId,
-            treeAddress,
-            timestamp: new Date().toISOString()
-          });
-        } catch (burnError) {
-          console.warn(`Could not burn tokens from current node: ${burnError.message}`);
-          // Continue with node creation even if burn fails
-        }
+        // Create sibling node - no manual token burning needed
         
         // Create the sibling node with token functionality (same parent as current node)
         const siblingReceipt = await queueTransaction(async (nonce) => {
@@ -1012,10 +898,7 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Calculate token supply for imported node
-          const tokenSupply = calculateTokenApproximation(nodeData.content);
-          
-          // Use addNodeWithToken for consistent token economics
+          // Use addNodeWithToken for consistent token economics (automatically calculates token supply)
           const tx = await treeContract.addNodeWithToken(
             parentIdToUse, 
             nodeData.content, 

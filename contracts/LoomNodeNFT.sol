@@ -18,6 +18,7 @@ contract LoomNodeNFT is ERC721, Ownable {
     mapping(uint256 => string) public nodeTokenNames;
     mapping(uint256 => string) public nodeTokenSymbols;
     mapping(uint256 => uint256) public nodeTokenSupplies;
+    mapping(uint256 => string) public textContent; // Store text content separately from JSON metadata
     
     IERC6551Registry public immutable registry;
     address public immutable accountImplementation;
@@ -102,6 +103,7 @@ contract LoomNodeNFT is ERC721, Ownable {
         ));
         
         tokenURIs[tokenId] = metadata;
+        textContent[tokenId] = newContent; // Update text content
     }
     
     function mintNodeNFT(
@@ -167,6 +169,8 @@ contract LoomNodeNFT is ERC721, Ownable {
             '"}'
         ));
         
+        textContent[newTokenId] = content; // Store text content
+        
         emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount, nodeTokenContract);
         emit TokenBoundAccountCreated(newTokenId, tokenBoundAccount);
         emit NodeTokenCreated(newTokenId, nodeTokenContract, tokenBoundAccount);
@@ -195,6 +199,12 @@ contract LoomNodeNFT is ERC721, Ownable {
         uint256 tokenId = nodeIdToTokenId[nodeId];
         require(tokenId != 0, "No token exists for this node");
         return tokenURIs[tokenId];
+    }
+    
+    function getTextContent(bytes32 nodeId) external view returns (string memory) {
+        uint256 tokenId = nodeIdToTokenId[nodeId];
+        require(tokenId != 0, "No token exists for this node");
+        return textContent[tokenId];
     }
     
     function getTokenBoundAccount(uint256 tokenId) external view returns (address) {
