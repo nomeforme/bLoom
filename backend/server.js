@@ -90,7 +90,7 @@ async function queueTransaction(transactionFn) {
 const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent) external returns (address)",
+  "function createTree(string memory rootContent, uint256 rootTokenSupply) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed nftContractAddress, address creator, string rootContent)"
@@ -98,8 +98,7 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
-  "function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32)",
-  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, uint256 tokenSupply) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
@@ -562,13 +561,12 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeWithToken to specify completion tokens as supply
+          // Use addNodeWithToken to automatically calculate token supply
           const tx = await treeContract.addNodeWithToken(
             parentId, 
             content, 
             "NODE", 
-            "NODE", 
-            tokenSupply
+            "NODE"
           );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
@@ -823,8 +821,7 @@ io.on('connection', (socket) => {
             nodeId, 
             options.childContent,
             "NODE",
-            "NODE", 
-            childTokenSupply,
+            "NODE",
             { nonce }
           );
           return await childTx.wait();
@@ -890,8 +887,7 @@ io.on('connection', (socket) => {
             options.parentId, 
             options.siblingContent,
             "NODE",
-            "NODE", 
-            siblingTokenSupply,
+            "NODE",
             { nonce }
           );
           return await siblingTx.wait();
@@ -1016,10 +1012,16 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeForUser if userAccount is provided, otherwise use addNode  
-          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000"
-            ? await treeContract.addNodeForUser(parentIdToUse, nodeData.content, userAccount)
-            : await treeContract.addNode(parentIdToUse, nodeData.content);
+          // Calculate token supply for imported node
+          const tokenSupply = calculateTokenApproximation(nodeData.content);
+          
+          // Use addNodeWithToken for consistent token economics
+          const tx = await treeContract.addNodeWithToken(
+            parentIdToUse, 
+            nodeData.content, 
+            "NODE", 
+            "NODE"
+          );
           const receipt = await tx.wait();
           
           // Find the NodeCreated event to get the new node ID
