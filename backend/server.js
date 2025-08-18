@@ -92,7 +92,8 @@ const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x5FbDB2315678afecb367f0
 const FACTORY_ABI = [
   "function createTree(string memory rootContent) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
-  "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed creator, string rootContent)"
+  "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
+  "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed nftContractAddress, address creator, string rootContent)"
 ];
 
 const TREE_ABI = [
@@ -1243,11 +1244,12 @@ app.post('/api/generate', async (req, res) => {
 async function setupBlockchainListeners() {
   try {
     // Listen for TreeCreated events
-    factory.on('TreeCreated', (treeId, treeAddress, creator, rootContent) => {
-      console.log('TreeCreated event:', { treeId, treeAddress, creator, rootContent });
+    factory.on('TreeCreated', (treeId, treeAddress, nftContractAddress, creator, rootContent) => {
+      console.log('TreeCreated event:', { treeId, treeAddress, nftContractAddress, creator, rootContent });
       io.emit('treeCreated', {
         treeId,
         treeAddress,
+        nftContractAddress,
         creator,
         rootContent,
         timestamp: Date.now()
