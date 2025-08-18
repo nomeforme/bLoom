@@ -137,5 +137,14 @@
       "symbol": "T",
       "category": "Trees"
     }
+  },
+  "interface": {
+    "gasTracker": {
+      "key": "r",
+      "modifiers": [],
+      "description": "Toggle gas tracker modal",
+      "symbol": "R",
+      "category": "Interface"
+    }
   }
 }

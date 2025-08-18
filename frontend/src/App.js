@@ -43,7 +43,7 @@ function App() {
     getUserTrees,
     getAllTrees,
     getNodeNFTInfo
-  } = useBlockchain();
+  } = useBlockchain(socket);
 
   useEffect(() => {
     // Initialize socket connection

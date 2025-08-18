@@ -39,9 +39,72 @@ const RightSidebar = ({
   const [availableModels, setAvailableModels] = useState([]);
   const [currentTokenBalance, setCurrentTokenBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [gasTransactions, setGasTransactions] = useState([]);
+  const [totalGasCost, setTotalGasCost] = useState(0);
+  const [showGasModal, setShowGasModal] = useState(false);
   
   // Initialize keyboard shortcuts manager
   const shortcutsManager = new KeyboardShortcutsManager();
+
+  // Load gas transactions from localStorage when account changes
+  useEffect(() => {
+    if (!account) {
+      // No account connected, clear transactions
+      setGasTransactions([]);
+      setTotalGasCost(0);
+      return;
+    }
+
+    const storageKey = `gasTransactions_${account.toLowerCase()}`;
+    const storedTransactions = localStorage.getItem(storageKey);
+    if (storedTransactions) {
+      try {
+        const transactions = JSON.parse(storedTransactions);
+        setGasTransactions(transactions);
+        const total = transactions.reduce((sum, tx) => sum + parseFloat(tx.gasCost), 0);
+        setTotalGasCost(total);
+      } catch (error) {
+        console.error('Error loading gas transactions from localStorage:', error);
+        setGasTransactions([]);
+        setTotalGasCost(0);
+      }
+    } else {
+      // No stored transactions for this account
+      setGasTransactions([]);
+      setTotalGasCost(0);
+    }
+  }, [account]);
+
+  // Function to add a new gas transaction
+  const addGasTransaction = (transaction) => {
+    if (!account) return; // Don't add transactions if no account is connected
+
+    const newTransaction = {
+      ...transaction,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      account: account.toLowerCase() // Store which account made this transaction
+    };
+    
+    setGasTransactions(prev => {
+      const updated = [...prev, newTransaction];
+      const storageKey = `gasTransactions_${account.toLowerCase()}`;
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
+    
+    setTotalGasCost(prev => prev + parseFloat(transaction.gasCost));
+  };
+
+  // Function to clear all gas transactions for current account
+  const clearGasTransactions = () => {
+    if (!account) return; // Don't clear if no account is connected
+
+    setGasTransactions([]);
+    setTotalGasCost(0);
+    const storageKey = `gasTransactions_${account.toLowerCase()}`;
+    localStorage.removeItem(storageKey);
+  };
 
   // Fetch available models from backend
   useEffect(() => {
@@ -134,10 +197,26 @@ const RightSidebar = ({
     socket.on('tokenBalanceUpdate', handleTokenBalanceUpdate);
     socket.on('tokenBalanceError', handleTokenBalanceError);
 
+    // Gas cost listeners
+    const handleGasCost = (data) => {
+      addGasTransaction({
+        type: data.type,
+        txHash: data.txHash,
+        gasCost: data.gasCost,
+        gasUsed: data.gasUsed,
+        gasPrice: data.gasPrice,
+        description: data.description
+      });
+      console.log(`Gas cost tracked: ${data.type} - ${data.gasCost} ETH`);
+    };
+    
+    socket.on('gasCost', handleGasCost);
+
     return () => {
       socket.off('tokenBalance', handleTokenBalance);
       socket.off('tokenBalanceUpdate', handleTokenBalanceUpdate);
       socket.off('tokenBalanceError', handleTokenBalanceError);
+      socket.off('gasCost', handleGasCost);
     };
   }, [socket, selectedNode?.id]);
 
@@ -200,6 +279,13 @@ const RightSidebar = ({
           console.log('⌨️ Keyboard: Switching to next tree');
           onSelectTree(filteredTrees[currentIndex + 1]);
         }
+        return;
+      }
+
+      // Handle gas tracker modal shortcut
+      if (shortcutsManager.matchShortcut(e, 'gasTracker')) {
+        e.preventDefault();
+        setShowGasModal(prev => !prev);
         return;
       }
     };
@@ -543,13 +629,27 @@ const RightSidebar = ({
         </div>
         
         {connected && (
-          <div style={{ 
-            fontSize: '14px', 
-            color: '#4CAF50', 
-            marginBottom: '4px',
-            fontWeight: 'bold'
-          }}>
-            {ellipseAddress(account)}
+          <div>
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#4CAF50', 
+              marginBottom: '2px',
+              fontWeight: 'bold'
+            }}>
+              {ellipseAddress(account)}
+            </div>
+            <div 
+              style={{ 
+                fontSize: '12px', 
+                color: '#999', 
+                marginBottom: '4px',
+                cursor: 'pointer'
+              }}
+              onClick={() => setShowGasModal(true)}
+              title="Press R to toggle gas tracker modal"
+            >
+              Gas Used: {totalGasCost.toFixed(4)} ETH
+            </div>
           </div>
         )}
         
@@ -1248,6 +1348,7 @@ const RightSidebar = ({
           const nextTreeKey = shortcutsManager.getShortcut('nextTree')?.symbol || '↓';
           const previousModelKey = shortcutsManager.getShortcut('previousModel')?.symbol || 'Z';
           const nextModelKey = shortcutsManager.getShortcut('nextModel')?.symbol || 'C';
+          const gasTrackerKey = shortcutsManager.getShortcut('gasTracker')?.symbol || 'R';
           
           // Navigation shortcuts (WASD)
           const navUpKey = shortcutsManager.getShortcut('up')?.symbol || 'W';
@@ -1267,18 +1368,170 @@ const RightSidebar = ({
               <p>6. Use "Generate Siblings" or press <strong>{generateSiblingsKey}</strong> for alternatives</p>
               <p>7. Switch views: <strong>{pathViewKey}</strong> for Path View, <strong>{treeViewKey}</strong> for Tree View</p>
               <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
+              <p>9. Press <strong>{gasTrackerKey}</strong> to view gas tracker details</p>
               <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
-              <p>9. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
-              <p>10. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
-              <p>11. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
-              <p>12. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
-              <p>13. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
-              <p>14. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
-              <p>15. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
+              <p>10. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
+              <p>11. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
+              <p>12. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
+              <p>13. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
+              <p>14. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
+              <p>15. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
+              <p>16. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
             </div>
           );
         })()}
       </div>
+
+      {/* Gas Tracker Modal */}
+      {showGasModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#2a2a2a',
+            border: '1px solid #666',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            width: '90%',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ color: '#4CAF50', margin: 0 }}>Gas Tracker</h3>
+              <button
+                onClick={() => setShowGasModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#999',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  padding: '0'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px',
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #4CAF50',
+                borderRadius: '6px'
+              }}>
+                <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                  Total Gas Cost: {totalGasCost.toFixed(6)} ETH
+                </span>
+                <button
+                  onClick={clearGasTransactions}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #666',
+                    borderRadius: '4px',
+                    color: '#ccc',
+                    cursor: 'pointer',
+                    fontFamily: "'Inconsolata', monospace",
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#2a2a2a';
+                    e.target.style.borderColor = '#888';
+                    e.target.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#1a1a1a';
+                    e.target.style.borderColor = '#666';
+                    e.target.style.color = '#ccc';
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <span style={{ color: '#ccc', fontSize: '14px' }}>
+                {gasTransactions.length} transaction{gasTransactions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {gasTransactions.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                color: '#999', 
+                padding: '20px',
+                fontStyle: 'italic'
+              }}>
+                No gas transactions recorded yet.
+                <br />
+                Create trees, add nodes, or edit content to start tracking gas costs.
+              </div>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {gasTransactions
+                  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                  .map((tx) => (
+                  <div
+                    key={tx.id}
+                    style={{
+                      backgroundColor: '#1a1a1a',
+                      border: '1px solid #444',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div>
+                        <div style={{ color: '#4CAF50', fontWeight: 'bold', marginBottom: '4px' }}>
+                          {tx.type}
+                        </div>
+                        <div style={{ color: '#ccc', fontSize: '12px' }}>
+                          {tx.description}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                          {parseFloat(tx.gasCost).toFixed(6)} ETH
+                        </div>
+                        <div style={{ color: '#999', fontSize: '11px' }}>
+                          {new Date(tx.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ borderTop: '1px solid #333', paddingTop: '8px', fontSize: '11px', color: '#999' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>Gas Used: {tx.gasUsed?.toLocaleString() || 'N/A'}</div>
+                        <div>Gas Price: {tx.gasPrice ? `${(parseFloat(tx.gasPrice) / 1e9).toFixed(2)} Gwei` : 'N/A'}</div>
+                      </div>
+                      <div style={{ marginTop: '4px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        Tx: {tx.txHash || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

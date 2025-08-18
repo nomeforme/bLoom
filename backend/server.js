@@ -137,6 +137,43 @@ function calculateTokenApproximation(content) {
   return Math.max(1, Math.floor(content.length / 4));
 }
 
+/**
+ * Helper function to calculate and emit gas costs for transactions
+ * @param {Object} receipt - Transaction receipt 
+ * @param {string} type - Type of transaction (e.g., "Tree Creation", "Node Creation", "Node Update")
+ * @param {string} description - Description of the transaction
+ * @param {Object} io - Socket.io instance to emit to all clients
+ */
+async function emitGasCost(receipt, type, description, io) {
+  try {
+    if (!receipt || !receipt.gasUsed) {
+      console.warn('Invalid receipt for gas calculation:', receipt);
+      return;
+    }
+
+    const gasUsed = Number(receipt.gasUsed);
+    const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+    const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : null;
+
+    const gasData = {
+      type,
+      description,
+      txHash: receipt.hash,
+      gasUsed,
+      gasPrice: gasPrice?.toString(),
+      gasCost: gasCost || '0',
+      blockNumber: receipt.blockNumber,
+      timestamp: new Date().toISOString()
+    };
+
+    // Emit to all connected clients
+    io.emit('gasCost', gasData);
+    console.log(`⛽ Gas tracked: ${type} - ${gasCost || 'N/A'} ETH (${gasUsed.toLocaleString()} gas)`);
+  } catch (error) {
+    console.error('Error calculating gas cost:', error);
+  }
+}
+
 // Enhanced LLM Configuration with multiple providers
 const LLM_CONFIG = {
   // OpenAI Models
@@ -582,6 +619,9 @@ io.on('connection', (socket) => {
             receiptStructure: Object.keys(receipt)
           });
           
+          // Track gas cost for node creation
+          await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model}`, io);
+          
           // Log all events for debugging
           console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256)')}`);
           
@@ -716,6 +756,9 @@ io.on('connection', (socket) => {
         return await updateTx.wait();
       });
       
+      // Track gas cost for node update
+      await emitGasCost(updateReceipt, 'Node Update', `Updated node content (${newContent.length} chars)`, io);
+      
       let childNodeId = null;
       let childTxHash = null;
       
@@ -740,6 +783,9 @@ io.on('connection', (socket) => {
           return await childTx.wait();
         });
         childTxHash = childReceipt.hash;
+        
+        // Track gas cost for child node creation
+        await emitGasCost(childReceipt, 'Node Creation', `Created child node during update (${options.childContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new child node ID
         const nodeCreatedEvent = childReceipt.logs.find(log => {
@@ -779,6 +825,9 @@ io.on('connection', (socket) => {
           return await siblingTx.wait();
         });
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
+        
+        // Track gas cost for sibling node creation
+        await emitGasCost(siblingReceipt, 'Node Creation', `Created sibling node during update (${options.siblingContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new sibling node ID
         const nodeCreatedEvent = siblingReceipt.logs.find(log => {
@@ -927,6 +976,9 @@ io.on('connection', (socket) => {
           );
           const receipt = await tx.wait();
           
+          // Track gas cost for imported node creation
+          await emitGasCost(receipt, 'Node Creation', `Imported node ${i + 1}/${sortedNodes.length} (${nodeData.content.length} chars)`, io);
+          
           // Find the NodeCreated event to get the new node ID
           const nodeCreatedEvent = receipt.logs.find(log => {
             try {
@@ -980,6 +1032,28 @@ io.on('connection', (socket) => {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  socket.on('reportGasCost', async (data) => {
+    try {
+      const { type, description, txHash, gasUsed, gasPrice, gasCost } = data;
+      
+      const gasData = {
+        type,
+        description,
+        txHash,
+        gasUsed,
+        gasPrice,
+        gasCost,
+        timestamp: new Date().toISOString()
+      };
+
+      // Emit to all connected clients (including the sender)
+      io.emit('gasCost', gasData);
+      console.log(`⛽ Gas reported from frontend: ${type} - ${gasCost} ETH`);
+    } catch (error) {
+      console.error('Error processing gas cost report:', error);
     }
   });
 
