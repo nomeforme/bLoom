@@ -528,10 +528,15 @@ io.on('connection', (socket) => {
       let contextContent = parentContent || '';
       if (!contextContent && parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
         try {
-          const parentNode = await treeContract.getNode(parentId);
-          contextContent = parentNode[2]; // content is at index 2
+          // Get NFT contract address from tree contract
+          const nftContractAddress = await treeContract.getNFTContract();
+          const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+          
+          // Fetch actual text content from NFT contract, not tree contract
+          contextContent = await nftContract.getTextContent(parentId);
+          console.log(`📖 Fetched parent content from NFT contract: "${contextContent.substring(0, 100)}${contextContent.length > 100 ? '...' : ''}"`);
         } catch (error) {
-          console.warn('Could not fetch parent content from blockchain:', error.message);
+          console.warn('Could not fetch parent content from NFT contract:', error.message);
         }
       }
       
@@ -541,6 +546,17 @@ io.on('connection', (socket) => {
         try {
           // Use specified model (no more auto mode)
           const selectedModel = model || 'claude-3-haiku';
+          
+          // Log the prompt being sent to AI (first and last 100 chars)
+          const promptLength = contextContent.length;
+          const first100 = contextContent.substring(0, 100);
+          const last100 = promptLength > 100 ? contextContent.substring(promptLength - 100) : '';
+          console.log(`📝 promptUsed (${promptLength} chars):`, {
+            first100: `"${first100}"`,
+            last100: promptLength > 100 ? `"${last100}"` : '(same as first100)',
+            fullPrompt: promptLength <= 200 ? `"${contextContent}"` : '(too long, see first/last 100)'
+          });
+          
           const result = await generateText(contextContent, selectedModel, temperature, maxTokens);
           
           // Handle both old string format and new object format for backward compatibility
