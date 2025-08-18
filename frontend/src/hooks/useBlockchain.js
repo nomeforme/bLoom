@@ -5,10 +5,10 @@ import { ethers } from 'ethers';
 const FACTORY_ABI = [
   "function createTree(string memory rootContent) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
+  "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "function getUserTrees(address user) external view returns (bytes32[] memory)",
   "function getAllTrees() external view returns (bytes32[] memory)",
-  "function getGlobalNFTContract() external view returns (address)",
-  "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed creator, string rootContent)"
+  "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed nftContractAddress, address creator, string rootContent)"
 ];
 
 const TREE_ABI = [
@@ -213,9 +213,8 @@ export const useBlockchain = () => {
       console.log('Expected:', nodeCount.toString(), 'Got:', allNodeIds.length);
       console.log('Node IDs:', allNodeIds.map(id => id.substring(0, 10) + '...'));
       
-      // Get NFT contract address and create NFT contract instance BEFORE loading nodes
-      const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, freshProvider);
-      const nftAddress = await factoryContract.getGlobalNFTContract();
+      // Get NFT contract address from the tree itself and create NFT contract instance BEFORE loading nodes
+      const nftAddress = await treeContract.getNFTContract();
       const nftContract = new ethers.Contract(nftAddress, NFT_ABI, freshProvider);
       
       const nodes = [];

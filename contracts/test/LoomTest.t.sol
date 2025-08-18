@@ -19,6 +19,14 @@ contract LoomTest is Test {
         vm.deal(user1, 1 ether);
         vm.deal(user2, 1 ether);
     }
+    
+    // Helper function to get NFT contract for a user's first tree
+    function getNFTContractForUser(address user) internal view returns (LoomNodeNFT) {
+        bytes32[] memory userTrees = factory.getUserTrees(user);
+        require(userTrees.length > 0, "User has no trees");
+        bytes32 treeId = userTrees[0];
+        return LoomNodeNFT(factory.getTreeNFTContract(treeId));
+    }
 
     function testCreateTree() public {
         vm.prank(user1);
@@ -60,7 +68,7 @@ contract LoomTest is Test {
         assertFalse(isRoot);
         
         // Check content is stored in NFT
-        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
         string memory nftContent = nftContract.getNodeContent(childId);
         assertTrue(bytes(nftContent).length > 0);
     }
@@ -94,7 +102,7 @@ contract LoomTest is Test {
         assertEq(author2, user2);
         
         // Verify content is stored in NFT
-        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
         string memory content1 = nftContract.getNodeContent(child1);
         string memory content2 = nftContract.getNodeContent(child2);
         assertTrue(bytes(content1).length > 0);
@@ -173,7 +181,7 @@ contract LoomTest is Test {
         address treeAddress = factory.createTree("Root content");
         
         LoomTree treeContract = LoomTree(treeAddress);
-        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
         bytes32 rootId = treeContract.getRootId();
         
         // Check that root node has NFT
@@ -198,7 +206,7 @@ contract LoomTest is Test {
         address treeAddress = factory.createTree("Test content for NFT");
         
         LoomTree treeContract = LoomTree(treeAddress);
-        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
         bytes32 rootId = treeContract.getRootId();
         
         uint256 tokenId = nftContract.getTokenIdFromNodeId(rootId);
@@ -217,7 +225,7 @@ contract LoomTest is Test {
         address treeAddress = factory.createTree("Root");
         
         LoomTree treeContract = LoomTree(treeAddress);
-        LoomNodeNFT nftContract = LoomNodeNFT(factory.getGlobalNFTContract());
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
         bytes32 rootId = treeContract.getRootId();
         
         // Create multiple nodes

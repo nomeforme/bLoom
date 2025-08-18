@@ -1268,9 +1268,9 @@ const RightSidebar = ({
               <p>7. Switch views: <strong>{pathViewKey}</strong> for Path View, <strong>{treeViewKey}</strong> for Tree View</p>
               <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
               <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
-              <p>9. <strong>LoomFactory:</strong> Deploys new tree contracts + global NFT contract</p>
+              <p>9. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
               <p>10. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
-              <p>11. <strong>LoomNodeNFT:</strong> Global ERC721 contract mints NFTs for all nodes</p>
+              <p>11. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
               <p>12. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
               <p>13. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
               <p>14. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
