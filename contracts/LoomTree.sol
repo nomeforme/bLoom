@@ -131,7 +131,26 @@ contract LoomTree {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
         require(nodes[nodeId].author == msg.sender || msg.sender == treeOwner, "Not authorized to update this node");
         
-        // Update the NFT metadata instead of node content
+        // Get current text content to calculate old token supply
+        string memory currentContent = nftContract.getTextContent(nodeId);
+        
+        // Calculate token supplies for old and new content
+        uint256 oldTokenSupply = _calculateTokenSupply(currentContent);
+        uint256 newTokenSupply = _calculateTokenSupply(newContent);
+        
+        // Apply token adjustments if needed
+        if (newTokenSupply > oldTokenSupply) {
+            // Content got longer - mint additional tokens
+            uint256 tokensToMint = newTokenSupply - oldTokenSupply;
+            nftContract.mintTokensToNode(nodeId, tokensToMint, "Content expansion");
+        } else if (newTokenSupply < oldTokenSupply) {
+            // Content got shorter - burn excess tokens
+            uint256 tokensToBurn = oldTokenSupply - newTokenSupply;
+            nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content reduction");
+        }
+        // If equal, no token adjustments needed
+        
+        // Update the NFT metadata/content
         nftContract.updateTokenContent(nodeId, newContent);
         emit NodeUpdated(nodeId, msg.sender);
     }

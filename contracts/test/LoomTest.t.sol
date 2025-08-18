@@ -275,4 +275,42 @@ contract LoomTest is Test {
         (,,,,,uint256 tokenSupply1) = nftContract1.getNodeTokenInfo(tokenId1);
         assertEq(tokenSupply1, 1); // 4 chars / 4 = 1 token
     }
+    
+    function testAutomaticTokenAdjustmentOnEdit() public {
+        // Create a tree with initial content
+        vm.prank(user1);
+        address treeAddress = factory.createTree("Hello World", calculateTokenSupply("Hello World"));
+        
+        LoomTree treeContract = LoomTree(treeAddress);
+        LoomNodeNFT nftContract = getNFTContractForUser(user1);
+        bytes32 rootId = treeContract.getRootId();
+        
+        // Add a child node with specific content: "Testing" = 7 chars = 1 token (7/4 = 1)
+        vm.prank(user1);
+        bytes32 childId = addNodeWithCalculatedSupply(treeContract, rootId, "Testing");
+        
+        // Verify initial token balance
+        uint256 initialBalance = nftContract.getNodeTokenBalance(childId);
+        assertEq(initialBalance, 1); // 7 chars / 4 = 1 token (minimum 1)
+        
+        // Update content to longer text: "Testing with much longer content now" = 37 chars = 9 tokens
+        vm.prank(user1);
+        treeContract.updateNodeContent(childId, "Testing with much longer content now");
+        
+        // Verify token balance increased automatically (should mint 8 additional tokens)
+        uint256 newBalance = nftContract.getNodeTokenBalance(childId);
+        assertEq(newBalance, 9); // 37 chars / 4 = 9 tokens
+        
+        // Now update to shorter content: "Short" = 5 chars = 1 token
+        vm.prank(user1);
+        treeContract.updateNodeContent(childId, "Short");
+        
+        // Verify token balance decreased automatically (should burn 8 tokens)
+        uint256 finalBalance = nftContract.getNodeTokenBalance(childId);
+        assertEq(finalBalance, 1); // 5 chars / 4 = 1 token
+        
+        // Verify content was actually updated
+        string memory finalTextContent = nftContract.getTextContent(childId);
+        assertTrue(keccak256(bytes(finalTextContent)) == keccak256(bytes("Short")));
+    }
 }

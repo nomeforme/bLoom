@@ -30,6 +30,7 @@ const NFT_ABI = [
   "function getTokenIdFromNodeId(bytes32 nodeId) external view returns (uint256)",
   "function getNodeIdFromTokenId(uint256 tokenId) external view returns (bytes32)",
   "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
+  "function getTextContent(bytes32 nodeId) external view returns (string memory)",
   "function totalSupply() external view returns (uint256)",
   "function name() external view returns (string memory)",
   "function symbol() external view returns (string memory)"
