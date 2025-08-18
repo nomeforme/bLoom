@@ -220,6 +220,26 @@ const RightSidebar = ({
     };
   }, [socket, selectedNode?.id]);
 
+  // Handle ESC key for gas modal with highest priority
+  useEffect(() => {
+    const handleGasModalClose = (e) => {
+      if (showGasModal && shortcutsManager.matchShortcut(e, 'deselect')) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation(); // Stop ALL other event handlers
+        setShowGasModal(false);
+      }
+    };
+
+    if (showGasModal) {
+      // Add listener with capture: true to handle it BEFORE other listeners
+      document.addEventListener('keydown', handleGasModalClose, { capture: true });
+      return () => {
+        document.removeEventListener('keydown', handleGasModalClose, { capture: true });
+      };
+    }
+  }, [showGasModal]);
+
   // Handle keyboard shortcuts for model and tree navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
