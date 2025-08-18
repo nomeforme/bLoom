@@ -1390,7 +1390,7 @@ const RightSidebar = ({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          backgroundColor: 'transparent',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -1404,7 +1404,8 @@ const RightSidebar = ({
             maxWidth: '600px',
             maxHeight: '80vh',
             width: '90%',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ color: '#4CAF50', margin: 0 }}>Gas Tracker</h3>
