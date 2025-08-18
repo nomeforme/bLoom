@@ -825,6 +825,26 @@ io.on('connection', (socket) => {
       
       socket.emit('updateComplete', response);
       
+      // After successful update, emit updated token balance for the node
+      try {
+        const nftContractAddress = await treeContract.getNFTContract();
+        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+        const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+        const balance = Number(balanceBigInt);
+        
+        // Emit balance update to all connected clients
+        io.emit('tokenBalanceUpdate', {
+          balance,
+          nodeId,
+          treeAddress,
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log(`📡 Token balance updated for node ${nodeId}: ${balance} tokens`);
+      } catch (balanceError) {
+        console.error('Error fetching updated token balance:', balanceError);
+      }
+      
     } catch (error) {
       console.error('Error updating node via backend:', error);
       socket.emit('updateComplete', {
