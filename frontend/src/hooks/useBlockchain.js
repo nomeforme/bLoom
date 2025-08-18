@@ -39,7 +39,7 @@ const NFT_ABI = [
 // Replace with your deployed factory address
 const FACTORY_ADDRESS = process.env.REACT_APP_FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-export const useBlockchain = () => {
+export const useBlockchain = (socket = null) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [factory, setFactory] = useState(null);
@@ -180,6 +180,22 @@ export const useBlockchain = () => {
       const tx = await factory.createTree(rootContent, rootTokenSupply);
       const receipt = await tx.wait();
       
+      // Report gas cost for tree creation via socket
+      if (socket) {
+        const gasUsed = Number(receipt.gasUsed);
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
+        
+        socket.emit('reportGasCost', {
+          type: 'Tree Creation',
+          description: `Created new tree with root content (${rootContent.length} chars)`,
+          txHash: receipt.hash,
+          gasUsed,
+          gasPrice: gasPrice?.toString(),
+          gasCost
+        });
+      }
+      
       // Get the tree address from the event
       const event = receipt.logs.find(log => {
         try {
@@ -312,6 +328,22 @@ export const useBlockchain = () => {
       const tx = await treeContract.addNode(parentId, content);
       const receipt = await tx.wait();
       
+      // Report gas cost for manual node creation via socket
+      if (socket) {
+        const gasUsed = Number(receipt.gasUsed);
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
+        
+        socket.emit('reportGasCost', {
+          type: 'Node Creation',
+          description: `Manually added node (${content.length} chars)`,
+          txHash: receipt.hash,
+          gasUsed,
+          gasPrice: gasPrice?.toString(),
+          gasCost
+        });
+      }
+      
       console.log('Node added, transaction:', receipt.hash);
       return receipt;
     } catch (error) {
@@ -327,6 +359,22 @@ export const useBlockchain = () => {
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
       const tx = await treeContract.updateNodeContent(nodeId, newContent);
       const receipt = await tx.wait();
+      
+      // Report gas cost for direct node update via socket
+      if (socket) {
+        const gasUsed = Number(receipt.gasUsed);
+        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
+        
+        socket.emit('reportGasCost', {
+          type: 'Node Update',
+          description: `Direct node content update (${newContent.length} chars)`,
+          txHash: receipt.hash,
+          gasUsed,
+          gasPrice: gasPrice?.toString(),
+          gasCost
+        });
+      }
       
       return receipt;
     } catch (error) {
