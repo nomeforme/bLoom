@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent) external returns (address)",
+  "function createTree(string memory rootContent, uint256 rootTokenSupply) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "function getUserTrees(address user) external view returns (bytes32[] memory)",
@@ -13,6 +13,7 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
   "function getAllNodes() external view returns (bytes32[] memory)",
@@ -165,7 +166,17 @@ export const useBlockchain = () => {
 
     try {
       console.log('Creating tree with content:', rootContent);
-      const tx = await factory.createTree(rootContent);
+      
+      // Calculate token supply using same logic as backend (characters / 4, minimum 1)
+      const calculateTokenSupply = (content) => {
+        if (!content) return 1;
+        return Math.max(1, Math.floor(content.length / 4));
+      };
+      
+      const rootTokenSupply = calculateTokenSupply(rootContent);
+      console.log('Root token supply:', rootTokenSupply);
+      
+      const tx = await factory.createTree(rootContent, rootTokenSupply);
       const receipt = await tx.wait();
       
       // Get the tree address from the event
@@ -294,9 +305,9 @@ export const useBlockchain = () => {
     if (!signer) throw new Error('Not connected');
 
     try {
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
       console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content);
       
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
       const tx = await treeContract.addNode(parentId, content);
       const receipt = await tx.wait();
       

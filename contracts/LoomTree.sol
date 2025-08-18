@@ -52,41 +52,47 @@ contract LoomTree {
         // Root node will be created after authorization is set up
     }
     
-    function initializeRootNode(string memory rootContent) external {
+    function initializeRootNodeWithToken(string memory rootContent, uint256 tokenSupply) external {
         require(rootId == bytes32(0), "Root node already initialized");
         require(msg.sender == factory, "Only factory can initialize");
-        rootId = _createNodeWithAuthor(bytes32(0), rootContent, true, treeOwner);
+        rootId = _createNodeWithToken(bytes32(0), rootContent, true, treeOwner, "NODE", "NODE", tokenSupply);
     }
     
     function addNode(bytes32 parentId, string memory content) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        return _createNode(parentId, content, false);
+        
+        // Calculate token supply based on content length (characters / 4, minimum 1)
+        uint256 tokenSupply = _calculateTokenSupply(content);
+        return _createNodeWithToken(parentId, content, false, msg.sender, "NODE", "NODE", tokenSupply);
     }
     
     function addNodeWithToken(
         bytes32 parentId, 
         string memory content,
         string memory tokenName,
-        string memory tokenSymbol,
-        uint256 tokenSupply
+        string memory tokenSymbol
     ) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
+        
+        // Calculate token supply based on content length (characters / 4, minimum 1)
+        uint256 tokenSupply = _calculateTokenSupply(content);
         return _createNodeWithToken(parentId, content, false, msg.sender, tokenName, tokenSymbol, tokenSupply);
     }
     
-    function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32) {
-        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        require(author != address(0), "Author cannot be zero address");
-        return _createNodeWithAuthor(parentId, content, false, author);
-    }
-    
-    function _createNode(bytes32 parentId, string memory content, bool isRoot) internal returns (bytes32) {
-        return _createNodeWithAuthor(parentId, content, isRoot, msg.sender);
-    }
-    
-    function _createNodeWithAuthor(bytes32 parentId, string memory content, bool isRoot, address author) internal returns (bytes32) {
-        // Use default token parameters: "NODE" token with 1000 supply
-        return _createNodeWithToken(parentId, content, isRoot, author, "NODE", "NODE", 1000);
+    /**
+     * @dev Calculate token supply approximation based on content length
+     * Formula: Math.max(1, Math.floor(content.length / 4))
+     * Examples:
+     * - 4 characters = 1 token (minimum)
+     * - 20 characters = 5 tokens  
+     * - 100 characters = 25 tokens
+     * - 1000 characters = 250 tokens
+     */
+    function _calculateTokenSupply(string memory content) internal pure returns (uint256) {
+        uint256 contentLength = bytes(content).length;
+        if (contentLength == 0) return 1;
+        uint256 calculated = contentLength / 4;
+        return calculated > 0 ? calculated : 1; // Minimum 1 token
     }
     
     function _createNodeWithToken(
