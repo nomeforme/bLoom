@@ -355,6 +355,7 @@ function App() {
           onAddNode={handleAddNode}
           onUpdateNode={handleUpdateNode}
           onGenerateSiblings={handleGenerateSiblings}
+          onCreateTree={handleCreateTree}
           isGeneratingChildren={isGeneratingChildren}
           setIsGeneratingChildren={setIsGeneratingChildren}
           isGeneratingSiblings={isGeneratingSiblings}

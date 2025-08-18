@@ -7,6 +7,7 @@ const LoomGraph = forwardRef(({
   onAddNode, 
   onUpdateNode, 
   onGenerateSiblings,
+  onCreateTree,
   isGeneratingChildren,
   setIsGeneratingChildren,
   isGeneratingSiblings,
@@ -1160,6 +1161,231 @@ const LoomGraph = forwardRef(({
     graph.addLoomNode = addLoomNode;
     graph.reorganizeNodes = reorganizeNodes;
     
+    // Function to show tree creation modal
+    const showCreateTreeModal = () => {
+      // Check if we have the required function
+      if (!graph.onCreateTree) {
+        console.error('Create tree function not available');
+        return;
+      }
+
+      // Create tree creation dialog with same styling as edit modal
+      const createDialog = document.createElement('div');
+      createDialog.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #2a2a2a;
+        border: 1px solid #666;
+        border-radius: 8px;
+        padding: 20px;
+        z-index: 10000;
+        min-width: 400px;
+        max-width: 600px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      `;
+      
+      createDialog.innerHTML = `
+        <div style="color: #fff; margin-bottom: 15px; font-family: 'Inconsolata', monospace;">
+          <h3 style="margin: 0 0 10px 0; color: #4CAF50;">Create New Tree</h3>
+          <p style="margin: 0; color: #ccc; font-size: 12px;">Enter the root content for your new tree. This will be saved to the blockchain.</p>
+        </div>
+        <textarea id="treeContentEditor" style="
+          width: 100%;
+          height: 90px;
+          background: #1a1a1a;
+          color: #fff;
+          border: 2px solid #4CAF50;
+          border-radius: 4px;
+          padding: 10px;
+          font-family: 'Inconsolata', monospace;
+          font-size: 14px;
+          resize: vertical;
+          box-sizing: border-box;
+          outline: none;
+        " placeholder="Enter root content for new tree..."></textarea>
+        <style>
+          #treeContentEditor::selection {
+            background-color: #4CAF50;
+            color: #fff;
+          }
+          #treeContentEditor::-moz-selection {
+            background-color: #4CAF50;
+            color: #fff;
+          }
+        </style>
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <button id="cancelCreate" style="
+              background: #666;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 12px;
+            ">Cancel</button>
+          </div>
+          <div>
+            <button id="createTree" style="
+              background: #4CAF50;
+              color: #fff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-family: 'Inconsolata', monospace;
+              font-size: 12px;
+            ">Create Tree</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(createDialog);
+      
+      const textarea = document.getElementById('treeContentEditor');
+      const createBtn = document.getElementById('createTree');
+      const cancelBtn = document.getElementById('cancelCreate');
+      
+      // Auto-resize textarea to fit content on modal open
+      const autoResize = () => {
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(Math.max(textarea.scrollHeight, 90), 400);
+        textarea.style.height = newHeight + 'px';
+      };
+      
+      // Resize on modal open
+      autoResize();
+      
+      // Focus textarea
+      textarea.focus();
+      
+      let dialogClosed = false;
+      let clickOutsideHandler = null;
+      
+      const cleanup = () => {
+        if (clickOutsideHandler) {
+          document.removeEventListener('click', clickOutsideHandler);
+          clickOutsideHandler = null;
+        }
+        // Remove keyboard handler
+        document.removeEventListener('keydown', handleCreateModalKeydown);
+      };
+      
+      const closeDialog = () => {
+        if (!dialogClosed && document.body.contains(createDialog)) {
+          dialogClosed = true;
+          cleanup();
+          document.body.removeChild(createDialog);
+        }
+      };
+      
+      const createNewTree = async () => {
+        const content = textarea.value.trim();
+        if (!content) {
+          alert('Please enter content for the tree');
+          return;
+        }
+        
+        // Show creating state
+        createBtn.textContent = 'Creating...';
+        createBtn.disabled = true;
+        textarea.disabled = true;
+        
+        try {
+          // Get the create tree function from the graph
+          const createTreeFn = graph.onCreateTree;
+          if (!createTreeFn) {
+            throw new Error('Create tree functionality not available');
+          }
+          
+          await createTreeFn(content);
+          closeDialog();
+        } catch (error) {
+          console.error('Failed to create tree:', error);
+          
+          // Show error state
+          createBtn.textContent = 'Create Failed - Retry';
+          createBtn.style.background = '#f44336';
+          createBtn.disabled = false;
+          textarea.disabled = false;
+          
+          // Create error message
+          const errorMsg = document.createElement('div');
+          errorMsg.style.cssText = `
+            color: #f44336;
+            font-size: 12px;
+            margin: 10px 0;
+            text-align: center;
+            width: 100%;
+            display: block;
+          `;
+          // Extract clean error text from blockchain errors
+          let displayMessage = error.message;
+          
+          // Try to extract revert reason first
+          const reasonMatch = error.message.match(/reason="([^"]+)"/);
+          if (reasonMatch) {
+            displayMessage = reasonMatch[1];
+          } else if (error.message.includes('execution reverted')) {
+            // Look for other patterns in execution reverted errors
+            const revertMatch = error.message.match(/execution reverted: "?([^"]+)"?/);
+            if (revertMatch) {
+              displayMessage = revertMatch[1];
+            }
+          }
+          
+          errorMsg.textContent = displayMessage;
+          createBtn.parentElement.insertBefore(errorMsg, createBtn.parentElement.firstChild);
+          
+          // Remove error message after 3 seconds
+          setTimeout(() => {
+            if (errorMsg.parentElement) {
+              errorMsg.parentElement.removeChild(errorMsg);
+            }
+            createBtn.textContent = 'Create Tree';
+            createBtn.style.background = '#4CAF50';
+          }, 3000);
+        }
+      };
+      
+      // Event listeners
+      createBtn.addEventListener('click', createNewTree);
+      cancelBtn.addEventListener('click', closeDialog);
+      
+      // Keyboard shortcuts for create modal
+      const handleCreateModalKeydown = (e) => {
+        // Import shortcutsManager for these checks
+        const shortcutsManager = graph?.shortcutsManager;
+        if (!shortcutsManager) return;
+        
+        // Existing shortcuts
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          createNewTree();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeDialog();
+        }
+      };
+      
+      // Add keyboard listeners to both textarea and document for modal-wide shortcuts
+      textarea.addEventListener('keydown', handleCreateModalKeydown);
+      document.addEventListener('keydown', handleCreateModalKeydown);
+      
+      // Close on click outside
+      setTimeout(() => {
+        clickOutsideHandler = (e) => {
+          if (!dialogClosed && !createDialog.contains(e.target)) {
+            closeDialog();
+          }
+        };
+        document.addEventListener('click', clickOutsideHandler);
+      }, 100);
+    };
+    
     // Add keyboard navigation with shortcuts manager
     graph.selectedNodeForKeyboard = null;
     const shortcutsManager = new KeyboardShortcutsManager();
@@ -1343,6 +1569,13 @@ const LoomGraph = forwardRef(({
             canvas.setDirty(true, true);
           }
         }
+        return;
+      }
+
+      // Handle create tree modal shortcut (T)
+      if (shortcutsManager.matchShortcut(e, 'createTreeModal')) {
+        e.preventDefault();
+        showCreateTreeModal();
         return;
       }
     };
@@ -1582,6 +1815,7 @@ const LoomGraph = forwardRef(({
     graph.onUpdateNode = onUpdateNode;
     graph.onAddNode = onAddNode;
     graph.onGenerateSiblings = onGenerateSiblings;
+    graph.onCreateTree = onCreateTree;
     
     // Clear existing nodes
     graph.clear();
@@ -1687,8 +1921,11 @@ const LoomGraph = forwardRef(({
       if (onGenerateSiblings) {
         graphRef.current.onGenerateSiblings = onGenerateSiblings;
       }
+      if (onCreateTree) {
+        graphRef.current.onCreateTree = onCreateTree;
+      }
     }
-  }, [onUpdateNode, onAddNode, onGenerateSiblings]);
+  }, [onUpdateNode, onAddNode, onGenerateSiblings, onCreateTree]);
 
   // Re-select active node after generation completes (works for UI or socket-driven flows)
   useEffect(() => {

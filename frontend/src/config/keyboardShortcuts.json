@@ -54,10 +54,10 @@
   },
   "editing": {
     "editNode": {
-      "key": "F2",
+      "key": "g",
       "modifiers": [],
       "description": "Edit selected node content",
-      "symbol": "F2",
+      "symbol": "G",
       "category": "Editing",
       "requiresSelection": true
     },
@@ -128,6 +128,13 @@
       "modifiers": [],
       "description": "Switch to next tree",
       "symbol": "↓",
+      "category": "Trees"
+    },
+    "createTreeModal": {
+      "key": "t",
+      "modifiers": [],
+      "description": "Open tree creation modal",
+      "symbol": "T",
       "category": "Trees"
     }
   }
