@@ -103,7 +103,7 @@ function App() {
           // If no current tree is selected and we have trees, select the first one
           if (allTrees.length > 0 && !currentTree) {
             console.log('Setting current tree to first tree:', allTrees[0]);
-            setCurrentTree(allTrees[0]);
+            handleTreeSelect(allTrees[0]);
           }
         } catch (error) {
           console.error('Error loading existing trees:', error);
@@ -142,8 +142,8 @@ function App() {
           return [...prev, fullTree];
         });
         
-        // Set as current tree
-        setCurrentTree(fullTree);
+        // Set as current tree and trigger root selection
+        handleTreeSelect(fullTree);
         console.log('Tree creation and UI update complete');
       } catch (treeError) {
         console.error('Error fetching tree after creation:', treeError);
@@ -165,7 +165,7 @@ function App() {
           }
           return prev;
         });
-        setCurrentTree(basicTree);
+        handleTreeSelect(basicTree);
       }
       
       // Socket event is still useful for other clients or as backup
