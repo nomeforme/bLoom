@@ -660,53 +660,39 @@ const RightSidebar = ({
             margin: '0'
           }}>bLoom</h2>
           
-          {/* Lightweight Mode Indicator */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            fontSize: '10px',
-            color: lightweightMode ? '#FFA500' : '#4CAF50',
-            fontFamily: "'Inconsolata', monospace",
-            backgroundColor: lightweightMode ? 'rgba(255, 165, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)',
-            border: `1px solid ${lightweightMode ? '#FFA500' : '#4CAF50'}`,
-            borderRadius: '3px',
-            padding: '2px 6px',
-            marginRight: '8px'
-          }}>
-            {lightweightMode ? '⚡ LIGHTWEIGHT' : '🎨 NFT/TOKEN'}
-          </div>
-          
           {connected ? (
-            <button 
-              onClick={onDisconnect}
-              style={{ 
-                padding: '6px 12px', 
-                fontSize: '12px',
-                minWidth: 'auto',
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #4CAF50',
-                borderRadius: '4px',
-                color: '#4CAF50',
-                cursor: 'pointer',
-                fontFamily: "'Inconsolata', monospace",
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#2a2a2a';
-                e.target.style.borderColor = '#45a049';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#1a1a1a';
-                e.target.style.borderColor = '#4CAF50';
-              }}
-            >
-              Disconnect
-            </button>
-          ) : (
-            <button className="btn" onClick={onConnect} style={{ fontSize: '12px', padding: '6px 12px' }}>
-              Connect Wallet
-            </button>
-          )}
+              <button 
+                onClick={onDisconnect}
+                style={{ 
+                  padding: '6px 12px', 
+                  fontSize: '12px',
+                  minWidth: 'auto',
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #4CAF50',
+                  borderRadius: '4px',
+                  color: '#4CAF50',
+                  cursor: 'pointer',
+                  fontFamily: "'Inconsolata', monospace",
+                  transition: 'all 0.3s ease',
+                  outline: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#2a2a2a';
+                  e.target.style.borderColor = '#45a049';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#1a1a1a';
+                  e.target.style.borderColor = '#4CAF50';
+                }}
+              >
+                Disconnect
+              </button>
+            ) : (
+              <button className="btn" onClick={onConnect} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                Connect Wallet
+              </button>
+            )}
+        </div>
         </div>
         
         {connected && (
@@ -719,23 +705,31 @@ const RightSidebar = ({
             }}>
               {ellipseAddress(account)}
             </div>
-            <div 
-              style={{ 
-                fontSize: '12px', 
-                color: '#999', 
-                marginBottom: '4px',
-                cursor: 'pointer'
-              }}
-              onClick={() => setShowGasModal(true)}
-              title="Press R to toggle gas tracker modal"
-            >
-              Gas Used: {totalGasCost.toFixed(4)} ETH
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <div 
+                style={{ 
+                  fontSize: '12px', 
+                  color: '#999', 
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowGasModal(true)}
+                title="Press R to toggle gas tracker modal"
+              >
+                Gas Used: {totalGasCost.toFixed(4)} ETH
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#4CAF50',
+                fontFamily: "'Inconsolata', monospace",
+                fontWeight: 'bold'
+              }}>
+                {lightweightMode ? 'LIGHTWEIGHT' : 'FULL'}
+              </div>
             </div>
           </div>
         )}
         
         <div style={{ borderBottom: '1px solid #444', paddingBottom: '5px' }}></div>
-      </div>
 
       {/* AI Model Selector */}
       <div style={{ marginBottom: '30px' }}>
