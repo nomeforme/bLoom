@@ -1127,22 +1127,42 @@ const RightSidebar = ({
             )}
 
             {/* Lightweight Mode Info for nodes without NFT/tokens */}
-            {!nodeHasNFT && !isCheckingNFT && selectedNode && (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #FFA500',
-                borderRadius: '6px', 
-                padding: '12px',
-                marginTop: '15px'
-              }}>
-                <h4 style={{ color: '#FFA500', marginBottom: '8px', textAlign: 'center' }}>⚡ Lightweight Node</h4>
-                <div style={{ fontSize: '11px', color: '#ccc', textAlign: 'center', lineHeight: '1.4' }}>
-                  <div>• Content stored directly in tree contract</div>
-                  <div>• No NFT, ERC20 tokens, or ERC6551 account</div>
-                  <div>• Reduced gas costs and faster transactions</div>
-                  <div>• Toggle mode with <strong>L</strong> key</div>
+            {!nodeHasNFT && selectedNode && (
+              <>
+                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>LoomNode: Content</h4>
+                <div style={{ 
+                  backgroundColor: '#1a1a1a', 
+                  border: '1px solid #4CAF50',
+                  borderRadius: '6px', 
+                  padding: '10px',
+                  marginBottom: '15px'
+                }}>
+                  {/* Display the actual content from the node */}
+                  <div style={{ 
+                    backgroundColor: '#0a0a0a',
+                    border: '1px solid #333',
+                    borderRadius: '4px',
+                    padding: '8px',
+                    marginBottom: '8px',
+                    fontSize: '11px'
+                  }}>
+                    {(() => {
+                      const content = selectedNode.content || '';
+                      // Clip content to maximum 300 characters for right sidebar
+                      const maxLength = 300;
+                      if (content.length > maxLength) {
+                        return content.substring(0, maxLength) + '...';
+                      }
+                      return content;
+                    })()}
+                  </div>
+                  
+                  <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3', textAlign: 'left' }}>
+                    <div>• Content stored in LoomTree</div>
+                    <div>• No NFT, ERC20, or ERC6551 account</div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
