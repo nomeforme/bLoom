@@ -13,9 +13,12 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT) external returns (bytes32)",
   "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
+  "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
+  "function nodeHasNFT(bytes32 nodeId) external view returns (bool)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
@@ -45,6 +48,7 @@ export const useBlockchain = (socket = null) => {
   const [factory, setFactory] = useState(null);
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
+  const [lightweightMode, setLightweightMode] = useState(false);
 
   useEffect(() => {
     // Check if MetaMask is available or use local provider
@@ -252,22 +256,32 @@ export const useBlockchain = (socket = null) => {
           console.log(`Loading node ${i + 1}/${allNodeIds.length}: ${nodeId.substring(0, 10)}...`);
           const nodeData = await treeContract.getNode(nodeId);
           
-          // Fetch content from NFT instead of node
+          // Fetch content from appropriate source based on node type
           let content = '';
+          let hasNFT = false;
           try {
-            const nftContentData = await nftContract.getNodeContent(nodeId);
-            // Parse JSON metadata to extract description (content)
-            if (nftContentData) {
-              try {
-                const metadata = JSON.parse(nftContentData);
-                content = metadata.description || '';
-              } catch (parseError) {
-                // If parsing fails, use raw data
-                content = nftContentData;
+            // Check if node has NFT to determine content source
+            hasNFT = await treeContract.nodeHasNFT(nodeId);
+            
+            if (hasNFT) {
+              // Get content from NFT contract
+              const nftContentData = await nftContract.getNodeContent(nodeId);
+              // Parse JSON metadata to extract description (content)
+              if (nftContentData) {
+                try {
+                  const metadata = JSON.parse(nftContentData);
+                  content = metadata.description || '';
+                } catch (parseError) {
+                  // If parsing fails, use raw data
+                  content = nftContentData;
+                }
               }
+            } else {
+              // Get content directly from tree contract for lightweight nodes
+              content = await treeContract.getNodeContent(nodeId);
             }
-          } catch (nftError) {
-            console.warn(`Could not fetch NFT content for node ${nodeId}:`, nftError);
+          } catch (contentError) {
+            console.warn(`Could not fetch content for node ${nodeId}:`, contentError);
           }
           
           const node = {
@@ -277,7 +291,8 @@ export const useBlockchain = (socket = null) => {
             author: nodeData[3],
             timestamp: Number(nodeData[4]),
             isRoot: nodeData[5],
-            content: content // Content now comes from NFT
+            content: content, // Content from appropriate source
+            hasNFT: hasNFT // Whether this node has NFT/tokens
           };
           console.log('✓ Loaded node:', {
             nodeId: node.nodeId.substring(0, 10) + '...',
@@ -322,10 +337,11 @@ export const useBlockchain = (socket = null) => {
     if (!signer) throw new Error('Not connected');
 
     try {
-      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content);
+      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'lightweightMode:', lightweightMode);
       
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
-      const tx = await treeContract.addNode(parentId, content);
+      // Use addNodeDirect with createNFT flag based on lightweightMode
+      const tx = await treeContract.addNodeDirect(parentId, content, !lightweightMode);
       const receipt = await tx.wait();
       
       // Report gas cost for manual node creation via socket
@@ -336,7 +352,7 @@ export const useBlockchain = (socket = null) => {
         
         socket.emit('reportGasCost', {
           type: 'Node Creation',
-          description: `Manually added node (${content.length} chars)`,
+          description: `Manually added node (${content.length} chars) - ${lightweightMode ? 'Direct Storage' : 'NFT/Token'}`,
           txHash: receipt.hash,
           gasUsed: gasUsed.toString(),
           gasPrice: gasPrice?.toString(),
@@ -457,12 +473,37 @@ export const useBlockchain = (socket = null) => {
     }
   }, []);
 
+  const toggleLightweightMode = () => {
+    setLightweightMode(!lightweightMode);
+    console.log('Lightweight mode toggled to:', !lightweightMode);
+  };
+
+  const checkNodeHasNFT = async (treeAddress, nodeId) => {
+    if (!signer) throw new Error('Not connected');
+    
+    // Validate inputs
+    if (!treeAddress || !nodeId || nodeId === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      return false;
+    }
+
+    try {
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
+      const hasNFT = await treeContract.nodeHasNFT(nodeId);
+      return hasNFT;
+    } catch (error) {
+      console.error('Error checking if node has NFT:', error);
+      return false; // Assume no NFT on error
+    }
+  };
+
+
   return {
     provider,
     signer,
     factory,
     connected,
     account,
+    lightweightMode,
     connect,
     disconnect,
     createTree,
@@ -471,6 +512,8 @@ export const useBlockchain = (socket = null) => {
     updateNode,
     getUserTrees,
     getAllTrees,
-    getNodeNFTInfo
+    getNodeNFTInfo,
+    checkNodeHasNFT,
+    toggleLightweightMode
   };
 };

@@ -11,8 +11,20 @@ contract LoomTree {
         address author;
         uint256 timestamp;
         bool isRoot;
+        string content; // Direct text storage for lightweight mode
+        bool hasNFT; // Whether this node has an associated NFT/token
         mapping(string => string) metadata;
         string[] metadataKeys;
+    }
+    
+    struct NodeCreationParams {
+        bytes32 parentId;
+        string content;
+        bool isRoot;
+        address author;
+        string tokenName;
+        string tokenSymbol;
+        uint256 tokenSupply;
     }
     
     mapping(bytes32 => Node) public nodes;
@@ -55,15 +67,56 @@ contract LoomTree {
     function initializeRootNodeWithToken(string memory rootContent, uint256 tokenSupply) external {
         require(rootId == bytes32(0), "Root node already initialized");
         require(msg.sender == factory, "Only factory can initialize");
-        rootId = _createNodeWithToken(bytes32(0), rootContent, true, treeOwner, "NODE", "NODE", tokenSupply);
+        NodeCreationParams memory params = NodeCreationParams({
+            parentId: bytes32(0),
+            content: rootContent,
+            isRoot: true,
+            author: treeOwner,
+            tokenName: "NODE",
+            tokenSymbol: "NODE",
+            tokenSupply: tokenSupply
+        });
+        rootId = _createNodeWithToken(params);
     }
+    
     
     function addNode(bytes32 parentId, string memory content) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         // Calculate token supply based on content length (characters / 4, minimum 1)
         uint256 tokenSupply = _calculateTokenSupply(content);
-        return _createNodeWithToken(parentId, content, false, msg.sender, "NODE", "NODE", tokenSupply);
+        NodeCreationParams memory params = NodeCreationParams({
+            parentId: parentId,
+            content: content,
+            isRoot: false,
+            author: msg.sender,
+            tokenName: "NODE",
+            tokenSymbol: "NODE",
+            tokenSupply: tokenSupply
+        });
+        return _createNodeWithToken(params);
+    }
+    
+    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT) external returns (bytes32) {
+        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
+        
+        if (createNFT) {
+            // Use existing NFT creation path
+            uint256 tokenSupply = _calculateTokenSupply(content);
+            NodeCreationParams memory params = NodeCreationParams({
+                parentId: parentId,
+                content: content,
+                isRoot: false,
+                author: msg.sender,
+                tokenName: "NODE",
+                tokenSymbol: "NODE",
+                tokenSupply: tokenSupply
+            });
+            return _createNodeWithToken(params);
+        } else {
+            // Use direct storage path
+            return _createNodeDirect(parentId, content, false, msg.sender);
+        }
     }
     
     function addNodeWithToken(
@@ -76,7 +129,16 @@ contract LoomTree {
         
         // Calculate token supply based on content length (characters / 4, minimum 1)
         uint256 tokenSupply = _calculateTokenSupply(content);
-        return _createNodeWithToken(parentId, content, false, msg.sender, tokenName, tokenSymbol, tokenSupply);
+        NodeCreationParams memory params = NodeCreationParams({
+            parentId: parentId,
+            content: content,
+            isRoot: false,
+            author: msg.sender,
+            tokenName: tokenName,
+            tokenSymbol: tokenSymbol,
+            tokenSupply: tokenSupply
+        });
+        return _createNodeWithToken(params);
     }
     
     /**
@@ -95,14 +157,36 @@ contract LoomTree {
         return calculated > 0 ? calculated : 1; // Minimum 1 token
     }
     
-    function _createNodeWithToken(
+    function _createNodeWithToken(NodeCreationParams memory params) internal returns (bytes32) {
+        bytes32 nodeId = keccak256(abi.encodePacked(params.author, block.timestamp, params.content, params.parentId));
+        
+        Node storage newNode = nodes[nodeId];
+        newNode.id = nodeId;
+        newNode.parentId = params.parentId;
+        newNode.author = params.author;
+        newNode.timestamp = block.timestamp;
+        newNode.isRoot = params.isRoot;
+        
+        allNodes.push(nodeId);
+        
+        if (!params.isRoot && params.parentId != bytes32(0)) {
+            nodes[params.parentId].children.push(nodeId);
+        }
+        
+        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp);
+        
+        // Set hasNFT flag and mint NFT for the node with content and token parameters
+        newNode.hasNFT = true;
+        nftContract.mintNodeNFT(params.author, nodeId, params.content, params.tokenName, params.tokenSymbol, params.tokenSupply);
+        
+        return nodeId;
+    }
+    
+    function _createNodeDirect(
         bytes32 parentId, 
         string memory content, 
         bool isRoot, 
-        address author,
-        string memory tokenName,
-        string memory tokenSymbol,
-        uint256 tokenSupply
+        address author
     ) internal returns (bytes32) {
         bytes32 nodeId = keccak256(abi.encodePacked(author, block.timestamp, content, parentId));
         
@@ -112,6 +196,8 @@ contract LoomTree {
         newNode.author = author;
         newNode.timestamp = block.timestamp;
         newNode.isRoot = isRoot;
+        newNode.content = content; // Store content directly in the node
+        newNode.hasNFT = false; // No NFT/token for this node
         
         allNodes.push(nodeId);
         
@@ -121,9 +207,6 @@ contract LoomTree {
         
         emit NodeCreated(nodeId, parentId, author, block.timestamp);
         
-        // Mint NFT for the node with content and token parameters
-        nftContract.mintNodeNFT(author, nodeId, content, tokenName, tokenSymbol, tokenSupply);
-        
         return nodeId;
     }
     
@@ -131,27 +214,33 @@ contract LoomTree {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
         require(nodes[nodeId].author == msg.sender || msg.sender == treeOwner, "Not authorized to update this node");
         
-        // Get current text content to calculate old token supply
-        string memory currentContent = nftContract.getTextContent(nodeId);
-        
-        // Calculate token supplies for old and new content
-        uint256 oldTokenSupply = _calculateTokenSupply(currentContent);
-        uint256 newTokenSupply = _calculateTokenSupply(newContent);
-        
-        // Apply token adjustments if needed
-        if (newTokenSupply > oldTokenSupply) {
-            // Content got longer - mint additional tokens
-            uint256 tokensToMint = newTokenSupply - oldTokenSupply;
-            nftContract.mintTokensToNode(nodeId, tokensToMint, "Content expansion");
-        } else if (newTokenSupply < oldTokenSupply) {
-            // Content got shorter - burn excess tokens
-            uint256 tokensToBurn = oldTokenSupply - newTokenSupply;
-            nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content reduction");
+        if (nodes[nodeId].hasNFT) {
+            // Handle NFT/token nodes
+            // Get current text content to calculate old token supply
+            string memory currentContent = nftContract.getTextContent(nodeId);
+            
+            // Calculate token supplies for old and new content
+            uint256 oldTokenSupply = _calculateTokenSupply(currentContent);
+            uint256 newTokenSupply = _calculateTokenSupply(newContent);
+            
+            // Apply token adjustments if needed
+            if (newTokenSupply > oldTokenSupply) {
+                // Content got longer - mint additional tokens
+                uint256 tokensToMint = newTokenSupply - oldTokenSupply;
+                nftContract.mintTokensToNode(nodeId, tokensToMint, "Content expansion");
+            } else if (newTokenSupply < oldTokenSupply) {
+                // Content got shorter - burn excess tokens
+                uint256 tokensToBurn = oldTokenSupply - newTokenSupply;
+                nftContract.burnTokensFromNode(nodeId, tokensToBurn, "Content reduction");
+            }
+            // If equal, no token adjustments needed
+            
+            // Update the NFT metadata/content
+            nftContract.updateTokenContent(nodeId, newContent);
+        } else {
+            // Handle direct storage nodes
+            nodes[nodeId].content = newContent;
         }
-        // If equal, no token adjustments needed
-        
-        // Update the NFT metadata/content
-        nftContract.updateTokenContent(nodeId, newContent);
         emit NodeUpdated(nodeId, msg.sender);
     }
     
@@ -221,5 +310,28 @@ contract LoomTree {
     
     function getNFTContract() external view returns (address) {
         return address(nftContract);
+    }
+    
+    function getNodeContent(bytes32 nodeId) external view returns (string memory) {
+        // Return empty string if node doesn't exist instead of reverting
+        if (nodes[nodeId].id == bytes32(0)) {
+            return "";
+        }
+        
+        if (nodes[nodeId].hasNFT) {
+            // Get content from NFT contract
+            return nftContract.getTextContent(nodeId);
+        } else {
+            // Get content from direct storage
+            return nodes[nodeId].content;
+        }
+    }
+    
+    function nodeHasNFT(bytes32 nodeId) external view returns (bool) {
+        // Return false if node doesn't exist instead of reverting
+        if (nodes[nodeId].id == bytes32(0)) {
+            return false;
+        }
+        return nodes[nodeId].hasNFT;
     }
 }
