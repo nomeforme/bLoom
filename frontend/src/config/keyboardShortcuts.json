@@ -145,6 +145,13 @@
       "description": "Toggle gas tracker modal",
       "symbol": "R",
       "category": "Interface"
+    },
+    "lightweightMode": {
+      "key": "l",
+      "modifiers": [],
+      "description": "Toggle lightweight mode (direct storage vs NFT/tokens)",
+      "symbol": "L",
+      "category": "Interface"
     }
   }
 }
