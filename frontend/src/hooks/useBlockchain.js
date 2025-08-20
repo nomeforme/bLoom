@@ -487,7 +487,9 @@ export const useBlockchain = (socket = null) => {
     }
 
     try {
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
+      // Use fresh provider to ensure we get latest blockchain state
+      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       const hasNFT = await treeContract.nodeHasNFT(nodeId);
       return hasNFT;
     } catch (error) {
