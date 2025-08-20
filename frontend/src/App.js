@@ -367,6 +367,7 @@ function App() {
           setIsGeneratingChildren={setIsGeneratingChildren}
           isGeneratingSiblings={isGeneratingSiblings}
           setIsGeneratingSiblings={setIsGeneratingSiblings}
+          lightweightMode={lightweightMode}
         />
       </div>
       

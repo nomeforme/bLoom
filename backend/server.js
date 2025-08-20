@@ -798,13 +798,12 @@ io.on('connection', (socket) => {
         
         // Create child node - no manual token burning needed
         
-        // Create the child node with token functionality
+        // Create the child node with appropriate mode
         const childReceipt = await queueTransaction(async (nonce) => {
-          const childTx = await treeContract.addNodeWithToken(
+          const childTx = await treeContract.addNodeDirect(
             nodeId, 
             options.childContent,
-            "NODE",
-            "NODE",
+            !options.lightweightMode, // createNFT = true when NOT in lightweight mode
             { nonce }
           );
           return await childTx.wait();
@@ -812,7 +811,8 @@ io.on('connection', (socket) => {
         childTxHash = childReceipt.hash;
         
         // Track gas cost for child node creation
-        await emitGasCost(childReceipt, 'Node Creation', `Created child node during update (${options.childContent.length} chars)`, io);
+        const childMode = options.lightweightMode ? 'Direct Storage' : 'NFT/Token';
+        await emitGasCost(childReceipt, 'Node Creation', `Created child node during update with ${childMode} (${options.childContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new child node ID
         const nodeCreatedEvent = childReceipt.logs.find(log => {
@@ -840,13 +840,12 @@ io.on('connection', (socket) => {
         
         // Create sibling node - no manual token burning needed
         
-        // Create the sibling node with token functionality (same parent as current node)
+        // Create the sibling node with appropriate mode (same parent as current node)
         const siblingReceipt = await queueTransaction(async (nonce) => {
-          const siblingTx = await treeContract.addNodeWithToken(
+          const siblingTx = await treeContract.addNodeDirect(
             options.parentId, 
             options.siblingContent,
-            "NODE",
-            "NODE",
+            !options.lightweightMode, // createNFT = true when NOT in lightweight mode
             { nonce }
           );
           return await siblingTx.wait();
@@ -854,7 +853,8 @@ io.on('connection', (socket) => {
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
         
         // Track gas cost for sibling node creation
-        await emitGasCost(siblingReceipt, 'Node Creation', `Created sibling node during update (${options.siblingContent.length} chars)`, io);
+        const siblingMode = options.lightweightMode ? 'Direct Storage' : 'NFT/Token';
+        await emitGasCost(siblingReceipt, 'Node Creation', `Created sibling node during update with ${siblingMode} (${options.siblingContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new sibling node ID
         const nodeCreatedEvent = siblingReceipt.logs.find(log => {
@@ -901,22 +901,29 @@ io.on('connection', (socket) => {
       
       socket.emit('updateComplete', response);
       
-      // After successful update, emit updated token balance for the node
+      // After successful update, emit updated token balance for the node (only if it has NFT)
       try {
-        const nftContractAddress = await treeContract.getNFTContract();
-        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
-        const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
-        const balance = Number(balanceBigInt);
+        // Check if the node has an NFT first
+        const nodeHasNFT = await treeContract.nodeHasNFT(nodeId);
         
-        // Emit balance update to all connected clients
-        io.emit('tokenBalanceUpdate', {
-          balance,
-          nodeId,
-          treeAddress,
-          timestamp: new Date().toISOString()
-        });
-        
-        console.log(`📡 Token balance updated for node ${nodeId}: ${balance} tokens`);
+        if (nodeHasNFT) {
+          const nftContractAddress = await treeContract.getNFTContract();
+          const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+          const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+          const balance = Number(balanceBigInt);
+          
+          // Emit balance update to all connected clients
+          io.emit('tokenBalanceUpdate', {
+            balance,
+            nodeId,
+            treeAddress,
+            timestamp: new Date().toISOString()
+          });
+          
+          console.log(`📡 Token balance updated for node ${nodeId}: ${balance} tokens`);
+        } else {
+          console.log(`📡 Skipping token balance update for lightweight node ${nodeId}`);
+        }
       } catch (balanceError) {
         console.error('Error fetching updated token balance:', balanceError);
       }
@@ -1105,20 +1112,34 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Get NFT contract address
-      const nftContractAddress = await treeContract.getNFTContract();
-      const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+      // Check if the node has an NFT first
+      const socketNodeHasNFT = await treeContract.nodeHasNFT(nodeId);
       
-      // Get current token balance
-      const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
-      const balance = Number(balanceBigInt);
-      
-      socket.emit('tokenBalance', {
-        balance,
-        nodeId,
-        treeAddress,
-        timestamp: new Date().toISOString()
-      });
+      if (socketNodeHasNFT) {
+        // Get NFT contract address
+        const nftContractAddress = await treeContract.getNFTContract();
+        const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+        
+        // Get current token balance
+        const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+        const balance = Number(balanceBigInt);
+        
+        socket.emit('tokenBalance', {
+          balance,
+          nodeId,
+          treeAddress,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        // For lightweight nodes, emit balance of 0 or null
+        socket.emit('tokenBalance', {
+          balance: null,
+          nodeId,
+          treeAddress,
+          timestamp: new Date().toISOString(),
+          isLightweight: true
+        });
+      }
     } catch (error) {
       console.error('Error fetching token balance via socket:', error);
       socket.emit('tokenBalanceError', { error: error.message });
@@ -1150,21 +1171,36 @@ app.get('/api/token-balance/:treeAddress/:nodeId', async (req, res) => {
     // Get the tree contract
     const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
     
-    // Get NFT contract address
-    const nftContractAddress = await treeContract.getNFTContract();
-    const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+    // Check if the node has an NFT first
+    const apiNodeHasNFT = await treeContract.nodeHasNFT(nodeId);
     
-    // Get current token balance
-    const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
-    const balance = Number(balanceBigInt);
-    
-    res.json({
-      success: true,
-      balance,
-      nodeId,
-      treeAddress,
-      timestamp: new Date().toISOString()
-    });
+    if (apiNodeHasNFT) {
+      // Get NFT contract address
+      const nftContractAddress = await treeContract.getNFTContract();
+      const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
+      
+      // Get current token balance
+      const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
+      const balance = Number(balanceBigInt);
+      
+      res.json({
+        success: true,
+        balance,
+        nodeId,
+        treeAddress,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // For lightweight nodes, return null balance
+      res.json({
+        success: true,
+        balance: null,
+        nodeId,
+        treeAddress,
+        timestamp: new Date().toISOString(),
+        isLightweight: true
+      });
+    }
   } catch (error) {
     console.error('Error fetching token balance:', error);
     res.status(500).json({
