@@ -182,15 +182,15 @@ export const useBlockchain = (socket = null) => {
       
       // Report gas cost for tree creation via socket
       if (socket) {
-        const gasUsed = Number(receipt.gasUsed);
-        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasUsed = receipt.gasUsed;
+        const gasPrice = receipt.gasPrice;
         const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
         
         socket.emit('reportGasCost', {
           type: 'Tree Creation',
           description: `Created new tree with root content (${rootContent.length} chars)`,
           txHash: receipt.hash,
-          gasUsed,
+          gasUsed: gasUsed.toString(),
           gasPrice: gasPrice?.toString(),
           gasCost
         });
@@ -330,15 +330,15 @@ export const useBlockchain = (socket = null) => {
       
       // Report gas cost for manual node creation via socket
       if (socket) {
-        const gasUsed = Number(receipt.gasUsed);
-        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasUsed = receipt.gasUsed;
+        const gasPrice = receipt.gasPrice;
         const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
         
         socket.emit('reportGasCost', {
           type: 'Node Creation',
           description: `Manually added node (${content.length} chars)`,
           txHash: receipt.hash,
-          gasUsed,
+          gasUsed: gasUsed.toString(),
           gasPrice: gasPrice?.toString(),
           gasCost
         });
@@ -362,15 +362,15 @@ export const useBlockchain = (socket = null) => {
       
       // Report gas cost for direct node update via socket
       if (socket) {
-        const gasUsed = Number(receipt.gasUsed);
-        const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+        const gasUsed = receipt.gasUsed;
+        const gasPrice = receipt.gasPrice;
         const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
         
         socket.emit('reportGasCost', {
           type: 'Node Update',
           description: `Direct node content update (${newContent.length} chars)`,
           txHash: receipt.hash,
-          gasUsed,
+          gasUsed: gasUsed.toString(),
           gasPrice: gasPrice?.toString(),
           gasCost
         });

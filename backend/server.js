@@ -151,15 +151,15 @@ async function emitGasCost(receipt, type, description, io) {
       return;
     }
 
-    const gasUsed = Number(receipt.gasUsed);
-    const gasPrice = receipt.gasPrice ? Number(receipt.gasPrice) : null;
+    const gasUsed = receipt.gasUsed;
+    const gasPrice = receipt.gasPrice;
     const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : null;
 
     const gasData = {
       type,
       description,
       txHash: receipt.hash,
-      gasUsed,
+      gasUsed: gasUsed.toString(),
       gasPrice: gasPrice?.toString(),
       gasCost: gasCost || '0',
       blockNumber: receipt.blockNumber,
@@ -308,6 +308,14 @@ const LLM_CONFIG = {
     baseURL: 'https://openrouter.ai/api/v1',
     apiKey: process.env.OPENROUTER_API_KEY,
   },
+
+  'h-405': {
+    name: 'H-405',
+    id: 'nousresearch/hermes-3-llama-3.1-405b',
+    provider: 'openai',
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+  },
   
   // Local models
   'local': {
@@ -421,9 +429,9 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       
     } else if (modelConfig.provider === 'openai') {
       // OpenAI-compatible API (covers OpenAI, DeepSeek via Chutes, Llama via OpenRouter, Local)
-      const isCompletionModel = modelConfig.id.includes('gpt-4-base') || modelConfig.id.includes('deepseek') || modelKey === 'local';
+      const isBaseModel = modelConfig.id.includes('gpt-4-base') || modelConfig.id.includes('deepseek') || modelConfig.id.includes('meta-llama') || modelKey === 'local';
       
-      if (isCompletionModel) {
+      if (isBaseModel) {
         // Use completions endpoint for base models
         console.log(`📤 Sending request to OpenAI-compatible completions API: ${modelConfig.baseURL}`);
         console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
