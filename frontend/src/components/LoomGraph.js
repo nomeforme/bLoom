@@ -17,9 +17,13 @@ const LoomGraph = forwardRef(({
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
   
-  // Log whenever lightweightMode prop changes
+  // Log whenever lightweightMode prop changes and update graph object
   useEffect(() => {
     console.log('🔍 [LoomGraph] lightweightMode prop updated to:', lightweightMode);
+    if (graphRef.current) {
+      graphRef.current.lightweightMode = lightweightMode;
+      console.log('🔍 [LoomGraph] Updated graph.lightweightMode to:', lightweightMode);
+    }
   }, [lightweightMode]);
   
   // Helper function to extract clean content from NFT JSON metadata
@@ -586,7 +590,7 @@ const LoomGraph = forwardRef(({
             createSibling: true,
             siblingContent: textAfterCursor,
             parentId: this.properties.parentId,
-            lightweightMode: lightweightMode
+            lightweightMode: graph.lightweightMode // Get current value from graph
           };
           
           console.log('Calling currentUpdateNode with sibling options:', options);
@@ -675,7 +679,7 @@ const LoomGraph = forwardRef(({
           const options = {
             createChild: true,
             childContent: textAfterCursor,
-            lightweightMode: lightweightMode
+            lightweightMode: graph.lightweightMode // Get current value from graph
           };
           
           console.log('Calling currentUpdateNode with options:', options);
@@ -1826,6 +1830,7 @@ const LoomGraph = forwardRef(({
     graph.onAddNode = onAddNode;
     graph.onGenerateSiblings = onGenerateSiblings;
     graph.onCreateTree = onCreateTree;
+    graph.lightweightMode = lightweightMode;
     
     // Clear existing nodes
     graph.clear();
