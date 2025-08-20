@@ -6,6 +6,7 @@ export const createGenerationHandler = (
   account,
   selectedModel,
   modelsConfig,
+  lightweightMode,
   setIsGeneratingChildren,
   setIsGeneratingSiblings,
   addNotification
@@ -67,7 +68,8 @@ export const createGenerationHandler = (
         userAccount: account,
         model: selectedModel,
         temperature: modelsConfig.generationSettings.temperature,
-        maxTokens: modelsConfig.generationSettings.maxTokens
+        maxTokens: modelsConfig.generationSettings.maxTokens,
+        lightweightMode: lightweightMode
       });
     });
   };

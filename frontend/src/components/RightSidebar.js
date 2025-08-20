@@ -7,6 +7,7 @@ import modelsConfig from '../config/models.json';
 const RightSidebar = ({
   connected,
   account,
+  lightweightMode,
   onConnect,
   onDisconnect,
   onCreateTree,
@@ -26,6 +27,8 @@ const RightSidebar = ({
   isGeneratingSiblings,
   setIsGeneratingSiblings,
   onModelChange,
+  checkNodeHasNFT,
+  toggleLightweightMode,
   socket
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
@@ -39,6 +42,8 @@ const RightSidebar = ({
   const [availableModels, setAvailableModels] = useState([]);
   const [currentTokenBalance, setCurrentTokenBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [nodeHasNFT, setNodeHasNFT] = useState(false);
+  const [isCheckingNFT, setIsCheckingNFT] = useState(false);
   const [gasTransactions, setGasTransactions] = useState([]);
   const [totalGasCost, setTotalGasCost] = useState(0);
   const [showGasModal, setShowGasModal] = useState(false);
@@ -149,23 +154,56 @@ const RightSidebar = ({
     }
   }, [selectedModel, onModelChange]);
 
-  // Fetch token balance when selected node changes
+  // Check if node has NFT when selected node changes
   useEffect(() => {
-    const fetchTokenBalance = () => {
-      if (!selectedNode || !currentTree?.address || !connected || !socket) {
+    const checkIfNodeHasNFT = async () => {
+      if (!selectedNode?.id || !currentTree?.address || !connected || !checkNodeHasNFT) {
+        setNodeHasNFT(false);
         setCurrentTokenBalance(null);
+        setIsCheckingNFT(false);
         return;
       }
 
-      setIsLoadingBalance(true);
-      socket.emit('getTokenBalance', {
-        treeAddress: currentTree.address,
-        nodeId: selectedNode.id
-      });
+      // Skip if node ID is invalid
+      if (selectedNode.id === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        setNodeHasNFT(false);
+        setCurrentTokenBalance(null);
+        setIsCheckingNFT(false);
+        return;
+      }
+
+      setIsCheckingNFT(true);
+      
+      // Add a small delay to avoid race conditions with node creation
+      setTimeout(async () => {
+        try {
+          const hasNFT = await checkNodeHasNFT(currentTree.address, selectedNode.id);
+          setNodeHasNFT(hasNFT);
+          
+          // Only fetch token balance if node has NFT
+          if (hasNFT && socket) {
+            setIsLoadingBalance(true);
+            socket.emit('getTokenBalance', {
+              treeAddress: currentTree.address,
+              nodeId: selectedNode.id
+            });
+          } else {
+            setCurrentTokenBalance(null);
+            setIsLoadingBalance(false);
+          }
+        } catch (error) {
+          console.error('Error checking NFT status for node:', error);
+          setNodeHasNFT(false);
+          setCurrentTokenBalance(null);
+          setIsLoadingBalance(false);
+        } finally {
+          setIsCheckingNFT(false);
+        }
+      }, 100); // Small delay to let blockchain state settle
     };
 
-    fetchTokenBalance();
-  }, [selectedNode?.id, currentTree?.address, connected, socket]);
+    checkIfNodeHasNFT();
+  }, [selectedNode?.id, currentTree?.address, connected, checkNodeHasNFT, socket]);
 
   // Set up socket listeners for token balance updates
   useEffect(() => {
@@ -187,7 +225,7 @@ const RightSidebar = ({
 
     const handleTokenBalanceError = (data) => {
       if (selectedNode?.id) {
-        console.error('Token balance error:', data.error);
+        console.log('Token balance error:', data.error);
         setCurrentTokenBalance(null);
         setIsLoadingBalance(false);
       }
@@ -306,6 +344,13 @@ const RightSidebar = ({
       if (shortcutsManager.matchShortcut(e, 'gasTracker')) {
         e.preventDefault();
         setShowGasModal(prev => !prev);
+        return;
+      }
+
+      // Handle lightweight mode toggle shortcut
+      if (shortcutsManager.matchShortcut(e, 'lightweightMode')) {
+        e.preventDefault();
+        toggleLightweightMode();
         return;
       }
     };
@@ -615,6 +660,22 @@ const RightSidebar = ({
             margin: '0'
           }}>bLoom</h2>
           
+          {/* Lightweight Mode Indicator */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: '10px',
+            color: lightweightMode ? '#FFA500' : '#4CAF50',
+            fontFamily: "'Inconsolata', monospace",
+            backgroundColor: lightweightMode ? 'rgba(255, 165, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+            border: `1px solid ${lightweightMode ? '#FFA500' : '#4CAF50'}`,
+            borderRadius: '3px',
+            padding: '2px 6px',
+            marginRight: '8px'
+          }}>
+            {lightweightMode ? '⚡ LIGHTWEIGHT' : '🎨 NFT/TOKEN'}
+          </div>
+          
           {connected ? (
             <button 
               onClick={onDisconnect}
@@ -761,8 +822,10 @@ const RightSidebar = ({
               </div>
             </div>
 
-            {/* NFT Information - Now displays content and metadata */}
-            <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>ERC721: Node NFT</h4>
+            {/* NFT Information - Only show for nodes with NFT/tokens */}
+            {nodeHasNFT && (
+              <>
+                <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>ERC721: Node NFT</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -862,9 +925,13 @@ const RightSidebar = ({
                 </div>
               </div>
             )}
+              </>
+            )}
 
-            {/* Node Token Information */}
-            <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
+            {/* Node Token Information - Only show for nodes with NFT/tokens */}
+            {nodeHasNFT && (
+              <>
+                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -962,9 +1029,13 @@ const RightSidebar = ({
                 </div>
               </div>
             )}
+              </>
+            )}
 
-            {/* Token Bound Account (TBA) Information */}
-            <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
+            {/* Token Bound Account (TBA) Information - Only show for nodes with NFT/tokens */}
+            {nodeHasNFT && (
+              <>
+                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
             {selectedNodeNFT ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
@@ -1049,6 +1120,27 @@ const RightSidebar = ({
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                   NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                </div>
+              </div>
+            )}
+              </>
+            )}
+
+            {/* Lightweight Mode Info for nodes without NFT/tokens */}
+            {!nodeHasNFT && !isCheckingNFT && selectedNode && (
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #FFA500',
+                borderRadius: '6px', 
+                padding: '12px',
+                marginTop: '15px'
+              }}>
+                <h4 style={{ color: '#FFA500', marginBottom: '8px', textAlign: 'center' }}>⚡ Lightweight Node</h4>
+                <div style={{ fontSize: '11px', color: '#ccc', textAlign: 'center', lineHeight: '1.4' }}>
+                  <div>• Content stored directly in tree contract</div>
+                  <div>• No NFT, ERC20 tokens, or ERC6551 account</div>
+                  <div>• Reduced gas costs and faster transactions</div>
+                  <div>• Toggle mode with <strong>L</strong> key</div>
                 </div>
               </div>
             )}
@@ -1369,6 +1461,7 @@ const RightSidebar = ({
           const previousModelKey = shortcutsManager.getShortcut('previousModel')?.symbol || 'Z';
           const nextModelKey = shortcutsManager.getShortcut('nextModel')?.symbol || 'C';
           const gasTrackerKey = shortcutsManager.getShortcut('gasTracker')?.symbol || 'R';
+          const lightweightModeKey = shortcutsManager.getShortcut('lightweightMode')?.symbol || 'L';
           
           // Navigation shortcuts (WASD)
           const navUpKey = shortcutsManager.getShortcut('up')?.symbol || 'W';
@@ -1389,14 +1482,15 @@ const RightSidebar = ({
               <p>7. Switch views: <strong>{pathViewKey}</strong> for Path View, <strong>{treeViewKey}</strong> for Tree View</p>
               <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
               <p>9. Press <strong>{gasTrackerKey}</strong> to view gas tracker details</p>
+              <p>10. Press <strong>{lightweightModeKey}</strong> to toggle lightweight mode (direct storage vs NFT/tokens)</p>
               <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
-              <p>10. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
-              <p>11. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
-              <p>12. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
-              <p>13. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
-              <p>14. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
-              <p>15. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
-              <p>16. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
+              <p>11. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
+              <p>12. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
+              <p>13. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
+              <p>14. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
+              <p>15. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
+              <p>16. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
+              <p>17. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
             </div>
           );
         })()}

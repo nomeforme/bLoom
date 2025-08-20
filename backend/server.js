@@ -98,9 +98,12 @@ const FACTORY_ABI = [
 
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
+  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT) external returns (bytes32)",
   "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
+  "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
+  "function nodeHasNFT(bytes32 nodeId) external view returns (bool)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
@@ -526,7 +529,7 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('generateNodes', async (data) => {
-    const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens } = data;
+    const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens, lightweightMode = false } = data;
     
     try {
       // Get the tree contract
@@ -623,12 +626,11 @@ io.on('connection', (socket) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeWithToken to automatically calculate token supply
-          const tx = await treeContract.addNodeWithToken(
+          // Use addNodeDirect with createNFT flag based on lightweightMode
+          const tx = await treeContract.addNodeDirect(
             parentId, 
             content, 
-            "NODE", 
-            "NODE"
+            !lightweightMode // createNFT = true when NOT in lightweight mode
           );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
@@ -644,7 +646,8 @@ io.on('connection', (socket) => {
           });
           
           // Track gas cost for node creation
-          await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model}`, io);
+          const modeDescription = lightweightMode ? 'Direct Storage' : 'NFT/Token';
+          await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model} - ${modeDescription}`, io);
           
           // Log all events for debugging
           console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256)')}`);
@@ -1092,6 +1095,15 @@ io.on('connection', (socket) => {
 
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
+      
+      // First check if the node has NFT/tokens
+      const hasNFT = await treeContract.nodeHasNFT(nodeId);
+      
+      if (!hasNFT) {
+        // Node is lightweight, doesn't have tokens
+        socket.emit('tokenBalanceError', { error: 'No token exists for this node' });
+        return;
+      }
       
       // Get NFT contract address
       const nftContractAddress = await treeContract.getNFTContract();
