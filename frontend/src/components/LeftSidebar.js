@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
+import { useIPFSContent } from '../hooks/useIPFSContent';
 
 const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings, selectedModel }) => {
   const scrollRef = useRef(null);

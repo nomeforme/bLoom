@@ -34,7 +34,6 @@ function App() {
     factory,
     connected,
     account,
-    lightweightMode,
     connect,
     disconnect,
     createTree,
@@ -45,7 +44,9 @@ function App() {
     getAllTrees,
     getNodeNFTInfo,
     checkNodeHasNFT,
-    toggleLightweightMode
+    storageMode,
+    cycleStorageMode,
+    ipfsAvailable
   } = useBlockchain(socket);
 
   useEffect(() => {
@@ -240,7 +241,7 @@ function App() {
     account,
     selectedModel,
     modelsConfig,
-    lightweightMode,
+    storageMode,
     setIsGeneratingChildren,
     setIsGeneratingSiblings,
     addNotification
@@ -282,7 +283,6 @@ function App() {
       <RightSidebar
         connected={connected}
         account={account}
-        lightweightMode={lightweightMode}
         onConnect={connect}
         onDisconnect={disconnect}
         onCreateTree={handleCreateTree}
@@ -303,7 +303,9 @@ function App() {
         setIsGeneratingSiblings={setIsGeneratingSiblings}
         onModelChange={handleModelChange}
         checkNodeHasNFT={checkNodeHasNFT}
-        toggleLightweightMode={toggleLightweightMode}
+        storageMode={storageMode}
+        cycleStorageMode={cycleStorageMode}
+        ipfsAvailable={ipfsAvailable}
         socket={socket}
       />
       
@@ -367,7 +369,7 @@ function App() {
           setIsGeneratingChildren={setIsGeneratingChildren}
           isGeneratingSiblings={isGeneratingSiblings}
           setIsGeneratingSiblings={setIsGeneratingSiblings}
-          lightweightMode={lightweightMode}
+          storageMode={storageMode}
         />
       </div>
       
