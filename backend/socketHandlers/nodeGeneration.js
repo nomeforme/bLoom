@@ -3,6 +3,7 @@ const { TREE_ABI, NFT_ABI } = require('../config/blockchain');
 const { wallet } = require('../config/blockchain');
 const { generateText } = require('../services/textGeneration');
 const { emitGasCost } = require('../utils/gasTracker');
+const { ipfsService } = require('../services/ipfsService');
 
 function handleGenerateNodes(socket, io) {
   socket.on('generateNodes', async (data) => {
@@ -94,7 +95,8 @@ function handleGenerateNodes(socket, io) {
           contentLength: content.length,
           completionTokens: tokenSupply,
           hasUserAccount: !!userAccount,
-          userAccount: userAccount
+          userAccount: userAccount,
+          storageMode: storageMode
         });
         
         try {
@@ -103,10 +105,29 @@ function handleGenerateNodes(socket, io) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeDirect with createNFT flag based on lightweightMode
+          let finalContent = content;
+          
+          // Handle IPFS mode - pin content first
+          if (storageMode === 'ipfs') {
+            try {
+              console.log('🌐 Pinning content to IPFS...');
+              const pinResult = await ipfsService.pinText(content, {
+                treeAddress,
+                parentId,
+                name: `loom-node-generated-${Date.now()}-${i + 1}`
+              });
+              finalContent = `ipfs:${pinResult.hash}`;
+              console.log('✅ Content pinned to IPFS:', pinResult.hash);
+            } catch (ipfsError) {
+              console.error('❌ IPFS pinning failed, falling back to lightweight mode:', ipfsError);
+              // Keep original content and continue with lightweight mode
+            }
+          }
+          
+          // Use addNodeDirect with createNFT flag based on storageMode
           const tx = await treeContract.addNodeDirect(
             parentId, 
-            content, 
+            finalContent, 
             storageMode === 'full' // createNFT = true when in full mode
           );
           
