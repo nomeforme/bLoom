@@ -6,7 +6,7 @@ const { emitGasCost } = require('../utils/gasTracker');
 
 function handleGenerateNodes(socket, io) {
   socket.on('generateNodes', async (data) => {
-    const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens, lightweightMode = false } = data;
+    const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens, storageMode = 'full' } = data;
     
     try {
       // Get the tree contract
@@ -107,7 +107,7 @@ function handleGenerateNodes(socket, io) {
           const tx = await treeContract.addNodeDirect(
             parentId, 
             content, 
-            !lightweightMode // createNFT = true when NOT in lightweight mode
+            storageMode === 'full' // createNFT = true when in full mode
           );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
@@ -123,7 +123,7 @@ function handleGenerateNodes(socket, io) {
           });
           
           // Track gas cost for node creation
-          const modeDescription = lightweightMode ? 'Direct Storage' : 'NFT/Token';
+          const modeDescription = storageMode === 'full' ? 'NFT/Token' : storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
           await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model} - ${modeDescription}`, io);
           
           // Log all events for debugging

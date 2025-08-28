@@ -7,7 +7,7 @@ import modelsConfig from '../config/models.json';
 const RightSidebar = ({
   connected,
   account,
-  lightweightMode,
+  storageMode,
   onConnect,
   onDisconnect,
   onCreateTree,
@@ -28,7 +28,8 @@ const RightSidebar = ({
   setIsGeneratingSiblings,
   onModelChange,
   checkNodeHasNFT,
-  toggleLightweightMode,
+  cycleStorageMode,
+  ipfsAvailable,
   socket
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
@@ -347,10 +348,10 @@ const RightSidebar = ({
         return;
       }
 
-      // Handle lightweight mode toggle shortcut
+      // Handle storage mode cycling shortcut
       if (shortcutsManager.matchShortcut(e, 'lightweightMode')) {
         e.preventDefault();
-        toggleLightweightMode();
+        cycleStorageMode();
         return;
       }
     };
@@ -705,6 +706,31 @@ const RightSidebar = ({
             }}>
               {ellipseAddress(account)}
             </div>
+            
+            {/* Storage Mode Indicator */}
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#888', 
+              marginBottom: '8px',
+              padding: '4px 8px',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              textAlign: 'center'
+            }}>
+              Mode: <span style={{ 
+                color: storageMode === 'ipfs' ? '#ff9500' : 
+                       storageMode === 'lightweight' ? '#2196F3' : '#4CAF50',
+                fontWeight: 'bold'
+              }}>
+                {storageMode === 'ipfs' ? 'IPFS' : 
+                 storageMode === 'lightweight' ? 'Lightweight' : 'Full'}
+              </span>
+              {storageMode === 'ipfs' && ' (Hash only)'}
+              {storageMode === 'lightweight' && ' (Direct)'}
+              {storageMode === 'full' && ' (NFT+Token)'}
+              {storageMode === 'ipfs' && !ipfsAvailable && ' [Unavailable]'}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <div 
                 style={{ 
@@ -723,7 +749,7 @@ const RightSidebar = ({
                 fontFamily: "'Inconsolata', monospace",
                 fontWeight: 'bold'
               }}>
-                {lightweightMode ? 'LIGHTWEIGHT' : 'FULL'}
+                {storageMode.toUpperCase()}
               </div>
             </div>
           </div>
@@ -1475,7 +1501,7 @@ const RightSidebar = ({
           const previousModelKey = shortcutsManager.getShortcut('previousModel')?.symbol || 'Z';
           const nextModelKey = shortcutsManager.getShortcut('nextModel')?.symbol || 'C';
           const gasTrackerKey = shortcutsManager.getShortcut('gasTracker')?.symbol || 'R';
-          const lightweightModeKey = shortcutsManager.getShortcut('lightweightMode')?.symbol || 'L';
+          const storageModeKey = shortcutsManager.getShortcut('lightweightMode')?.symbol || 'L';
           
           // Navigation shortcuts (WASD)
           const navUpKey = shortcutsManager.getShortcut('up')?.symbol || 'W';
@@ -1496,7 +1522,11 @@ const RightSidebar = ({
               <p>7. Switch views: <strong>{pathViewKey}</strong> for Path View, <strong>{treeViewKey}</strong> for Tree View</p>
               <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
               <p>9. Press <strong>{gasTrackerKey}</strong> to view gas tracker details</p>
-              <p>10. Press <strong>{lightweightModeKey}</strong> to toggle lightweight mode (direct storage vs NFT/tokens)</p>
+              <p>10. Press <strong>{storageModeKey}</strong> to cycle storage modes (Full → Lightweight → IPFS)</p>
+              <p><strong style={{ color: '#4CAF50' }}>Storage Modes:</strong></p>
+              <p>• <strong style={{ color: '#4CAF50' }}>Full:</strong> NFT + ERC20 tokens + TBA (highest gas cost)</p>
+              <p>• <strong style={{ color: '#2196F3' }}>Lightweight:</strong> Direct contract storage (medium gas cost)</p>
+              {ipfsAvailable && <p>• <strong style={{ color: '#ff9500' }}>IPFS:</strong> Pin to IPFS, store hash only (lowest gas cost)</p>}
               <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
               <p>11. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
               <p>12. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>

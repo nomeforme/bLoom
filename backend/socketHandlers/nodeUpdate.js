@@ -42,7 +42,7 @@ function handleUpdateNode(socket, io) {
           const childTx = await treeContract.addNodeDirect(
             nodeId, 
             options.childContent,
-            !options.lightweightMode, // createNFT = true when NOT in lightweight mode
+            options.storageMode === 'full', // createNFT = true when in full mode
             { nonce }
           );
           return await childTx.wait();
@@ -50,7 +50,7 @@ function handleUpdateNode(socket, io) {
         childTxHash = childReceipt.hash;
         
         // Track gas cost for child node creation
-        const childMode = options.lightweightMode ? 'Direct Storage' : 'NFT/Token';
+        const childMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
         await emitGasCost(childReceipt, 'Node Creation', `Created child node during update with ${childMode} (${options.childContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new child node ID
@@ -84,7 +84,7 @@ function handleUpdateNode(socket, io) {
           const siblingTx = await treeContract.addNodeDirect(
             options.parentId, 
             options.siblingContent,
-            !options.lightweightMode, // createNFT = true when NOT in lightweight mode
+            options.storageMode === 'full', // createNFT = true when in full mode
             { nonce }
           );
           return await siblingTx.wait();
@@ -92,7 +92,7 @@ function handleUpdateNode(socket, io) {
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
         
         // Track gas cost for sibling node creation
-        const siblingMode = options.lightweightMode ? 'Direct Storage' : 'NFT/Token';
+        const siblingMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
         await emitGasCost(siblingReceipt, 'Node Creation', `Created sibling node during update with ${siblingMode} (${options.siblingContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new sibling node ID
