@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
+import { pinTextToIPFS, checkIPFSAvailability } from '../utils/ipfsUtils';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -48,7 +49,8 @@ export const useBlockchain = (socket = null) => {
   const [factory, setFactory] = useState(null);
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
-  const [lightweightMode, setLightweightMode] = useState(false);
+  const [storageMode, setStorageMode] = useState('full'); // 'full', 'lightweight', 'ipfs'
+  const [ipfsAvailable, setIpfsAvailable] = useState(false);
 
   useEffect(() => {
     // Check if MetaMask is available or use local provider
@@ -112,6 +114,12 @@ export const useBlockchain = (socket = null) => {
       connectWithTestAccount(provider);
     }
   }, [account]);
+
+  // Check IPFS availability on component mount
+  useEffect(() => {
+    checkIPFSAvailability().then(setIpfsAvailable);
+  }, []);
+
 
   const connectWithTestAccount = async (provider) => {
     try {
@@ -337,11 +345,35 @@ export const useBlockchain = (socket = null) => {
     if (!signer) throw new Error('Not connected');
 
     try {
-      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'lightweightMode:', lightweightMode);
+      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'storageMode:', storageMode);
+      
+      let finalContent = content;
+      let modeDescription = 'NFT/Token';
+      
+      // Handle IPFS mode
+      if (storageMode === 'ipfs' && ipfsAvailable) {
+        try {
+          console.log('Pinning content to IPFS...');
+          const ipfsHash = await pinTextToIPFS(content, {
+            treeAddress,
+            parentId,
+            name: `loom-node-${Date.now()}`
+          });
+          finalContent = `ipfs:${ipfsHash}`;
+          modeDescription = 'IPFS';
+          console.log('Content pinned to IPFS:', ipfsHash);
+        } catch (ipfsError) {
+          console.error('IPFS pinning failed, falling back to lightweight mode:', ipfsError);
+          modeDescription = 'Direct Storage (IPFS fallback)';
+        }
+      } else if (storageMode === 'lightweight') {
+        modeDescription = 'Direct Storage';
+      }
       
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
-      // Use addNodeDirect with createNFT flag based on lightweightMode
-      const tx = await treeContract.addNodeDirect(parentId, content, !lightweightMode);
+      // For IPFS and lightweight modes, don't create NFTs
+      const createNFT = storageMode === 'full';
+      const tx = await treeContract.addNodeDirect(parentId, finalContent, createNFT);
       const receipt = await tx.wait();
       
       // Report gas cost for manual node creation via socket
@@ -352,7 +384,7 @@ export const useBlockchain = (socket = null) => {
         
         socket.emit('reportGasCost', {
           type: 'Node Creation',
-          description: `Manually added node (${content.length} chars) - ${lightweightMode ? 'Direct Storage' : 'NFT/Token'}`,
+          description: `Manually added node (${content.length} chars) - ${modeDescription}`,
           txHash: receipt.hash,
           gasUsed: gasUsed.toString(),
           gasPrice: gasPrice?.toString(),
@@ -473,9 +505,13 @@ export const useBlockchain = (socket = null) => {
     }
   }, []);
 
-  const toggleLightweightMode = () => {
-    setLightweightMode(!lightweightMode);
-    console.log('Lightweight mode toggled to:', !lightweightMode);
+  const cycleStorageMode = () => {
+    const modes = ipfsAvailable ? ['full', 'lightweight', 'ipfs'] : ['full', 'lightweight'];
+    const currentIndex = modes.indexOf(storageMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    const newMode = modes[nextIndex];
+    setStorageMode(newMode);
+    console.log('Storage mode changed to:', newMode);
   };
 
   const checkNodeHasNFT = async (treeAddress, nodeId) => {
@@ -505,7 +541,6 @@ export const useBlockchain = (socket = null) => {
     factory,
     connected,
     account,
-    lightweightMode,
     connect,
     disconnect,
     createTree,
@@ -516,6 +551,8 @@ export const useBlockchain = (socket = null) => {
     getAllTrees,
     getNodeNFTInfo,
     checkNodeHasNFT,
-    toggleLightweightMode
+    storageMode,
+    cycleStorageMode,
+    ipfsAvailable
   };
 };

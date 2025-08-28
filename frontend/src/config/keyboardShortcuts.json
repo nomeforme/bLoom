@@ -149,7 +149,7 @@
     "lightweightMode": {
       "key": "l",
       "modifiers": [],
-      "description": "Toggle lightweight mode (direct storage vs NFT/tokens)",
+      "description": "Cycle storage modes (Full → Lightweight → IPFS)",
       "symbol": "L",
       "category": "Interface"
     }

@@ -12,19 +12,19 @@ const LoomGraph = forwardRef(({
   setIsGeneratingChildren,
   isGeneratingSiblings,
   setIsGeneratingSiblings,
-  lightweightMode
+  storageMode
 }, ref) => {
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
   
-  // Log whenever lightweightMode prop changes and update graph object
+  // Log whenever storageMode prop changes and update graph object
   useEffect(() => {
-    console.log('🔍 [LoomGraph] lightweightMode prop updated to:', lightweightMode);
+    console.log('🔍 [LoomGraph] storageMode prop updated to:', storageMode);
     if (graphRef.current) {
-      graphRef.current.lightweightMode = lightweightMode;
-      console.log('🔍 [LoomGraph] Updated graph.lightweightMode to:', lightweightMode);
+      graphRef.current.storageMode = storageMode;
+      console.log('🔍 [LoomGraph] Updated graph.storageMode to:', storageMode);
     }
-  }, [lightweightMode]);
+  }, [storageMode]);
   
   // Helper function to extract clean content from NFT JSON metadata
   const extractCleanContent = (rawContent) => {
@@ -590,7 +590,7 @@ const LoomGraph = forwardRef(({
             createSibling: true,
             siblingContent: textAfterCursor,
             parentId: this.properties.parentId,
-            lightweightMode: graph.lightweightMode // Get current value from graph
+            storageMode: graph.storageMode // Get current value from graph
           };
           
           console.log('Calling currentUpdateNode with sibling options:', options);
@@ -679,7 +679,7 @@ const LoomGraph = forwardRef(({
           const options = {
             createChild: true,
             childContent: textAfterCursor,
-            lightweightMode: graph.lightweightMode // Get current value from graph
+            storageMode: graph.storageMode // Get current value from graph
           };
           
           console.log('Calling currentUpdateNode with options:', options);
@@ -1830,7 +1830,7 @@ const LoomGraph = forwardRef(({
     graph.onAddNode = onAddNode;
     graph.onGenerateSiblings = onGenerateSiblings;
     graph.onCreateTree = onCreateTree;
-    graph.lightweightMode = lightweightMode;
+    graph.storageMode = storageMode;
     
     // Clear existing nodes
     graph.clear();
