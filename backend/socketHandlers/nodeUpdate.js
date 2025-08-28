@@ -3,6 +3,7 @@ const { TREE_ABI, NFT_ABI } = require('../config/blockchain');
 const { wallet } = require('../config/blockchain');
 const { queueTransaction } = require('../services/transactionQueue');
 const { emitGasCost } = require('../utils/gasTracker');
+const { ipfsService } = require('../services/ipfsService');
 
 function handleUpdateNode(socket, io) {
   socket.on('updateNode', async (data) => {
@@ -37,11 +38,30 @@ function handleUpdateNode(socket, io) {
         
         // Create child node - no manual token burning needed
         
+        let finalChildContent = options.childContent;
+        
+        // Handle IPFS mode for child content
+        if (options.storageMode === 'ipfs') {
+          try {
+            console.log('🌐 Pinning child content to IPFS...');
+            const pinResult = await ipfsService.pinText(options.childContent, {
+              treeAddress,
+              parentId: nodeId,
+              name: `loom-child-node-${Date.now()}`
+            });
+            finalChildContent = `ipfs:${pinResult.hash}`;
+            console.log('✅ Child content pinned to IPFS:', pinResult.hash);
+          } catch (ipfsError) {
+            console.error('❌ IPFS pinning failed for child, using original content:', ipfsError);
+            // Keep original content
+          }
+        }
+        
         // Create the child node with appropriate mode
         const childReceipt = await queueTransaction(async (nonce) => {
           const childTx = await treeContract.addNodeDirect(
             nodeId, 
-            options.childContent,
+            finalChildContent,
             options.storageMode === 'full', // createNFT = true when in full mode
             { nonce }
           );
@@ -79,11 +99,30 @@ function handleUpdateNode(socket, io) {
         
         // Create sibling node - no manual token burning needed
         
+        let finalSiblingContent = options.siblingContent;
+        
+        // Handle IPFS mode for sibling content
+        if (options.storageMode === 'ipfs') {
+          try {
+            console.log('🌐 Pinning sibling content to IPFS...');
+            const pinResult = await ipfsService.pinText(options.siblingContent, {
+              treeAddress,
+              parentId: options.parentId,
+              name: `loom-sibling-node-${Date.now()}`
+            });
+            finalSiblingContent = `ipfs:${pinResult.hash}`;
+            console.log('✅ Sibling content pinned to IPFS:', pinResult.hash);
+          } catch (ipfsError) {
+            console.error('❌ IPFS pinning failed for sibling, using original content:', ipfsError);
+            // Keep original content
+          }
+        }
+        
         // Create the sibling node with appropriate mode (same parent as current node)
         const siblingReceipt = await queueTransaction(async (nonce) => {
           const siblingTx = await treeContract.addNodeDirect(
             options.parentId, 
-            options.siblingContent,
+            finalSiblingContent,
             options.storageMode === 'full', // createNFT = true when in full mode
             { nonce }
           );

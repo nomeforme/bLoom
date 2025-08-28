@@ -117,7 +117,11 @@ export const useBlockchain = (socket = null) => {
 
   // Check IPFS availability on component mount
   useEffect(() => {
-    checkIPFSAvailability().then(setIpfsAvailable);
+    console.log('🔍 Checking IPFS availability...');
+    checkIPFSAvailability().then((available) => {
+      console.log('🔍 IPFS availability result:', available);
+      setIpfsAvailable(available);
+    });
   }, []);
 
 
@@ -345,7 +349,7 @@ export const useBlockchain = (socket = null) => {
     if (!signer) throw new Error('Not connected');
 
     try {
-      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'storageMode:', storageMode);
+      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'storageMode:', storageMode, 'ipfsAvailable:', ipfsAvailable);
       
       let finalContent = content;
       let modeDescription = 'NFT/Token';
