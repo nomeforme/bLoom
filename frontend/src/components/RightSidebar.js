@@ -30,6 +30,7 @@ const RightSidebar = ({
   checkNodeHasNFT,
   cycleStorageMode,
   ipfsAvailable,
+  nativeCurrencySymbol = 'ETH',
   socket
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
@@ -246,7 +247,7 @@ const RightSidebar = ({
         gasPrice: data.gasPrice,
         description: data.description
       });
-      console.log(`Gas cost tracked: ${data.type} - ${data.gasCost} ETH`);
+      console.log(`Gas cost tracked: ${data.type} - ${data.gasCost} ${nativeCurrencySymbol}`);
     };
     
     socket.on('gasCost', handleGasCost);
@@ -718,7 +719,7 @@ const RightSidebar = ({
                 title="Press R to toggle gas tracker modal"
               >
                 <span style={{ color: '#999' }}>Gas Used: </span>
-                <span style={{ color: '#4CAF50' }}>{totalGasCost.toFixed(4)} ETH</span>
+                <span style={{ color: '#4CAF50' }}>{totalGasCost.toFixed(4)} {nativeCurrencySymbol}</span>
               </div>
               <div style={{
                 fontSize: '12px',
@@ -1570,7 +1571,7 @@ const RightSidebar = ({
                 borderRadius: '6px'
               }}>
                 <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                  Total Gas Cost: {totalGasCost.toFixed(6)} ETH
+                  Total Gas Cost: {totalGasCost.toFixed(6)} {nativeCurrencySymbol}
                 </span>
                 <button
                   onClick={clearGasTransactions}
@@ -1644,7 +1645,7 @@ const RightSidebar = ({
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                          {parseFloat(tx.gasCost).toFixed(6)} ETH
+                          {parseFloat(tx.gasCost).toFixed(6)} {nativeCurrencySymbol}
                         </div>
                         <div style={{ color: '#999', fontSize: '11px' }}>
                           {new Date(tx.timestamp).toLocaleString()}

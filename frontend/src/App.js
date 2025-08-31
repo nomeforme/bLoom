@@ -49,7 +49,8 @@ function App() {
     ipfsAvailable,
     startIPFSResolution,
     useIPFSRetrieval,
-    setUseIPFSRetrieval
+    setUseIPFSRetrieval,
+    nativeCurrencySymbol
   } = useBlockchain(socket);
 
   useEffect(() => {
@@ -314,6 +315,7 @@ function App() {
         storageMode={storageMode}
         cycleStorageMode={cycleStorageMode}
         ipfsAvailable={ipfsAvailable}
+        nativeCurrencySymbol={nativeCurrencySymbol}
         socket={socket}
       />
       
