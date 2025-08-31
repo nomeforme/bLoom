@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { pinTextToIPFS, checkIPFSAvailability, resolveNodeContent, isIPFSReference } from '../utils/ipfsUtils';
+import { pinTextToIPFS, checkIPFSAvailability, isIPFSReference } from '../utils/ipfsUtils';
+import GlobalIPFSResolver from '../utils/globalIPFSResolver';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -63,59 +64,90 @@ const calculateIPFSDelay = (planType = 'free', safetyMargin = 0.8) => {
 const IPFS_PLAN_TIER = process.env.REACT_APP_IPFS_PLAN_TIER || 'free';
 const IPFS_REQUEST_DELAY = calculateIPFSDelay(IPFS_PLAN_TIER);
 
-// Background IPFS resolution - updates tree state as content resolves
+// Global instance
+const globalIPFSResolver = new GlobalIPFSResolver(IPFS_REQUEST_DELAY);
+
+// Background IPFS resolution - updates tree state as content resolves using global queue
 const resolveIPFSInBackground = async (treeResult, updateCallbacks = {}) => {
   const resolutionId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   console.log('🔍 [ID:' + resolutionId + '] Starting background IPFS resolution for tree:', treeResult.address);
   console.log('🔍 [ID:' + resolutionId + '] Total nodes to check:', treeResult.nodes.length);
   
+  // Cancel any previous resolution for this tree
+  globalIPFSResolver.cancelTreeResolution(treeResult.address);
+  
+  // Mark this tree as having active resolution
+  globalIPFSResolver.activeResolutions.set(treeResult.address, resolutionId);
+  
+  const ipfsNodes = [];
+  
+  // First pass: identify all IPFS nodes and queue them
   for (let i = 0; i < treeResult.nodes.length; i++) {
     const node = treeResult.nodes[i];
     const contentToCheck = node.originalContent || node.content;
-    console.log(`🔍 [ID:${resolutionId}] Checking node ${i + 1}/${treeResult.nodes.length}:`, {
-      nodeId: node.nodeId.substring(0, 8) + '...',
-      displayContent: node.content.substring(0, 50) + '...',
-      originalContent: contentToCheck.substring(0, 50) + '...',
-      isIPFS: isIPFSReference(contentToCheck)
-    });
     
     if (isIPFSReference(contentToCheck)) {
-      try {
-        console.log('🌐 [ID:' + resolutionId + '] Resolving IPFS content for node:', node.nodeId.substring(0, 8) + '...', 'at', new Date().toLocaleTimeString());
-        const resolvedContent = await resolveNodeContent(contentToCheck);
-        console.log('✅ [ID:' + resolutionId + '] IPFS resolved for node:', node.nodeId.substring(0, 8) + '...', '→', resolvedContent.substring(0, 50) + '...', 'at', new Date().toLocaleTimeString());
-        
-        // Update the node content in the tree
-        node.content = resolvedContent;
-        
-        // Trigger tree updates if callbacks provided
-        if (updateCallbacks.updateCurrentTree) {
-          updateCallbacks.updateCurrentTree(prev => 
-            prev?.address === treeResult.address ? {...treeResult} : prev
-          );
-        }
-        if (updateCallbacks.updateTrees) {
-          updateCallbacks.updateTrees(prev => 
-            prev.map(tree => 
-              tree.address === treeResult.address ? {...treeResult} : tree
-            )
-          );
-        }
-        
-        console.log(`⏳ [ID:${resolutionId}] Waiting ${IPFS_REQUEST_DELAY/1000} seconds before next IPFS request...`, 'at', new Date().toLocaleTimeString());
-        // Add delay to avoid rate limiting (429 errors)
-        await new Promise(resolve => setTimeout(resolve, IPFS_REQUEST_DELAY));
-        console.log(`⏳ [ID:${resolutionId}] ${IPFS_REQUEST_DELAY/1000} second delay complete, continuing...`, 'at', new Date().toLocaleTimeString());
-      } catch (error) {
-        console.warn('❌ [ID:' + resolutionId + '] IPFS resolution failed for node:', node.nodeId.substring(0, 8) + '...', error.message, 'at', new Date().toLocaleTimeString());
-        console.log(`⏳ [ID:${resolutionId}] Waiting ${IPFS_REQUEST_DELAY/1000} seconds after error before next request...`, 'at', new Date().toLocaleTimeString());
-        // Add delay even on error to avoid hammering the API
-        await new Promise(resolve => setTimeout(resolve, IPFS_REQUEST_DELAY));
-        console.log(`⏳ [ID:${resolutionId}] ${IPFS_REQUEST_DELAY/1000} second error delay complete, continuing...`, 'at', new Date().toLocaleTimeString());
-      }
+      console.log(`🔍 [ID:${resolutionId}] Queuing IPFS node ${i + 1}/${treeResult.nodes.length}:`, {
+        nodeId: node.nodeId.substring(0, 8) + '...',
+        originalContent: contentToCheck.substring(0, 50) + '...'
+      });
+      
+      ipfsNodes.push({
+        node,
+        contentToCheck,
+        index: i
+      });
     }
   }
-  console.log('🔍 [ID:' + resolutionId + '] Background IPFS resolution complete for tree:', treeResult.address);
+  
+  console.log(`🔍 [ID:${resolutionId}] Found ${ipfsNodes.length} IPFS nodes to resolve`);
+  
+  // Second pass: queue all IPFS resolution requests
+  const resolutionPromises = ipfsNodes.map(({ node, contentToCheck, index }) => {
+    const updateCallback = (resolvedContent) => {
+      // Update the node content in the tree
+      node.content = resolvedContent;
+      
+      console.log(`✅ [ID:${resolutionId}] Updated node ${node.nodeId.substring(0, 8)}... with resolved content`);
+      
+      // Trigger tree updates if callbacks provided
+      if (updateCallbacks.updateCurrentTree) {
+        updateCallbacks.updateCurrentTree(prev => 
+          prev?.address === treeResult.address ? {...treeResult} : prev
+        );
+      }
+      if (updateCallbacks.updateTrees) {
+        updateCallbacks.updateTrees(prev => 
+          prev.map(tree => 
+            tree.address === treeResult.address ? {...treeResult} : tree
+          )
+        );
+      }
+    };
+    
+    return globalIPFSResolver.enqueueRequest(
+      node.nodeId,
+      contentToCheck,
+      treeResult.address,
+      updateCallback
+    ).catch(error => {
+      if (error.message !== 'Tree resolution cancelled') {
+        console.warn(`❌ [ID:${resolutionId}] IPFS resolution failed for node:`, node.nodeId.substring(0, 8) + '...', error.message);
+      }
+      return null;
+    });
+  });
+  
+  // Wait for all resolutions to complete (or fail)
+  try {
+    await Promise.allSettled(resolutionPromises);
+    console.log(`🔍 [ID:${resolutionId}] Background IPFS resolution complete for tree:`, treeResult.address);
+  } catch (error) {
+    console.warn(`🔍 [ID:${resolutionId}] Background IPFS resolution ended with errors for tree:`, treeResult.address);
+  }
+  
+  // Clean up active resolution tracking
+  globalIPFSResolver.activeResolutions.delete(treeResult.address);
 };
 
 export const useBlockchain = (socket = null) => {
@@ -657,6 +689,9 @@ export const useBlockchain = (socket = null) => {
       }, 1000);
     },
     useIPFSRetrieval,
-    setUseIPFSRetrieval
+    setUseIPFSRetrieval,
+    // Global IPFS resolver utilities
+    getIPFSQueueStatus: () => globalIPFSResolver.getStatus(),
+    cancelTreeIPFSResolution: (treeAddress) => globalIPFSResolver.cancelTreeResolution(treeAddress)
   };
 };
