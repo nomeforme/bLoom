@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { pinTextToIPFS, checkIPFSAvailability, isIPFSReference } from '../utils/ipfsUtils';
 import GlobalIPFSResolver from '../utils/globalIPFSResolver';
+import { getCurrentChainSymbol } from '../utils/chainUtils';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -159,12 +160,18 @@ export const useBlockchain = (socket = null) => {
   const [storageMode, setStorageMode] = useState('full'); // 'full', 'lightweight', 'ipfs'
   const [ipfsAvailable, setIpfsAvailable] = useState(false);
   const [useIPFSRetrieval, setUseIPFSRetrieval] = useState(true); // Global toggle for IPFS resolution
+  const [nativeCurrencySymbol, setNativeCurrencySymbol] = useState('ETH');
 
   useEffect(() => {
     // Check if MetaMask is available or use local provider
     if (window.ethereum) {
       const provider = new ethers.BrowserProvider(window.ethereum);
       setProvider(provider);
+      
+      // Get chain symbol
+      getCurrentChainSymbol(provider).then(symbol => {
+        setNativeCurrencySymbol(symbol);
+      });
 
       // Listen for account changes
       const handleAccountsChanged = async (accounts) => {
@@ -199,6 +206,12 @@ export const useBlockchain = (socket = null) => {
       const handleChainChanged = (chainId) => {
         // Reset connection state instead of reloading page
         console.log('Chain changed to:', chainId);
+        
+        // Update currency symbol for new chain
+        getCurrentChainSymbol(provider).then(symbol => {
+          setNativeCurrencySymbol(symbol);
+        });
+        
         disconnect();
         // Note: User will need to reconnect manually after chain change
       };
@@ -217,6 +230,11 @@ export const useBlockchain = (socket = null) => {
       // Fallback to local Anvil node
       const provider = new ethers.JsonRpcProvider('http://localhost:8545');
       setProvider(provider);
+      
+      // Get chain symbol for local provider
+      getCurrentChainSymbol(provider).then(symbol => {
+        setNativeCurrencySymbol(symbol);
+      });
       
       // For development, auto-connect with a test account
       connectWithTestAccount(provider);
@@ -690,6 +708,7 @@ export const useBlockchain = (socket = null) => {
     },
     useIPFSRetrieval,
     setUseIPFSRetrieval,
+    nativeCurrencySymbol,
     // Global IPFS resolver utilities
     getIPFSQueueStatus: () => globalIPFSResolver.getStatus(),
     cancelTreeIPFSResolution: (treeAddress) => globalIPFSResolver.cancelTreeResolution(treeAddress)
