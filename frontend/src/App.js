@@ -46,7 +46,10 @@ function App() {
     checkNodeHasNFT,
     storageMode,
     cycleStorageMode,
-    ipfsAvailable
+    ipfsAvailable,
+    startIPFSResolution,
+    useIPFSRetrieval,
+    setUseIPFSRetrieval
   } = useBlockchain(socket);
 
   useEffect(() => {
@@ -254,7 +257,12 @@ function App() {
   // Handle tree selection with node memory
   const handleTreeSelect = useCallback((newTree) => {
     memoryHandlers.handleTreeSelect(newTree, currentTree, selectedNode);
-  }, [currentTree, selectedNode, memoryHandlers]);
+    
+    // Start IPFS resolution for the new tree
+    if (newTree && startIPFSResolution) {
+      startIPFSResolution(newTree, setCurrentTree, setTrees);
+    }
+  }, [currentTree, selectedNode, memoryHandlers, startIPFSResolution]);
 
   // Handle model selection change
   const handleModelChange = useCallback((newModel) => {
