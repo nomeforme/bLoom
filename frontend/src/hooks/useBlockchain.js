@@ -43,8 +43,25 @@ const NFT_ABI = [
 // Replace with your deployed factory address
 const FACTORY_ADDRESS = process.env.REACT_APP_FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// IPFS resolution delay to avoid rate limiting (in milliseconds)
-const IPFS_REQUEST_DELAY = process.env.REACT_APP_IPFS_REQUEST_DELAY || 1000;
+// IPFS rate limiting configuration based on Pinata plans
+const IPFS_RATE_LIMITS = {
+  free: { requestsPerMinute: 60, name: 'Free' },
+  picnic: { requestsPerMinute: 250, name: 'Picnic' },
+  fiesta: { requestsPerMinute: 500, name: 'Fiesta' }
+};
+
+// Calculate delay between requests to stay under rate limit (with safety margin)
+const calculateIPFSDelay = (planType = 'free', safetyMargin = 0.8) => {
+  const plan = IPFS_RATE_LIMITS[planType] || IPFS_RATE_LIMITS.free;
+  const maxRequestsPerSecond = (plan.requestsPerMinute * safetyMargin) / 60;
+  const delayMs = Math.ceil(1000 / maxRequestsPerSecond);
+  console.log(`📊 IPFS rate limit config: ${plan.name} plan (${plan.requestsPerMinute}/min) → ${delayMs}ms delay`);
+  return delayMs;
+};
+
+// Get IPFS plan from environment or default to free
+const IPFS_PLAN_TIER = process.env.REACT_APP_IPFS_PLAN_TIER || 'free';
+const IPFS_REQUEST_DELAY = calculateIPFSDelay(IPFS_PLAN_TIER);
 
 // Background IPFS resolution - updates tree state as content resolves
 const resolveIPFSInBackground = async (treeResult, updateCallbacks = {}) => {
