@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { pinTextToIPFS, checkIPFSAvailability } from '../utils/ipfsUtils';
+import { pinTextToIPFS, checkIPFSAvailability, resolveNodeContent, isIPFSReference } from '../utils/ipfsUtils';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -43,6 +43,64 @@ const NFT_ABI = [
 // Replace with your deployed factory address
 const FACTORY_ADDRESS = process.env.REACT_APP_FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
+// IPFS resolution delay to avoid rate limiting (in milliseconds)
+const IPFS_REQUEST_DELAY = process.env.REACT_APP_IPFS_REQUEST_DELAY || 1000;
+
+// Background IPFS resolution - updates tree state as content resolves
+const resolveIPFSInBackground = async (treeResult, updateCallbacks = {}) => {
+  const resolutionId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  console.log('🔍 [ID:' + resolutionId + '] Starting background IPFS resolution for tree:', treeResult.address);
+  console.log('🔍 [ID:' + resolutionId + '] Total nodes to check:', treeResult.nodes.length);
+  
+  for (let i = 0; i < treeResult.nodes.length; i++) {
+    const node = treeResult.nodes[i];
+    const contentToCheck = node.originalContent || node.content;
+    console.log(`🔍 [ID:${resolutionId}] Checking node ${i + 1}/${treeResult.nodes.length}:`, {
+      nodeId: node.nodeId.substring(0, 8) + '...',
+      displayContent: node.content.substring(0, 50) + '...',
+      originalContent: contentToCheck.substring(0, 50) + '...',
+      isIPFS: isIPFSReference(contentToCheck)
+    });
+    
+    if (isIPFSReference(contentToCheck)) {
+      try {
+        console.log('🌐 [ID:' + resolutionId + '] Resolving IPFS content for node:', node.nodeId.substring(0, 8) + '...', 'at', new Date().toLocaleTimeString());
+        const resolvedContent = await resolveNodeContent(contentToCheck);
+        console.log('✅ [ID:' + resolutionId + '] IPFS resolved for node:', node.nodeId.substring(0, 8) + '...', '→', resolvedContent.substring(0, 50) + '...', 'at', new Date().toLocaleTimeString());
+        
+        // Update the node content in the tree
+        node.content = resolvedContent;
+        
+        // Trigger tree updates if callbacks provided
+        if (updateCallbacks.updateCurrentTree) {
+          updateCallbacks.updateCurrentTree(prev => 
+            prev?.address === treeResult.address ? {...treeResult} : prev
+          );
+        }
+        if (updateCallbacks.updateTrees) {
+          updateCallbacks.updateTrees(prev => 
+            prev.map(tree => 
+              tree.address === treeResult.address ? {...treeResult} : tree
+            )
+          );
+        }
+        
+        console.log(`⏳ [ID:${resolutionId}] Waiting ${IPFS_REQUEST_DELAY/1000} seconds before next IPFS request...`, 'at', new Date().toLocaleTimeString());
+        // Add delay to avoid rate limiting (429 errors)
+        await new Promise(resolve => setTimeout(resolve, IPFS_REQUEST_DELAY));
+        console.log(`⏳ [ID:${resolutionId}] ${IPFS_REQUEST_DELAY/1000} second delay complete, continuing...`, 'at', new Date().toLocaleTimeString());
+      } catch (error) {
+        console.warn('❌ [ID:' + resolutionId + '] IPFS resolution failed for node:', node.nodeId.substring(0, 8) + '...', error.message, 'at', new Date().toLocaleTimeString());
+        console.log(`⏳ [ID:${resolutionId}] Waiting ${IPFS_REQUEST_DELAY/1000} seconds after error before next request...`, 'at', new Date().toLocaleTimeString());
+        // Add delay even on error to avoid hammering the API
+        await new Promise(resolve => setTimeout(resolve, IPFS_REQUEST_DELAY));
+        console.log(`⏳ [ID:${resolutionId}] ${IPFS_REQUEST_DELAY/1000} second error delay complete, continuing...`, 'at', new Date().toLocaleTimeString());
+      }
+    }
+  }
+  console.log('🔍 [ID:' + resolutionId + '] Background IPFS resolution complete for tree:', treeResult.address);
+};
+
 export const useBlockchain = (socket = null) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -51,6 +109,7 @@ export const useBlockchain = (socket = null) => {
   const [account, setAccount] = useState(null);
   const [storageMode, setStorageMode] = useState('full'); // 'full', 'lightweight', 'ipfs'
   const [ipfsAvailable, setIpfsAvailable] = useState(false);
+  const [useIPFSRetrieval, setUseIPFSRetrieval] = useState(true); // Global toggle for IPFS resolution
 
   useEffect(() => {
     // Check if MetaMask is available or use local provider
@@ -296,6 +355,13 @@ export const useBlockchain = (socket = null) => {
             console.warn(`Could not fetch content for node ${nodeId}:`, contentError);
           }
           
+          // Show loading placeholder for IPFS content initially, but store original
+          let displayContent = content;
+          let originalContent = content; // Keep original for IPFS resolution
+          if (isIPFSReference(content)) {
+            displayContent = "Loading IPFS content...";
+          }
+          
           const node = {
             nodeId: nodeData[0],
             parentId: nodeData[1],
@@ -303,7 +369,8 @@ export const useBlockchain = (socket = null) => {
             author: nodeData[3],
             timestamp: Number(nodeData[4]),
             isRoot: nodeData[5],
-            content: content, // Content from appropriate source
+            content: displayContent, // Show placeholder or resolved content
+            originalContent: originalContent, // Store original IPFS hash
             hasNFT: hasNFT // Whether this node has NFT/tokens
           };
           console.log('✓ Loaded node:', {
@@ -331,6 +398,8 @@ export const useBlockchain = (socket = null) => {
         nodeCount: nodes.length,
         rootContent: nodes.find(n => n.isRoot)?.content || ''
       };
+
+      // IPFS resolution will be started by App component with proper state setters
       
       console.log('Tree result:', {
         address: result.address,
@@ -557,6 +626,20 @@ export const useBlockchain = (socket = null) => {
     checkNodeHasNFT,
     storageMode,
     cycleStorageMode,
-    ipfsAvailable
+    ipfsAvailable,
+    startIPFSResolution: (treeResult, setCurrentTree, setTrees) => {
+      if (!useIPFSRetrieval) {
+        console.log('🚫 IPFS retrieval disabled, skipping background resolution');
+        return;
+      }
+      setTimeout(() => {
+        resolveIPFSInBackground(treeResult, { 
+          updateCurrentTree: setCurrentTree, 
+          updateTrees: setTrees 
+        });
+      }, 1000);
+    },
+    useIPFSRetrieval,
+    setUseIPFSRetrieval
   };
 };
