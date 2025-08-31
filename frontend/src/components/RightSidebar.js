@@ -707,49 +707,26 @@ const RightSidebar = ({
               {ellipseAddress(account)}
             </div>
             
-            {/* Storage Mode Indicator */}
-            <div style={{ 
-              fontSize: '11px', 
-              color: '#888', 
-              marginBottom: '8px',
-              padding: '4px 8px',
-              backgroundColor: '#1a1a1a',
-              border: '1px solid #333',
-              borderRadius: '4px',
-              textAlign: 'center'
-            }}>
-              Mode: <span style={{ 
-                color: storageMode === 'ipfs' ? '#ff9500' : 
-                       storageMode === 'lightweight' ? '#2196F3' : '#4CAF50',
-                fontWeight: 'bold'
-              }}>
-                {storageMode === 'ipfs' ? 'IPFS' : 
-                 storageMode === 'lightweight' ? 'Lightweight' : 'Full'}
-              </span>
-              {storageMode === 'ipfs' && ' (Hash only)'}
-              {storageMode === 'lightweight' && ' (Direct)'}
-              {storageMode === 'full' && ' (NFT+Token)'}
-              {storageMode === 'ipfs' && !ipfsAvailable && ' [Unavailable]'}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div 
                 style={{ 
                   fontSize: '12px', 
-                  color: '#999', 
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
                 }}
                 onClick={() => setShowGasModal(true)}
                 title="Press R to toggle gas tracker modal"
               >
-                Gas Used: {totalGasCost.toFixed(4)} ETH
+                <span style={{ color: '#999' }}>Gas Used: </span>
+                <span style={{ color: '#4CAF50' }}>{totalGasCost.toFixed(4)} ETH</span>
               </div>
               <div style={{
                 fontSize: '12px',
-                color: '#4CAF50',
                 fontFamily: "'Inconsolata', monospace",
                 fontWeight: 'bold'
               }}>
-                {storageMode.toUpperCase()}
+                <span style={{ color: '#999' }}>Mode: </span>
+                <span style={{ color: '#4CAF50' }}>{storageMode.toUpperCase()}</span>
               </div>
             </div>
           </div>
