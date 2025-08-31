@@ -176,8 +176,8 @@ class IPFSService {
 
   // Validate IPFS hash format
   isValidHash(hash) {
-    // Basic validation for IPFS hash format
-    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}$|^bafy[a-z2-7]{56}$/.test(hash);
+    // Basic validation for IPFS hash format - support v0 (Qm...) and v1 CID (baf...)
+    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}$|^baf[a-z2-7]{56,}$/.test(hash);
   }
 
   // Resolve content that might be an IPFS hash reference
