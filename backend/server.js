@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const { getActiveChainConfig } = require('./config/chainConfig');
 require('dotenv').config();
 
 // Import middleware
@@ -47,9 +48,11 @@ setupSocketHandlers(io);
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
+  const chainConfig = getActiveChainConfig();
   console.log(`🚀 Blockchain Loom Backend running on port ${PORT}`);
   console.log(`📡 Socket.IO server ready for connections`);
-  console.log(`🔗 Connected to blockchain at ${process.env.RPC_URL || 'http://localhost:8545'}`);
+  console.log(`🔗 Connected to ${chainConfig.name} (${chainConfig.chainId}) at ${chainConfig.rpcUrl}`);
+  console.log(`📋 Factory contract: ${chainConfig.factoryAddress}`);
   
   setupBlockchainListeners(io);
 });

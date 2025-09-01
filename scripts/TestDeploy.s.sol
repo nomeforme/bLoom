@@ -9,7 +9,8 @@ import "../contracts/NodeToken.sol";
 
 contract TestDeploy is Script {
     function run() external {
-        vm.startBroadcast(REDACTED_PRIVATE_KEY);
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
         
         console.log("Deploying ERC6551Registry...");
         ERC6551Registry registry = new ERC6551Registry();

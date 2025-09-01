@@ -1,13 +1,17 @@
 const { ethers } = require('ethers');
+const { getActiveChainConfig } = require('./chainConfig');
 require('dotenv').config();
 
-// Blockchain setup
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
-const privateKey = process.env.PRIVATE_KEY || 'REDACTED_PRIVATE_KEY';
+// Get active chain configuration
+const chainConfig = getActiveChainConfig();
+
+// Blockchain setup using dynamic configuration
+const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl);
+const privateKey = chainConfig.privateKey;
 const wallet = new ethers.Wallet(privateKey, provider);
 
-// Contract addresses
-const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+// Contract addresses from dynamic configuration
+const FACTORY_ADDRESS = chainConfig.factoryAddress;
 
 // Contract ABIs
 const FACTORY_ABI = [

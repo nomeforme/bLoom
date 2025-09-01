@@ -11,6 +11,7 @@ import { createNodeHandlers } from './utils/nodeUtils';
 import { createImportHandler } from './utils/importUtils';
 import { createMemoryHandlers } from './utils/memoryUtils';
 import { createNotificationSystem } from './utils/notificationUtils';
+import { getActiveChainConfig } from './utils/chainConfig';
 import modelsConfig from './config/models.json';
 import './App.css';
 
@@ -54,6 +55,15 @@ function App() {
   } = useBlockchain(socket);
 
   useEffect(() => {
+    // Log active chain configuration on startup
+    const chainConfig = getActiveChainConfig();
+    console.log('🔗 Active Chain Configuration:');
+    console.log(`   Chain ID: ${chainConfig.chainId}`);
+    console.log(`   Chain Name: ${chainConfig.name}`);
+    console.log(`   RPC URL: ${chainConfig.rpcUrl}`);
+    console.log(`   Factory Address: ${chainConfig.factoryAddress}`);
+    console.log(`   Explorer URL: ${chainConfig.explorerUrl || 'Not configured'}`);
+    
     // Initialize socket connection
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);

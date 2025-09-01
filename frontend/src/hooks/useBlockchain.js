@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { pinTextToIPFS, checkIPFSAvailability, isIPFSReference } from '../utils/ipfsUtils';
 import GlobalIPFSResolver from '../utils/globalIPFSResolver';
 import { getCurrentChainSymbol } from '../utils/chainUtils';
+import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -42,8 +43,9 @@ const NFT_ABI = [
   "function symbol() external view returns (string memory)"
 ];
 
-// Replace with your deployed factory address
-const FACTORY_ADDRESS = process.env.REACT_APP_FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+// Get factory address from dynamic configuration
+const chainConfig = getActiveChainConfig();
+const FACTORY_ADDRESS = chainConfig.factoryAddress;
 
 // IPFS rate limiting configuration based on Pinata plans
 const IPFS_RATE_LIMITS = {
@@ -228,7 +230,7 @@ export const useBlockchain = (socket = null) => {
       };
     } else {
       // Fallback to local Anvil node
-      const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const provider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
       setProvider(provider);
       
       // Get chain symbol for local provider
@@ -253,8 +255,11 @@ export const useBlockchain = (socket = null) => {
 
   const connectWithTestAccount = async (provider) => {
     try {
-      // Use one of Anvil's test private keys
-      const testPrivateKey = 'REDACTED_PRIVATE_KEY';
+      // Use configured private key from active chain configuration
+      const testPrivateKey = chainConfig.privateKey;
+      if (!testPrivateKey) {
+        throw new Error('No private key configured for active chain');
+      }
       const wallet = new ethers.Wallet(testPrivateKey, provider);
       
       setSigner(wallet);
@@ -319,7 +324,14 @@ export const useBlockchain = (socket = null) => {
       const rootTokenSupply = calculateTokenSupply(rootContent);
       console.log('Root token supply:', rootTokenSupply);
       
-      const tx = await factory.createTree(rootContent, rootTokenSupply);
+      // Use configured gas price for the transaction
+      const gasOptions = {};
+      if (chainConfig.gasPrice) {
+        gasOptions.gasPrice = chainConfig.gasPrice;
+        console.log('Using configured gas price:', chainConfig.gasPrice, 'wei');
+      }
+      
+      const tx = await factory.createTree(rootContent, rootTokenSupply, gasOptions);
       const receipt = await tx.wait();
       
       // Report gas cost for tree creation via socket
@@ -368,7 +380,7 @@ export const useBlockchain = (socket = null) => {
       console.log('Getting tree at address:', treeAddress);
       
       // Create fresh provider to ensure we get latest blockchain state
-      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const freshProvider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       
       // Check node count first
@@ -513,7 +525,14 @@ export const useBlockchain = (socket = null) => {
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
       // For IPFS and lightweight modes, don't create NFTs
       const createNFT = storageMode === 'full';
-      const tx = await treeContract.addNodeDirect(parentId, finalContent, createNFT);
+      // Use configured gas price for the transaction
+      const gasOptions = {};
+      if (chainConfig.gasPrice) {
+        gasOptions.gasPrice = chainConfig.gasPrice;
+        console.log('Using configured gas price for node creation:', chainConfig.gasPrice, 'wei');
+      }
+      
+      const tx = await treeContract.addNodeDirect(parentId, finalContent, createNFT, gasOptions);
       const receipt = await tx.wait();
       
       // Report gas cost for manual node creation via socket
@@ -545,7 +564,14 @@ export const useBlockchain = (socket = null) => {
 
     try {
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
-      const tx = await treeContract.updateNodeContent(nodeId, newContent);
+      // Use configured gas price for the transaction
+      const gasOptions = {};
+      if (chainConfig.gasPrice) {
+        gasOptions.gasPrice = chainConfig.gasPrice;
+        console.log('Using configured gas price for node update:', chainConfig.gasPrice, 'wei');
+      }
+      
+      const tx = await treeContract.updateNodeContent(nodeId, newContent, gasOptions);
       const receipt = await tx.wait();
       
       // Report gas cost for direct node update via socket
@@ -664,7 +690,7 @@ export const useBlockchain = (socket = null) => {
 
     try {
       // Use fresh provider to ensure we get latest blockchain state
-      const freshProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+      const freshProvider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       const hasNFT = await treeContract.nodeHasNFT(nodeId);
       return hasNFT;
