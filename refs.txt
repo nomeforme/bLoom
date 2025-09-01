@@ -1,1 +1,3 @@
 cliff pistol much remain tent monster rare frequent digital quiz crunch opinion
+
+forge script scripts/Deploy.s.sol --rpc-url https://eth-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v --private-key c95677b47ab5848d7498ad5222643808373487603518a9ae513b6d1f1c425168 --broadcast
