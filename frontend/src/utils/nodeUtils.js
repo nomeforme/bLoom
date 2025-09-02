@@ -5,7 +5,8 @@ export const createNodeHandlers = (
   getTree,
   setCurrentTree,
   setTrees,
-  graphRef = null // Optional: only needed for re-selection after edits
+  graphRef = null, // Optional: only needed for re-selection after edits
+  setIsLoadingTrees = null // Optional: for showing loading overlay during tree reload
 ) => {
   const handleAddNode = async (parentId, content) => {
     if (!currentTree) return;
@@ -75,6 +76,11 @@ export const createNodeHandlers = (
       
       setTimeout(async () => {
         try {
+          // Show loading overlay while tree reloads and node reselection happens
+          if (setIsLoadingTrees) {
+            setIsLoadingTrees(true);
+          }
+          
           const updatedTree = await getTree(treeAddress);
           
           if (currentTree?.address === treeAddress) {
@@ -94,10 +100,25 @@ export const createNodeHandlers = (
               if (!success) {
                 console.warn('Failed to re-select edited node:', nodeId.substring(0, 8) + '...');
               }
+              
+              // Hide loading overlay after node reselection is complete
+              if (setIsLoadingTrees) {
+                setIsLoadingTrees(false);
+              }
             }, 100); // Small delay to ensure tree is fully updated
+          } else {
+            // If no reselection available, still hide loading overlay
+            if (setIsLoadingTrees) {
+              setIsLoadingTrees(false);
+            }
           }
         } catch (error) {
           console.error('Error refreshing tree after node update:', error);
+          
+          // Hide loading overlay on error
+          if (setIsLoadingTrees) {
+            setIsLoadingTrees(false);
+          }
         }
       }, 1000);
       

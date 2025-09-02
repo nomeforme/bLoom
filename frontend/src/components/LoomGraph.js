@@ -748,21 +748,36 @@ const LoomGraph = forwardRef(({
         if (shortcutsManager.matchShortcut(e, 'childAtCursor')) {
           e.preventDefault();
           e.stopPropagation();
-          createChildAtCursor();
+          
+          // Check if the corresponding button is disabled to prevent duplicate operations
+          const childBtn = document.getElementById('childAtCursor');
+          if (childBtn && !childBtn.disabled) {
+            createChildAtCursor();
+          }
           return;
         }
         
         if (shortcutsManager.matchShortcut(e, 'siblingAtCursor')) {
           e.preventDefault();
           e.stopPropagation();
-          createSiblingAtCursor();
+          
+          // Check if the corresponding button is disabled to prevent duplicate operations
+          const siblingBtn = document.getElementById('siblingAtCursor');
+          if (siblingBtn && !siblingBtn.disabled) {
+            createSiblingAtCursor();
+          }
           return;
         }
         
         if (shortcutsManager.matchShortcut(e, 'updateText')) {
           e.preventDefault();
           e.stopPropagation();
-          saveChanges();
+          
+          // Check if the save button is disabled to prevent duplicate operations
+          const saveBtn = document.getElementById('saveBtn');
+          if (saveBtn && !saveBtn.disabled) {
+            saveChanges();
+          }
           return;
         }
         
