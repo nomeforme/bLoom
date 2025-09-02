@@ -47,7 +47,8 @@ export const createMemoryHandlers = (
           content: rememberedNode.content,
           parentId: rememberedNode.parentId,
           author: rememberedNode.author,
-          timestamp: rememberedNode.timestamp
+          timestamp: rememberedNode.timestamp,
+          modelId: rememberedNode.modelId
         });
         
         if (graphRef.current) {
@@ -72,7 +73,8 @@ export const createMemoryHandlers = (
             content: rootNode.content,
             parentId: rootNode.parentId,
             author: rootNode.author,
-            timestamp: rootNode.timestamp
+            timestamp: rootNode.timestamp,
+            modelId: rootNode.modelId
           });
           
           // Also select in LiteGraph
@@ -102,7 +104,8 @@ export const createMemoryHandlers = (
           content: rootNode.content,
           parentId: rootNode.parentId,
           author: rootNode.author,
-          timestamp: rootNode.timestamp
+          timestamp: rootNode.timestamp,
+          modelId: rootNode.modelId
         });
         
         // Also select in LiteGraph

@@ -40,7 +40,8 @@ export const createSocketHandlers = (
         children: [],
         author: data.author,
         timestamp: data.timestamp,
-        isRoot: false
+        isRoot: false,
+        modelId: data.modelId
       };
 
       setCurrentTree(prevTree => {

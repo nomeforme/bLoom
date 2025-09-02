@@ -813,6 +813,7 @@ const RightSidebar = ({
                   <div>• Author: {ellipseAddress(selectedNode.author)}</div>
                   <div>• Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? ellipseAddress(selectedNode.parentId) : 'Root Node'}</div>
                   <div>• Children: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</span></div>
+                  <div>• Model: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{selectedNode.modelId || 'manual'}</span></div>
                 </div>
                 <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                   Node Author: <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span>

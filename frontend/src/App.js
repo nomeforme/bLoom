@@ -39,7 +39,6 @@ function App() {
     disconnect,
     createTree,
     getTree,
-    addNode,
     updateNode,
     getUserTrees,
     getAllTrees,
@@ -233,7 +232,6 @@ function App() {
   const nodeHandlers = createNodeHandlers(
     currentTree,
     socket,
-    addNode,
     getTree,
     setCurrentTree,
     setTrees,
@@ -242,8 +240,8 @@ function App() {
   );
 
   const handleAddNode = useCallback(async (parentId, content) => {
-    return nodeHandlers.handleAddNode(parentId, content);
-  }, [nodeHandlers]);
+    return nodeHandlers.handleAddNode(parentId, content, selectedModel);
+  }, [nodeHandlers, selectedModel]);
 
   const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent, options) => {
     return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent, options);
