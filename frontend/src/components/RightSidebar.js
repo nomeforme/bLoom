@@ -117,7 +117,8 @@ const RightSidebar = ({
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/models');
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/models`);
         if (response.ok) {
           const data = await response.json();
           setAvailableModels(data.models || []);
