@@ -131,12 +131,14 @@ function handleGenerateNodes(socket, io) {
                 parentId, 
                 finalContent, 
                 storageMode === 'full', // createNFT = true when in full mode
-                userAccount // Set the user as the author and NFT owner
+                userAccount, // Set the user as the author and NFT owner
+                model || 'claude-3-haiku' // modelId from request
               )
             : await treeContract.addNodeDirect(
                 parentId, 
                 finalContent, 
-                storageMode === 'full' // createNFT = true when in full mode
+                storageMode === 'full', // createNFT = true when in full mode
+                model || 'claude-3-haiku' // modelId from request
               );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
@@ -195,7 +197,8 @@ function handleGenerateNodes(socket, io) {
               content: content, // Use the original content, not from event (event doesn't include content)
               author: parsedEvent.args.author,
               timestamp: Number(parsedEvent.args.timestamp),
-              treeAddress: treeAddress
+              treeAddress: treeAddress,
+              modelId: model || 'claude-3-haiku' // Include the model ID used for generation
             };
             
             console.log(`✅ Node ${i + 1} created successfully:`, {

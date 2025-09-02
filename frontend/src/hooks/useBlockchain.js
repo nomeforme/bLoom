@@ -7,7 +7,7 @@ import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent, uint256 rootTokenSupply) external returns (address)",
+  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "function getUserTrees(address user) external view returns (bytes32[] memory)",
@@ -16,12 +16,13 @@ const FACTORY_ABI = [
 ];
 
 const TREE_ABI = [
-  "function addNode(bytes32 parentId, string memory content) external returns (bytes32)",
-  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT) external returns (bytes32)",
-  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol) external returns (bytes32)",
+  "function addNode(bytes32 parentId, string memory content, string memory modelId) external returns (bytes32)",
+  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
-  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot)",
+  "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot, string memory modelId)",
   "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
+  "function getNodeModelId(bytes32 nodeId) external view returns (string memory)",
   "function nodeHasNFT(bytes32 nodeId) external view returns (bool)",
   "function getAllNodes() external view returns (bytes32[] memory)",
   "function getRootId() external view returns (bytes32)",
@@ -331,7 +332,7 @@ export const useBlockchain = (socket = null) => {
         console.log('Using configured gas price:', chainConfig.gasPrice, 'wei');
       }
       
-      const tx = await factory.createTree(rootContent, rootTokenSupply, gasOptions);
+      const tx = await factory.createTree(rootContent, rootTokenSupply, '', gasOptions); // modelId blank for manual root
       const receipt = await tx.wait();
       
       // Report gas cost for tree creation via socket
@@ -448,6 +449,7 @@ export const useBlockchain = (socket = null) => {
             author: nodeData[3],
             timestamp: Number(nodeData[4]),
             isRoot: nodeData[5],
+            modelId: nodeData[6], // Model ID used to generate this node
             content: displayContent, // Show placeholder or resolved content
             originalContent: originalContent, // Store original IPFS hash
             hasNFT: hasNFT // Whether this node has NFT/tokens
@@ -493,71 +495,6 @@ export const useBlockchain = (socket = null) => {
     }
   }, [signer]);
 
-  const addNode = async (treeAddress, parentId, content) => {
-    if (!signer) throw new Error('Not connected');
-
-    try {
-      console.log('Adding node to tree:', treeAddress, 'parent:', parentId, 'content:', content, 'storageMode:', storageMode, 'ipfsAvailable:', ipfsAvailable);
-      
-      let finalContent = content;
-      let modeDescription = 'NFT/Token';
-      
-      // Handle IPFS mode
-      if (storageMode === 'ipfs' && ipfsAvailable) {
-        try {
-          console.log('Pinning content to IPFS...');
-          const ipfsHash = await pinTextToIPFS(content, {
-            treeAddress,
-            parentId,
-            name: `loom-node-${Date.now()}`
-          });
-          finalContent = `ipfs:${ipfsHash}`;
-          modeDescription = 'IPFS';
-          console.log('Content pinned to IPFS:', ipfsHash);
-        } catch (ipfsError) {
-          console.error('IPFS pinning failed, falling back to lightweight mode:', ipfsError);
-          modeDescription = 'Direct Storage (IPFS fallback)';
-        }
-      } else if (storageMode === 'lightweight') {
-        modeDescription = 'Direct Storage';
-      }
-      
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, signer);
-      // For IPFS and lightweight modes, don't create NFTs
-      const createNFT = storageMode === 'full';
-      // Use configured gas price for the transaction
-      const gasOptions = {};
-      if (chainConfig.gasPrice) {
-        gasOptions.gasPrice = chainConfig.gasPrice;
-        console.log('Using configured gas price for node creation:', chainConfig.gasPrice, 'wei');
-      }
-      
-      const tx = await treeContract.addNodeDirect(parentId, finalContent, createNFT, gasOptions);
-      const receipt = await tx.wait();
-      
-      // Report gas cost for manual node creation via socket
-      if (socket) {
-        const gasUsed = receipt.gasUsed;
-        const gasPrice = receipt.gasPrice;
-        const gasCost = gasPrice ? ethers.formatEther(gasUsed * gasPrice) : '0';
-        
-        socket.emit('reportGasCost', {
-          type: 'Node Creation',
-          description: `Manually added node (${content.length} chars) - ${modeDescription}`,
-          txHash: receipt.hash,
-          gasUsed: gasUsed.toString(),
-          gasPrice: gasPrice?.toString(),
-          gasCost
-        });
-      }
-      
-      console.log('Node added, transaction:', receipt.hash);
-      return receipt;
-    } catch (error) {
-      console.error('Error adding node:', error);
-      throw error;
-    }
-  };
 
   const updateNode = useCallback(async (treeAddress, nodeId, newContent) => {
     if (!signer) throw new Error('Not connected');
@@ -711,7 +648,6 @@ export const useBlockchain = (socket = null) => {
     disconnect,
     createTree,
     getTree,
-    addNode,
     updateNode,
     getUserTrees,
     getAllTrees,

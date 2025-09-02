@@ -117,7 +117,8 @@ const LoomGraph = forwardRef(({
               content: updatedNode.properties.content,
               parentId: updatedNode.properties.parentId,
               author: updatedNode.properties.author,
-              timestamp: updatedNode.properties.timestamp
+              timestamp: updatedNode.properties.timestamp,
+              modelId: updatedNode.properties.modelId
             };
             onNodeSelect(nodeData);
           }
@@ -165,7 +166,8 @@ const LoomGraph = forwardRef(({
             content: node.properties.content,
             author: node.properties.author,
             timestamp: node.properties.timestamp,
-            parentId: node.properties.parentId
+            parentId: node.properties.parentId,
+            modelId: node.properties.modelId
           });
         }
         
@@ -295,6 +297,11 @@ const LoomGraph = forwardRef(({
       ctx.fillText(`Author: ${this.properties.author.substring(0, 10)}...`, 15, this.size[1] - 25);
       ctx.fillText(`Time: ${new Date(this.properties.timestamp * 1000).toLocaleTimeString()}`, 15, this.size[1] - 10);
       
+      // Draw model in bottom right corner
+      const modelText = `Model: ${this.properties.modelId || 'manual'}`;
+      const modelWidth = ctx.measureText(modelText).width;
+      ctx.fillText(modelText, this.size[0] - modelWidth - 15, this.size[1] - 10);
+      
     };
 
     LoomNode.prototype.onMouseDown = function(e, localpos, canvas) {
@@ -316,7 +323,8 @@ const LoomGraph = forwardRef(({
           content: this.properties.content,
           author: this.properties.author,
           timestamp: this.properties.timestamp,
-          parentId: this.properties.parentId
+          parentId: this.properties.parentId,
+          modelId: this.properties.modelId
         });
       }
       return true;
@@ -1138,7 +1146,8 @@ const LoomGraph = forwardRef(({
         nodeId: nodeData.nodeId,
         parentId: nodeData.parentId,
         author: nodeData.author,
-        timestamp: nodeData.timestamp
+        timestamp: nodeData.timestamp,
+        modelId: nodeData.modelId
       };
       
       // Position node based on tree structure
@@ -1752,7 +1761,8 @@ const LoomGraph = forwardRef(({
           content: node.properties.content,
           author: node.properties.author,
           timestamp: node.properties.timestamp,
-          parentId: node.properties.parentId
+          parentId: node.properties.parentId,
+          modelId: node.properties.modelId
         });
       }
     };

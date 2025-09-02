@@ -1,34 +1,16 @@
 export const createNodeHandlers = (
   currentTree,
   socket,
-  addNode,
   getTree,
   setCurrentTree,
   setTrees,
   graphRef = null, // Optional: only needed for re-selection after edits
   setIsLoadingTrees = null // Optional: for showing loading overlay during tree reload
 ) => {
-  const handleAddNode = async (parentId, content) => {
-    if (!currentTree) return;
-    
-    try {
-      await addNode(currentTree.address, parentId, content);
-      setTimeout(async () => {
-        try {
-          const updatedTree = await getTree(currentTree.address);
-          setCurrentTree(updatedTree);
-          setTrees(prevTrees => 
-            prevTrees.map(tree => 
-              tree.address === currentTree.address ? updatedTree : tree
-            )
-          );
-        } catch (error) {
-          console.error('Error refreshing tree after node addition:', error);
-        }
-      }, 1000);
-    } catch (error) {
-      console.error('Error adding node:', error);
-    }
+  const handleAddNode = async (parentId, content, modelId = '') => {
+    // Frontend addNode removed - all node creation should go through backend socket handlers
+    console.warn('handleAddNode called but frontend addNode has been removed. Use socket-based node creation instead.');
+    throw new Error('Frontend addNode has been removed. Use backend socket handlers for node creation.');
   };
 
   const handleUpdateNode = async (treeAddress, nodeId, newContent, options = null) => {
