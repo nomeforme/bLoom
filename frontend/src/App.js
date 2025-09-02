@@ -64,7 +64,8 @@ function App() {
     console.log(`   Explorer URL: ${chainConfig.explorerUrl || 'Not configured'}`);
     
     // Initialize socket connection
-    const newSocket = io('http://localhost:3001');
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+    const newSocket = io(backendUrl);
     setSocket(newSocket);
 
     return () => newSocket.close();
