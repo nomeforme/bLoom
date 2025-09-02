@@ -96,7 +96,8 @@ function handleGenerateNodes(socket, io) {
           completionTokens: tokenSupply,
           hasUserAccount: !!userAccount,
           userAccount: userAccount,
-          storageMode: storageMode
+          storageMode: storageMode,
+          authorshipMode: userAccount && userAccount !== "0x0000000000000000000000000000000000000000" ? 'User' : 'Backend Wallet'
         });
         
         try {
@@ -124,12 +125,19 @@ function handleGenerateNodes(socket, io) {
             }
           }
           
-          // Use addNodeDirect with createNFT flag based on storageMode
-          const tx = await treeContract.addNodeDirect(
-            parentId, 
-            finalContent, 
-            storageMode === 'full' // createNFT = true when in full mode
-          );
+          // Use addNodeDirectForUser if userAccount is provided, otherwise use addNodeDirect
+          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000"
+            ? await treeContract.addNodeDirectForUser(
+                parentId, 
+                finalContent, 
+                storageMode === 'full', // createNFT = true when in full mode
+                userAccount // Set the user as the author and NFT owner
+              )
+            : await treeContract.addNodeDirect(
+                parentId, 
+                finalContent, 
+                storageMode === 'full' // createNFT = true when in full mode
+              );
           
           console.log(`📝 Transaction sent for node ${i + 1}, waiting for receipt...`);
           const receipt = await tx.wait();
