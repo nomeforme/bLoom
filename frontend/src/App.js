@@ -244,8 +244,8 @@ function App() {
   }, [nodeHandlers, selectedModel]);
 
   const handleUpdateNode = useCallback(async (treeAddress, nodeId, newContent, options) => {
-    return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent, options);
-  }, [nodeHandlers]);
+    return nodeHandlers.handleUpdateNode(treeAddress, nodeId, newContent, options, selectedNode?.modelId || '');
+  }, [nodeHandlers, selectedNode]);
 
   // Initialize generation handlers
   const generationHandler = createGenerationHandler(
