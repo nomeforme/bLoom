@@ -45,13 +45,7 @@ export const createNodeHandlers = (
     
     try {
       const updatePromise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          socket.off('updateComplete', handleComplete);
-          reject(new Error('Update timeout'));
-        }, 30000);
-        
         const handleComplete = (data) => {
-          clearTimeout(timeout);
           socket.off('updateComplete', handleComplete);
           if (data.success) {
             resolve(data);

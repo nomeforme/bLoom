@@ -69,13 +69,21 @@ function handleImportNodes(socket, io) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          // Use addNodeWithToken for consistent token economics (automatically calculates token supply)
-          const tx = await treeContract.addNodeWithToken(
-            parentIdToUse, 
-            nodeData.content, 
-            "NODE", 
-            "NODE"
-          );
+          // Use addNodeWithTokenForUser if userAccount is provided, otherwise use addNodeWithToken
+          const tx = userAccount && userAccount !== "0x0000000000000000000000000000000000000000"
+            ? await treeContract.addNodeWithTokenForUser(
+                parentIdToUse, 
+                nodeData.content, 
+                "NODE", 
+                "NODE",
+                userAccount // Set the user as the author and NFT owner
+              )
+            : await treeContract.addNodeWithToken(
+                parentIdToUse, 
+                nodeData.content, 
+                "NODE", 
+                "NODE"
+              );
           const receipt = await tx.wait();
           
           // Track gas cost for imported node creation
