@@ -237,7 +237,8 @@ function App() {
     getTree,
     setCurrentTree,
     setTrees,
-    graphRef
+    graphRef,
+    setIsLoadingTrees
   );
 
   const handleAddNode = useCallback(async (parentId, content) => {
