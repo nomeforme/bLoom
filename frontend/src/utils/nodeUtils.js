@@ -13,7 +13,7 @@ export const createNodeHandlers = (
     throw new Error('Frontend addNode has been removed. Use backend socket handlers for node creation.');
   };
 
-  const handleUpdateNode = async (treeAddress, nodeId, newContent, options = null) => {
+  const handleUpdateNode = async (treeAddress, nodeId, newContent, options = null, modelId = '') => {
     if (!socket) {
       throw new Error('Socket not connected - cannot update node');
     }
@@ -42,7 +42,8 @@ export const createNodeHandlers = (
         const payload = {
           treeAddress,
           nodeId,
-          newContent
+          newContent,
+          modelId
         };
         
         // Add options if provided
