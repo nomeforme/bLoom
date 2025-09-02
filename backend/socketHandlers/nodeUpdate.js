@@ -5,11 +5,28 @@ const { queueTransaction } = require('../services/transactionQueue');
 const { emitGasCost } = require('../utils/gasTracker');
 const { ipfsService } = require('../services/ipfsService');
 
+// Track ongoing operations to prevent duplicates
+const ongoingOperations = new Set();
+
 function handleUpdateNode(socket, io) {
   socket.on('updateNode', async (data) => {
     const { treeAddress, nodeId, newContent, options } = data;
     
     console.log('Received updateNode request:', { treeAddress, nodeId, newContent, options });
+    
+    // Create operation key to prevent duplicates
+    const operationKey = `${nodeId}-${Date.now()}`;
+    
+    if (ongoingOperations.has(nodeId)) {
+      console.log('⚠️ Operation already in progress for node:', nodeId);
+      socket.emit('updateComplete', {
+        success: false,
+        error: 'Update operation already in progress for this node'
+      });
+      return;
+    }
+    
+    ongoingOperations.add(nodeId);
     
     try {
       // Get the tree contract
@@ -33,8 +50,8 @@ function handleUpdateNode(socket, io) {
       if (options && options.createChild && options.childContent) {
         console.log('Creating child node as part of update operation...');
         
-        // Wait a moment to avoid nonce conflicts
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait longer to ensure previous transaction is confirmed
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Create child node - no manual token burning needed
         
@@ -59,12 +76,20 @@ function handleUpdateNode(socket, io) {
         
         // Create the child node with appropriate mode
         const childReceipt = await queueTransaction(async (nonce) => {
-          const childTx = await treeContract.addNodeDirect(
-            nodeId, 
-            finalChildContent,
-            options.storageMode === 'full', // createNFT = true when in full mode
-            { nonce }
-          );
+          const childTx = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000"
+            ? await treeContract.addNodeDirectForUser(
+                nodeId, 
+                finalChildContent,
+                options.storageMode === 'full', // createNFT = true when in full mode
+                data.userAccount, // Set the user as the author and NFT owner
+                { nonce }
+              )
+            : await treeContract.addNodeDirect(
+                nodeId, 
+                finalChildContent,
+                options.storageMode === 'full', // createNFT = true when in full mode
+                { nonce }
+              );
           return await childTx.wait();
         });
         childTxHash = childReceipt.hash;
@@ -94,8 +119,8 @@ function handleUpdateNode(socket, io) {
       if (options && options.createSibling && options.siblingContent && options.parentId) {
         console.log('Creating sibling node as part of update operation...');
         
-        // Wait a moment to avoid nonce conflicts
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait longer to ensure previous transaction is confirmed
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Create sibling node - no manual token burning needed
         
@@ -120,12 +145,20 @@ function handleUpdateNode(socket, io) {
         
         // Create the sibling node with appropriate mode (same parent as current node)
         const siblingReceipt = await queueTransaction(async (nonce) => {
-          const siblingTx = await treeContract.addNodeDirect(
-            options.parentId, 
-            finalSiblingContent,
-            options.storageMode === 'full', // createNFT = true when in full mode
-            { nonce }
-          );
+          const siblingTx = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000"
+            ? await treeContract.addNodeDirectForUser(
+                options.parentId, 
+                finalSiblingContent,
+                options.storageMode === 'full', // createNFT = true when in full mode
+                data.userAccount, // Set the user as the author and NFT owner
+                { nonce }
+              )
+            : await treeContract.addNodeDirect(
+                options.parentId, 
+                finalSiblingContent,
+                options.storageMode === 'full', // createNFT = true when in full mode
+                { nonce }
+              );
           return await siblingTx.wait();
         });
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
@@ -212,6 +245,9 @@ function handleUpdateNode(socket, io) {
         success: false,
         error: error.message
       });
+    } finally {
+      // Always remove the operation lock
+      ongoingOperations.delete(nodeId);
     }
   });
 }
