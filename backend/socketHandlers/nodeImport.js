@@ -76,13 +76,15 @@ function handleImportNodes(socket, io) {
                 nodeData.content, 
                 "NODE", 
                 "NODE",
-                userAccount // Set the user as the author and NFT owner
+                userAccount, // Set the user as the author and NFT owner
+                nodeData.modelId || '' // Use original modelId if available
               )
             : await treeContract.addNodeWithToken(
                 parentIdToUse, 
                 nodeData.content, 
                 "NODE", 
-                "NODE"
+                "NODE",
+                nodeData.modelId || '' // Use original modelId if available
               );
           const receipt = await tx.wait();
           
@@ -112,7 +114,8 @@ function handleImportNodes(socket, io) {
               content: parsedEvent.args.content,
               author: parsedEvent.args.author,
               timestamp: Number(parsedEvent.args.timestamp),
-              treeAddress: treeAddress
+              treeAddress: treeAddress,
+              modelId: nodeData.modelId || '' // Use original modelId if available from import data
             };
             
             // Emit to all connected clients

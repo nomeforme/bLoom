@@ -13,6 +13,7 @@ contract LoomTree {
         bool isRoot;
         string content; // Direct text storage for lightweight mode
         bool hasNFT; // Whether this node has an associated NFT/token
+        string modelId;
         mapping(string => string) metadata;
         string[] metadataKeys;
     }
@@ -25,6 +26,7 @@ contract LoomTree {
         string tokenName;
         string tokenSymbol;
         uint256 tokenSupply;
+        string modelId;
     }
     
     mapping(bytes32 => Node) public nodes;
@@ -64,7 +66,7 @@ contract LoomTree {
         // Root node will be created after authorization is set up
     }
     
-    function initializeRootNodeWithToken(string memory rootContent, uint256 tokenSupply) external {
+    function initializeRootNodeWithToken(string memory rootContent, uint256 tokenSupply, string memory modelId) external {
         require(rootId == bytes32(0), "Root node already initialized");
         require(msg.sender == factory, "Only factory can initialize");
         NodeCreationParams memory params = NodeCreationParams({
@@ -74,13 +76,14 @@ contract LoomTree {
             author: treeOwner,
             tokenName: "NODE",
             tokenSymbol: "NODE",
-            tokenSupply: tokenSupply
+            tokenSupply: tokenSupply,
+            modelId: modelId
         });
         rootId = _createNodeWithToken(params);
     }
     
     
-    function addNode(bytes32 parentId, string memory content) external returns (bytes32) {
+    function addNode(bytes32 parentId, string memory content, string memory modelId) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         // Calculate token supply based on content length (characters / 4, minimum 1)
@@ -92,12 +95,13 @@ contract LoomTree {
             author: msg.sender,
             tokenName: "NODE",
             tokenSymbol: "NODE",
-            tokenSupply: tokenSupply
+            tokenSupply: tokenSupply,
+            modelId: modelId
         });
         return _createNodeWithToken(params);
     }
     
-    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT) external returns (bytes32) {
+    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         if (createNFT) {
@@ -110,12 +114,13 @@ contract LoomTree {
                 author: msg.sender,
                 tokenName: "NODE",
                 tokenSymbol: "NODE",
-                tokenSupply: tokenSupply
+                tokenSupply: tokenSupply,
+                modelId: modelId
             });
             return _createNodeWithToken(params);
         } else {
             // Use direct storage path
-            return _createNodeDirect(parentId, content, false, msg.sender);
+            return _createNodeDirect(parentId, content, false, msg.sender, modelId);
         }
     }
     
@@ -123,7 +128,8 @@ contract LoomTree {
         bytes32 parentId, 
         string memory content,
         string memory tokenName,
-        string memory tokenSymbol
+        string memory tokenSymbol,
+        string memory modelId
     ) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
@@ -136,12 +142,13 @@ contract LoomTree {
             author: msg.sender,
             tokenName: tokenName,
             tokenSymbol: tokenSymbol,
-            tokenSupply: tokenSupply
+            tokenSupply: tokenSupply,
+            modelId: modelId
         });
         return _createNodeWithToken(params);
     }
 
-    function addNodeForUser(bytes32 parentId, string memory content, address author) external returns (bytes32) {
+    function addNodeForUser(bytes32 parentId, string memory content, address author, string memory modelId) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         // Calculate token supply based on content length (characters / 4, minimum 1)
@@ -153,12 +160,13 @@ contract LoomTree {
             author: author, // Use provided author instead of msg.sender
             tokenName: "NODE",
             tokenSymbol: "NODE",
-            tokenSupply: tokenSupply
+            tokenSupply: tokenSupply,
+            modelId: modelId
         });
         return _createNodeWithToken(params);
     }
 
-    function addNodeDirectForUser(bytes32 parentId, string memory content, bool createNFT, address author) external returns (bytes32) {
+    function addNodeDirectForUser(bytes32 parentId, string memory content, bool createNFT, address author, string memory modelId) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         if (createNFT) {
@@ -171,12 +179,13 @@ contract LoomTree {
                 author: author, // Use provided author instead of msg.sender
                 tokenName: "NODE",
                 tokenSymbol: "NODE",
-                tokenSupply: tokenSupply
+                tokenSupply: tokenSupply,
+                modelId: modelId
             });
             return _createNodeWithToken(params);
         } else {
             // Use direct storage path with custom author
-            return _createNodeDirect(parentId, content, false, author);
+            return _createNodeDirect(parentId, content, false, author, modelId);
         }
     }
 
@@ -185,7 +194,8 @@ contract LoomTree {
         string memory content,
         string memory tokenName,
         string memory tokenSymbol,
-        address author
+        address author,
+        string memory modelId
     ) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
@@ -198,7 +208,8 @@ contract LoomTree {
             author: author, // Use provided author instead of msg.sender
             tokenName: tokenName,
             tokenSymbol: tokenSymbol,
-            tokenSupply: tokenSupply
+            tokenSupply: tokenSupply,
+            modelId: modelId
         });
         return _createNodeWithToken(params);
     }
@@ -228,6 +239,7 @@ contract LoomTree {
         newNode.author = params.author;
         newNode.timestamp = block.timestamp;
         newNode.isRoot = params.isRoot;
+        newNode.modelId = params.modelId;
         
         allNodes.push(nodeId);
         
@@ -248,7 +260,8 @@ contract LoomTree {
         bytes32 parentId, 
         string memory content, 
         bool isRoot, 
-        address author
+        address author,
+        string memory modelId
     ) internal returns (bytes32) {
         bytes32 nodeId = keccak256(abi.encodePacked(author, block.timestamp, content, parentId));
         
@@ -260,6 +273,7 @@ contract LoomTree {
         newNode.isRoot = isRoot;
         newNode.content = content; // Store content directly in the node
         newNode.hasNFT = false; // No NFT/token for this node
+        newNode.modelId = modelId;
         
         allNodes.push(nodeId);
         
@@ -333,7 +347,8 @@ contract LoomTree {
         bytes32[] memory children,
         address author,
         uint256 timestamp,
-        bool isRoot
+        bool isRoot,
+        string memory modelId
     ) {
         Node storage node = nodes[nodeId];
         return (
@@ -342,7 +357,8 @@ contract LoomTree {
             node.children,
             node.author,
             node.timestamp,
-            node.isRoot
+            node.isRoot,
+            node.modelId
         );
     }
     
@@ -395,5 +411,13 @@ contract LoomTree {
             return false;
         }
         return nodes[nodeId].hasNFT;
+    }
+    
+    function getNodeModelId(bytes32 nodeId) external view returns (string memory) {
+        // Return empty string if node doesn't exist instead of reverting
+        if (nodes[nodeId].id == bytes32(0)) {
+            return "";
+        }
+        return nodes[nodeId].modelId;
     }
 }

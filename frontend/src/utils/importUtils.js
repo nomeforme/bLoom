@@ -80,7 +80,8 @@ export const createImportHandler = (
                   parentId: node.parentId,
                   content: node.content,
                   author: node.author,
-                  timestamp: node.timestamp
+                  timestamp: node.timestamp,
+                  modelId: node.modelId
                 }))
               });
             });
