@@ -10,7 +10,7 @@ const ongoingOperations = new Set();
 
 function handleUpdateNode(socket, io) {
   socket.on('updateNode', async (data) => {
-    const { treeAddress, nodeId, newContent, options } = data;
+    const { treeAddress, nodeId, newContent, options, modelId } = data;
     
     console.log('Received updateNode request:', { treeAddress, nodeId, newContent, options });
     
@@ -82,14 +82,14 @@ function handleUpdateNode(socket, io) {
                 finalChildContent,
                 options.storageMode === 'full', // createNFT = true when in full mode
                 data.userAccount, // Set the user as the author and NFT owner
-                '', // modelId - blank for manual child nodes
+                modelId || '', // modelId from the selected node being edited
                 { nonce }
               )
             : await treeContract.addNodeDirect(
                 nodeId, 
                 finalChildContent,
                 options.storageMode === 'full', // createNFT = true when in full mode
-                '', // modelId - blank for manual child nodes
+                modelId || '', // modelId from the selected node being edited
                 { nonce }
               );
           return await childTx.wait();
@@ -153,14 +153,14 @@ function handleUpdateNode(socket, io) {
                 finalSiblingContent,
                 options.storageMode === 'full', // createNFT = true when in full mode
                 data.userAccount, // Set the user as the author and NFT owner
-                '', // modelId - blank for manual sibling nodes
+                modelId || '', // modelId from the selected node being edited
                 { nonce }
               )
             : await treeContract.addNodeDirect(
                 options.parentId, 
                 finalSiblingContent,
                 options.storageMode === 'full', // createNFT = true when in full mode
-                '', // modelId - blank for manual sibling nodes
+                modelId || '', // modelId from the selected node being edited
                 { nonce }
               );
           return await siblingTx.wait();
