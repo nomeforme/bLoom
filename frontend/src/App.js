@@ -29,6 +29,11 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [treeNodeMemory, setTreeNodeMemory] = useState(new Map()); // Store last selected node for each tree
   
+  // Mobile responsiveness state
+  const [isMobile, setIsMobile] = useState(false);
+  const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
+  const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
+  
   const {
     provider,
     signer,
@@ -296,10 +301,42 @@ function App() {
     return importHandler.handleImportTrees(importData);
   }, [importHandler]);
 
+  // Mobile detection and handlers
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Mobile sidebar handlers
+  const toggleLeftSidebar = () => {
+    setLeftSidebarVisible(!leftSidebarVisible);
+    setRightSidebarVisible(false); // Close other sidebar
+  };
+
+  const toggleRightSidebar = () => {
+    setRightSidebarVisible(!rightSidebarVisible);
+    setLeftSidebarVisible(false); // Close other sidebar
+  };
+
+  const closeMobileSidebars = () => {
+    setLeftSidebarVisible(false);
+    setRightSidebarVisible(false);
+  };
+
+  // Mobile connect handler
+  const handleMobileConnect = () => {
+    connect();
+  };
 
   return (
     <div className="app-container">
       <RightSidebar
+        className={`right-sidebar ${isMobile && rightSidebarVisible ? 'mobile-active' : ''}`}
         connected={connected}
         account={account}
         onConnect={connect}
@@ -328,6 +365,17 @@ function App() {
         nativeCurrencySymbol={nativeCurrencySymbol}
         socket={socket}
       />
+      
+      {/* Mobile close button for right sidebar */}
+      {isMobile && rightSidebarVisible && (
+        <button
+          className="mobile-sidebar-close"
+          onClick={closeMobileSidebars}
+          aria-label="Close sidebar"
+        >
+          ×
+        </button>
+      )}
       
       {/* Notifications */}
       {notifications.length > 0 && (
@@ -394,12 +442,59 @@ function App() {
       </div>
       
       <LeftSidebar
+        className={`left-sidebar ${isMobile && leftSidebarVisible ? 'mobile-active' : ''}`}
         currentTree={currentTree}
         selectedNode={selectedNode}
         isGeneratingChildren={isGeneratingChildren}
         isGeneratingSiblings={isGeneratingSiblings}
         selectedModel={selectedModel}
       />
+      
+      {/* Mobile close button for left sidebar */}
+      {isMobile && leftSidebarVisible && (
+        <button
+          className="mobile-sidebar-close"
+          onClick={closeMobileSidebars}
+          aria-label="Close sidebar"
+        >
+          ×
+        </button>
+      )}
+
+      {/* Mobile floating buttons */}
+      {isMobile && (
+        <>
+          {/* Floating connect wallet button (only show when disconnected) */}
+          {!connected && (
+            <button
+              className="mobile-connect-wallet"
+              onClick={handleMobileConnect}
+            >
+              Connect Wallet
+            </button>
+          )}
+
+          {/* Floating sidebar toggle buttons (only show when connected) */}
+          {connected && (
+            <>
+              <button
+                className="mobile-sidebar-toggle left"
+                onClick={toggleLeftSidebar}
+                aria-label="Toggle left sidebar"
+              >
+                📄
+              </button>
+              <button
+                className="mobile-sidebar-toggle right"
+                onClick={toggleRightSidebar}
+                aria-label="Toggle right sidebar"
+              >
+                ⚙️
+              </button>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
