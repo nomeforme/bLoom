@@ -435,6 +435,11 @@ function App() {
             <div className="graph-loading-text gen-fade">Loading trees…</div>
           </div>
         )}
+        {isMobile && !connected && (
+          <div className="graph-loading-overlay">
+            <div className="graph-loading-text gen-fade">bLoom</div>
+          </div>
+        )}
         <LoomGraph
           ref={graphRef}
           currentTree={currentTree}

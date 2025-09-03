@@ -267,16 +267,16 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 999;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 25px;
+    background: #1a1a1a;
+    border: 1px solid #4CAF50;
+    border-radius: 8px;
+    color: #4CAF50;
     padding: 12px 24px;
     font-family: 'Inconsolata', monospace;
     font-size: 14px;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
     outline: none;
     -webkit-tap-highlight-color: transparent;
@@ -289,9 +289,9 @@
   }
 
   .mobile-connect-wallet:hover {
-    background: #45a049;
+    background: #2d2d2d;
     transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
   }
 
   /* Mobile tab buttons */
