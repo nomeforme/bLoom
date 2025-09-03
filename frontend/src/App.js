@@ -314,13 +314,25 @@ function App() {
 
   // Mobile sidebar handlers
   const toggleLeftSidebar = () => {
-    setLeftSidebarVisible(!leftSidebarVisible);
-    setRightSidebarVisible(false); // Close other sidebar
+    setLeftSidebarVisible(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        // If opening left, close right
+        setRightSidebarVisible(false);
+      }
+      return newValue;
+    });
   };
 
   const toggleRightSidebar = () => {
-    setRightSidebarVisible(!rightSidebarVisible);
-    setLeftSidebarVisible(false); // Close other sidebar
+    setRightSidebarVisible(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        // If opening right, close left
+        setLeftSidebarVisible(false);
+      }
+      return newValue;
+    });
   };
 
   const closeMobileSidebars = () => {
@@ -333,6 +345,15 @@ function App() {
     connect();
   };
 
+  // Mobile disconnect handler
+  const handleMobileDisconnect = () => {
+    disconnect();
+    // Close sidebars immediately when disconnecting on mobile
+    if (isMobile) {
+      closeMobileSidebars();
+    }
+  };
+
   return (
     <div className="app-container">
       <RightSidebar
@@ -340,7 +361,7 @@ function App() {
         connected={connected}
         account={account}
         onConnect={connect}
-        onDisconnect={disconnect}
+        onDisconnect={handleMobileDisconnect}
         onCreateTree={handleCreateTree}
         trees={trees}
         currentTree={currentTree}
@@ -365,17 +386,6 @@ function App() {
         nativeCurrencySymbol={nativeCurrencySymbol}
         socket={socket}
       />
-      
-      {/* Mobile close button for right sidebar */}
-      {isMobile && rightSidebarVisible && (
-        <button
-          className="mobile-sidebar-close"
-          onClick={closeMobileSidebars}
-          aria-label="Close sidebar"
-        >
-          ×
-        </button>
-      )}
       
       {/* Notifications */}
       {notifications.length > 0 && (
@@ -449,17 +459,6 @@ function App() {
         isGeneratingSiblings={isGeneratingSiblings}
         selectedModel={selectedModel}
       />
-      
-      {/* Mobile close button for left sidebar */}
-      {isMobile && leftSidebarVisible && (
-        <button
-          className="mobile-sidebar-close"
-          onClick={closeMobileSidebars}
-          aria-label="Close sidebar"
-        >
-          ×
-        </button>
-      )}
 
       {/* Mobile floating buttons */}
       {isMobile && (
@@ -474,22 +473,22 @@ function App() {
             </button>
           )}
 
-          {/* Floating sidebar toggle buttons (only show when connected) */}
+          {/* Mobile tab buttons (only show when connected) */}
           {connected && (
             <>
               <button
-                className="mobile-sidebar-toggle left"
+                className={`mobile-tab-button left ${leftSidebarVisible ? 'active' : ''}`.trim()}
                 onClick={toggleLeftSidebar}
                 aria-label="Toggle left sidebar"
               >
-                📄
+                {leftSidebarVisible ? 'X' : 'L'}
               </button>
               <button
-                className="mobile-sidebar-toggle right"
+                className={`mobile-tab-button right ${rightSidebarVisible ? 'active' : ''}`.trim()}
                 onClick={toggleRightSidebar}
                 aria-label="Toggle right sidebar"
               >
-                ⚙️
+                {rightSidebarVisible ? 'X' : 'R'}
               </button>
             </>
           )}

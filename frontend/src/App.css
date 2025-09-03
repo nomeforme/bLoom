@@ -278,6 +278,14 @@
     cursor: pointer;
     box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
     transition: all 0.3s ease;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 
   .mobile-connect-wallet:hover {
@@ -286,64 +294,60 @@
     box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
   }
 
-  /* Floating sidebar toggle buttons */
-  .mobile-sidebar-toggle {
+  /* Mobile tab buttons */
+  .mobile-tab-button {
     position: fixed;
-    bottom: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(45, 45, 45, 0.9);
-    backdrop-filter: blur(10px);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 48px;
+    background: rgba(45, 45, 45, 0.95);
+    backdrop-filter: blur(15px);
     border: 2px solid #4CAF50;
     color: #4CAF50;
-    font-size: 20px;
+    font-family: 'Inconsolata', monospace;
+    font-size: 14px;
+    font-weight: bold;
     cursor: pointer;
-    z-index: 999;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    z-index: 1001;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   }
 
-  .mobile-sidebar-toggle:hover {
-    background: rgba(76, 175, 80, 0.9);
+  .mobile-tab-button.left {
+    left: -2px;
+    border-radius: 0 8px 8px 0;
+    border-left: none;
+  }
+
+  .mobile-tab-button.right {
+    right: -2px;
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+  }
+
+  .mobile-tab-button:hover {
+    background: #2d2d2d;
+  }
+
+  .mobile-tab-button.active {
+    background: #2d2d2d;
     color: white;
-    transform: scale(1.1);
   }
 
-  .mobile-sidebar-toggle.left {
-    left: 20px;
-  }
-
-  .mobile-sidebar-toggle.right {
-    right: 20px;
-  }
-
-  /* Close button for mobile sidebars */
-  .mobile-sidebar-close {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(244, 67, 54, 0.9);
-    border: none;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    z-index: 1001;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-  }
-
-  .mobile-sidebar-close:hover {
-    background: rgba(244, 67, 54, 1);
-    transform: scale(1.1);
+  .mobile-tab-button.active:hover {
+    background: #3d3d3d;
   }
 }
 
