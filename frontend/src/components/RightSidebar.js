@@ -5,6 +5,7 @@ import { getNodeTokenBalance } from '../utils/tokenUtils';
 import modelsConfig from '../config/models.json';
 
 const RightSidebar = ({
+  className,
   connected,
   account,
   storageMode,
@@ -652,7 +653,7 @@ const RightSidebar = ({
 
 
   return (
-    <div className="right-sidebar">
+    <div className={className || "right-sidebar"}>
       {/* Header Section */}
       <div style={{ marginBottom: '15px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>

@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 import { useIPFSContent } from '../hooks/useIPFSContent';
 
-const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings, selectedModel }) => {
+const LeftSidebar = ({ className, currentTree, selectedNode, isGeneratingChildren, isGeneratingSiblings, selectedModel }) => {
   const scrollRef = useRef(null);
   const selectedNodeRef = useRef(null);
   const [viewMode, setViewMode] = useState('story'); // 'story' or 'hierarchy'
@@ -244,7 +244,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
 
   if (!selectedNode && !currentTree) {
     return (
-      <div className="left-sidebar">
+      <div className={className || "left-sidebar"}>
         <div className="section">
           <h3>{viewMode === 'story' ? 'Path View' : 'Tree View'}</h3>
           <div style={{ 
@@ -264,7 +264,7 @@ const LeftSidebar = ({ currentTree, selectedNode, isGeneratingChildren, isGenera
   const isGenerating = !!(isGeneratingChildren || isGeneratingSiblings);
 
   return (
-    <div className={`left-sidebar${isGenerating ? ' generating' : ''}`}>
+    <div className={className || `left-sidebar${isGenerating ? ' generating' : ''}`}>
       <div className="section">
         <h3>
           <div>{viewMode === 'story' ? 'Path View' : 'Tree View'}</div>
