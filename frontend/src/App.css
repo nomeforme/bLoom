@@ -230,6 +230,123 @@
   scrollbar-color: #555 #2d2d2d;
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Hide sidebars by default on mobile */
+  .left-sidebar,
+  .right-sidebar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    background: #2d2d2d;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  }
+
+  /* Show sidebar when active */
+  .left-sidebar.mobile-active,
+  .right-sidebar.mobile-active {
+    display: block;
+  }
+
+  /* Graph container takes full screen on mobile */
+  .graph-container {
+    width: 100vw;
+    height: 100vh;
+    order: 1;
+  }
+
+  /* Floating connect wallet button */
+  .mobile-connect-wallet {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 24px;
+    font-family: 'Inconsolata', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .mobile-connect-wallet:hover {
+    background: #45a049;
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
+  }
+
+  /* Floating sidebar toggle buttons */
+  .mobile-sidebar-toggle {
+    position: fixed;
+    bottom: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(45, 45, 45, 0.9);
+    backdrop-filter: blur(10px);
+    border: 2px solid #4CAF50;
+    color: #4CAF50;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .mobile-sidebar-toggle:hover {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+    transform: scale(1.1);
+  }
+
+  .mobile-sidebar-toggle.left {
+    left: 20px;
+  }
+
+  .mobile-sidebar-toggle.right {
+    right: 20px;
+  }
+
+  /* Close button for mobile sidebars */
+  .mobile-sidebar-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(244, 67, 54, 0.9);
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-sidebar-close:hover {
+    background: rgba(244, 67, 54, 1);
+    transform: scale(1.1);
+  }
+}
+
 /* LiteGraph canvas styling */
 .litegraph {
   background: #222 !important;
