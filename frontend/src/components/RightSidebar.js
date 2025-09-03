@@ -1503,18 +1503,18 @@ const RightSidebar = ({
               <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
               <p>9. Press <strong>{gasTrackerKey}</strong> to view gas tracker details</p>
               <p>10. Press <strong>{storageModeKey}</strong> to cycle storage modes (Full → Lightweight → IPFS)</p>
-              <p><strong style={{ color: '#4CAF50' }}>Storage Modes:</strong></p>
-              <p>• <strong style={{ color: '#4CAF50' }}>Full:</strong> NFT + ERC20 tokens + TBA (highest gas cost)</p>
-              <p>• <strong style={{ color: '#2196F3' }}>Lightweight:</strong> Direct contract storage (medium gas cost)</p>
-              {ipfsAvailable && <p>• <strong style={{ color: '#ff9500' }}>IPFS:</strong> Pin to IPFS, store hash only (lowest gas cost)</p>}
               <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
-              <p>11. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
-              <p>12. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
-              <p>13. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
-              <p>14. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
-              <p>15. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
-              <p>16. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
-              <p>17. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
+              <p>1. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
+              <p>2. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
+              <p>3. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
+              <p>4. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
+              <p>5. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
+              <p>6. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
+              <p>7. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
+              <p><strong style={{ color: '#4CAF50' }}>Storage Modes:</strong></p>
+              <p>1. <strong style={{ color: '#ccc' }}>Full:</strong> NFT + ERC20 tokens + TBA</p>
+              <p>2. <strong style={{ color: '#ccc' }}>Lightweight:</strong> Direct contract storage</p>
+              {ipfsAvailable && <p>3. <strong style={{ color: '#ccc' }}>IPFS:</strong> Pin to IPFS, store hash only</p>}
             </div>
           );
         })()}
