@@ -69,7 +69,7 @@ function handleTreeCreation(socket, io) {
       });
 
       // Track gas cost for tree creation
-      const modeDescription = storageMode === 'full' ? 'NFT/Token' : storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
+      const modeDescription = storageMode === 'full' ? 'NFT/Token' : storageMode === 'lightweight' ? 'Lightweight' : 'IPFS';
       await emitGasCost(receipt, 'Tree Creation', `Created new tree (${rootContent.length} chars) - ${modeDescription}`, io);
 
       // Find the TreeCreated event
