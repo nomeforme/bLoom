@@ -253,8 +253,34 @@
     height: 100vh;
     z-index: 1000;
     background: #2d2d2d;
-    overflow-y: auto;
     box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  }
+
+  /* Maintain flexbox layout on mobile for left sidebar */
+  .left-sidebar {
+    overflow: hidden; /* Keep flexbox layout working */
+    display: flex !important; /* Force flexbox on mobile */
+    flex-direction: column !important; /* Force column direction */
+  }
+
+  /* Ensure left sidebar section maintains flex layout on mobile */
+  .left-sidebar .section {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure path content takes available height on mobile */
+  .left-sidebar .path-content {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Right sidebar can keep auto overflow on mobile */
+  .right-sidebar {
+    overflow-y: auto;
   }
 
   /* Show sidebar when active */
