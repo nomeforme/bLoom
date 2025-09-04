@@ -4,14 +4,28 @@ const router = express.Router();
 
 // Get available models
 router.get('/', (req, res) => {
-  const models = Object.keys(LLM_CONFIG).map(key => ({
-    id: key,
-    name: LLM_CONFIG[key].name,
-    provider: LLM_CONFIG[key].provider,
-    maxTokens: LLM_CONFIG[key].maxTokens,
-    defaultTemp: LLM_CONFIG[key].defaultTemp,
-    available: !!(LLM_CONFIG[key].apiKey && LLM_CONFIG[key].apiKey !== '' && LLM_CONFIG[key].apiKey !== 'your-api-key-here')
-  }));
+  const models = Object.keys(LLM_CONFIG).map(key => {
+    const config = LLM_CONFIG[key];
+    let available = false;
+    
+    if (config.provider === 'bedrock') {
+      // For Bedrock models, check AWS credentials
+      available = !!(config.awsAccessKey && config.awsAccessKey !== '' && 
+                    config.awsSecretKey && config.awsSecretKey !== '');
+    } else {
+      // For other models, check API key
+      available = !!(config.apiKey && config.apiKey !== '' && config.apiKey !== 'your-api-key-here');
+    }
+    
+    return {
+      id: key,
+      name: config.name,
+      provider: config.provider,
+      maxTokens: config.maxTokens,
+      defaultTemp: config.defaultTemp,
+      available
+    };
+  });
   
   res.json({
     success: true,

@@ -85,6 +85,54 @@
       "modelId": "moonshotai/kimi-k2",
       "maxTokens": 4000
     },
+    "claude-opus-4-1-bedrock": {
+      "name": "Claude Opus 4.1 (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-opus-4-1-20250805-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-sonnet-4-bedrock": {
+      "name": "Claude Sonnet 4 (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-sonnet-4-20250514-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-7-sonnet-bedrock": {
+      "name": "Claude 3.7 Sonnet (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-7-sonnet-20250219-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-5-sonnet-bedrock": {
+      "name": "Claude 3.5 Sonnet (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-5-haiku-bedrock": {
+      "name": "Claude 3.5 Haiku (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-5-haiku-20241022-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-opus-bedrock": {
+      "name": "Claude 3 Opus (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-opus-20240229-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-sonnet-bedrock": {
+      "name": "Claude 3 Sonnet (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+      "maxTokens": 4000
+    },
+    "claude-3-haiku-bedrock": {
+      "name": "Claude 3 Haiku (Bedrock)",
+      "provider": "Amazon Bedrock",
+      "modelId": "anthropic.claude-3-haiku-20240307-v1:0",
+      "maxTokens": 4000
+    },
     "local": {
       "name": "Local Model",
       "provider": "Local",
