@@ -7,7 +7,7 @@ import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId) external returns (address)",
+  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "function getUserTrees(address user) external view returns (bytes32[] memory)",
@@ -16,9 +16,9 @@ const FACTORY_ABI = [
 ];
 
 const TREE_ABI = [
-  "function addNode(bytes32 parentId, string memory content, string memory modelId) external returns (bytes32)",
-  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId) external returns (bytes32)",
-  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId) external returns (bytes32)",
+  "function addNode(bytes32 parentId, string memory content, string memory modelId, address author) external returns (bytes32)",
+  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId, address author) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot, string memory modelId)",
   "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
@@ -332,7 +332,7 @@ export const useBlockchain = (socket = null) => {
         console.log('Using configured gas price:', chainConfig.gasPrice, 'wei');
       }
       
-      const tx = await factory.createTree(rootContent, rootTokenSupply, '', gasOptions); // modelId blank for manual root
+      const tx = await factory.createTree(rootContent, rootTokenSupply, '', signer.address, gasOptions); // modelId blank for manual root, use signer as creator
       const receipt = await tx.wait();
       
       // Report gas cost for tree creation via socket

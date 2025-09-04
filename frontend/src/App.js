@@ -137,58 +137,43 @@ function App() {
   }, [connected, getAllTrees]);
 
   const handleCreateTree = async (rootContent) => {
+    if (!socket || !connected || !account) {
+      throw new Error('Not connected to backend or wallet');
+    }
+
     try {
-      console.log('Creating tree with content:', rootContent);
-      const treeAddress = await createTree(rootContent);
-      console.log('Tree created at address:', treeAddress);
+      console.log('🌳 Creating tree via backend with content:', rootContent);
       
-      // Wait a moment for the blockchain transaction to propagate
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Emit tree creation request to backend
+      socket.emit('createTree', {
+        rootContent: rootContent,
+        userAccount: account,
+        storageMode: storageMode,
+        model: 'manual' // Root node is manually created
+      });
       
-      try {
-        // Immediately fetch the full tree data and add to UI
-        console.log('Fetching full tree data for immediate UI update');
-        const fullTree = await getTree(treeAddress);
-        console.log('Full tree data loaded:', fullTree);
-        
-        // Add to trees list immediately
-        setTrees(prev => {
-          const exists = prev.some(tree => tree.address === treeAddress);
-          if (exists) {
-            console.log('Tree already exists in list, skipping duplicate');
-            return prev;
+      // Return promise that resolves when creation completes
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Tree creation timeout'));
+        }, 30000); // 30 second timeout
+
+        const handleComplete = (response) => {
+          clearTimeout(timeout);
+          socket.off('treeCreationComplete', handleComplete);
+          
+          if (response.success) {
+            console.log('✅ Tree creation completed:', response);
+            resolve(response.treeAddress);
+          } else {
+            console.error('❌ Tree creation failed:', response.error);
+            reject(new Error(response.error || 'Tree creation failed'));
           }
-          console.log('Adding new tree to sidebar');
-          return [...prev, fullTree];
-        });
-        
-        // Set as current tree and trigger root selection
-        handleTreeSelect(fullTree);
-        console.log('Tree creation and UI update complete');
-      } catch (treeError) {
-        console.error('Error fetching tree after creation:', treeError);
-        
-        // Fallback: add basic tree info immediately
-        const basicTree = {
-          address: treeAddress,
-          rootContent: rootContent,
-          nodeCount: 1,
-          nodes: [],
-          nftContract: null,
-          nftAddress: null
         };
-        
-        setTrees(prev => {
-          const exists = prev.some(tree => tree.address === treeAddress);
-          if (!exists) {
-            return [...prev, basicTree];
-          }
-          return prev;
-        });
-        handleTreeSelect(basicTree);
-      }
+
+        socket.on('treeCreationComplete', handleComplete);
+      });
       
-      // Socket event is still useful for other clients or as backup
     } catch (error) {
       console.error('Error creating tree:', error);
       throw error; // Re-throw so UI can show error state
