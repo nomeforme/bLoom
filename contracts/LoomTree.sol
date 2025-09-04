@@ -11,7 +11,7 @@ contract LoomTree {
         address author;
         uint256 timestamp;
         bool isRoot;
-        string content; // Direct text storage for lightweight mode
+        string content; // Text storage for lightweight mode
         bool hasNFT; // Whether this node has an associated NFT/token
         string modelId;
         mapping(string => string) metadata;
@@ -83,25 +83,7 @@ contract LoomTree {
     }
     
     
-    function addNode(bytes32 parentId, string memory content, string memory modelId, address author) external returns (bytes32) {
-        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        
-        // Calculate token supply based on content length (characters / 4, minimum 1)
-        uint256 tokenSupply = _calculateTokenSupply(content);
-        NodeCreationParams memory params = NodeCreationParams({
-            parentId: parentId,
-            content: content,
-            isRoot: false,
-            author: author,
-            tokenName: "NODE",
-            tokenSymbol: "NODE",
-            tokenSupply: tokenSupply,
-            modelId: modelId
-        });
-        return _createNodeWithToken(params);
-    }
-    
-    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32) {
+    function addNode(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         if (createNFT) {
@@ -119,8 +101,8 @@ contract LoomTree {
             });
             return _createNodeWithToken(params);
         } else {
-            // Use direct storage path
-            return _createNodeDirect(parentId, content, false, author, modelId);
+            // Use lightweight storage path
+            return _createLightweightNode(parentId, content, false, author, modelId);
         }
     }
     
@@ -192,7 +174,7 @@ contract LoomTree {
         return nodeId;
     }
     
-    function _createNodeDirect(
+    function _createLightweightNode(
         bytes32 parentId, 
         string memory content, 
         bool isRoot, 

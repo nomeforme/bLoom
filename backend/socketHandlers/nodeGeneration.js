@@ -125,12 +125,12 @@ function handleGenerateNodes(socket, io) {
             }
           }
           
-          // Use addNodeDirect with author parameter - use userAccount if provided, otherwise backend wallet
+          // Use addNode with author parameter - use userAccount if provided, otherwise backend wallet
           const author = userAccount && userAccount !== "0x0000000000000000000000000000000000000000" 
             ? userAccount 
             : wallet.address;
             
-          const tx = await treeContract.addNodeDirect(
+          const tx = await treeContract.addNode(
             parentId, 
             finalContent, 
             storageMode === 'full', // createNFT = true when in full mode
@@ -151,7 +151,7 @@ function handleGenerateNodes(socket, io) {
           });
           
           // Track gas cost for node creation
-          const modeDescription = storageMode === 'full' ? 'NFT/Token' : storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
+          const modeDescription = storageMode === 'full' ? 'NFT/Token' : storageMode === 'lightweight' ? 'Lightweight' : 'IPFS';
           await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model} - ${modeDescription}`, io);
           
           // Log all events for debugging

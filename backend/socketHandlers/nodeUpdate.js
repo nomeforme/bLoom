@@ -80,7 +80,7 @@ function handleUpdateNode(socket, io) {
           : wallet.address;
           
         const childReceipt = await queueTransaction(async (nonce) => {
-          const childTx = await treeContract.addNodeDirect(
+          const childTx = await treeContract.addNode(
             nodeId, 
             finalChildContent,
             options.storageMode === 'full', // createNFT = true when in full mode
@@ -93,7 +93,7 @@ function handleUpdateNode(socket, io) {
         childTxHash = childReceipt.hash;
         
         // Track gas cost for child node creation
-        const childMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
+        const childMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Lightweight' : 'IPFS';
         await emitGasCost(childReceipt, 'Node Creation', `Created child node during update with ${childMode} (${options.childContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new child node ID
@@ -147,7 +147,7 @@ function handleUpdateNode(socket, io) {
           : wallet.address;
           
         const siblingReceipt = await queueTransaction(async (nonce) => {
-          const siblingTx = await treeContract.addNodeDirect(
+          const siblingTx = await treeContract.addNode(
             options.parentId, 
             finalSiblingContent,
             options.storageMode === 'full', // createNFT = true when in full mode
@@ -160,7 +160,7 @@ function handleUpdateNode(socket, io) {
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
         
         // Track gas cost for sibling node creation
-        const siblingMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Direct Storage' : 'IPFS';
+        const siblingMode = options.storageMode === 'full' ? 'NFT/Token' : options.storageMode === 'lightweight' ? 'Lightweight' : 'IPFS';
         await emitGasCost(siblingReceipt, 'Node Creation', `Created sibling node during update with ${siblingMode} (${options.siblingContent.length} chars)`, io);
         
         // Find the NodeCreated event to get the new sibling node ID
