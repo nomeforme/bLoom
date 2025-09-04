@@ -15,19 +15,16 @@ const FACTORY_ADDRESS = chainConfig.factoryAddress;
 
 // Contract ABIs
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId) external returns (address)",
+  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address)",
   "function getTree(bytes32 treeId) external view returns (address)",
   "function getTreeNFTContract(bytes32 treeId) external view returns (address)",
   "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed nftContractAddress, address creator, string rootContent)"
 ];
 
 const TREE_ABI = [
-  "function addNode(bytes32 parentId, string memory content, string memory modelId) external returns (bytes32)",
-  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId) external returns (bytes32)",
-  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId) external returns (bytes32)",
-  "function addNodeForUser(bytes32 parentId, string memory content, address author, string memory modelId) external returns (bytes32)",
-  "function addNodeDirectForUser(bytes32 parentId, string memory content, bool createNFT, address author, string memory modelId) external returns (bytes32)",
-  "function addNodeWithTokenForUser(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, address author, string memory modelId) external returns (bytes32)",
+  "function addNode(bytes32 parentId, string memory content, string memory modelId, address author) external returns (bytes32)",
+  "function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId, address author) external returns (bytes32)",
   "function updateNodeContent(bytes32 nodeId, string memory newContent) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot, string memory modelId)",
   "function getNodeContent(bytes32 nodeId) external view returns (string memory)",

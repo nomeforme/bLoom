@@ -83,7 +83,7 @@ contract LoomTree {
     }
     
     
-    function addNode(bytes32 parentId, string memory content, string memory modelId) external returns (bytes32) {
+    function addNode(bytes32 parentId, string memory content, string memory modelId, address author) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         // Calculate token supply based on content length (characters / 4, minimum 1)
@@ -92,7 +92,7 @@ contract LoomTree {
             parentId: parentId,
             content: content,
             isRoot: false,
-            author: msg.sender,
+            author: author,
             tokenName: "NODE",
             tokenSymbol: "NODE",
             tokenSupply: tokenSupply,
@@ -101,7 +101,7 @@ contract LoomTree {
         return _createNodeWithToken(params);
     }
     
-    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId) external returns (bytes32) {
+    function addNodeDirect(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         if (createNFT) {
@@ -111,7 +111,7 @@ contract LoomTree {
                 parentId: parentId,
                 content: content,
                 isRoot: false,
-                author: msg.sender,
+                author: author,
                 tokenName: "NODE",
                 tokenSymbol: "NODE",
                 tokenSupply: tokenSupply,
@@ -120,7 +120,7 @@ contract LoomTree {
             return _createNodeWithToken(params);
         } else {
             // Use direct storage path
-            return _createNodeDirect(parentId, content, false, msg.sender, modelId);
+            return _createNodeDirect(parentId, content, false, author, modelId);
         }
     }
     
@@ -129,7 +129,8 @@ contract LoomTree {
         string memory content,
         string memory tokenName,
         string memory tokenSymbol,
-        string memory modelId
+        string memory modelId,
+        address author
     ) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
@@ -139,7 +140,7 @@ contract LoomTree {
             parentId: parentId,
             content: content,
             isRoot: false,
-            author: msg.sender,
+            author: author,
             tokenName: tokenName,
             tokenSymbol: tokenSymbol,
             tokenSupply: tokenSupply,
@@ -148,71 +149,6 @@ contract LoomTree {
         return _createNodeWithToken(params);
     }
 
-    function addNodeForUser(bytes32 parentId, string memory content, address author, string memory modelId) external returns (bytes32) {
-        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        
-        // Calculate token supply based on content length (characters / 4, minimum 1)
-        uint256 tokenSupply = _calculateTokenSupply(content);
-        NodeCreationParams memory params = NodeCreationParams({
-            parentId: parentId,
-            content: content,
-            isRoot: false,
-            author: author, // Use provided author instead of msg.sender
-            tokenName: "NODE",
-            tokenSymbol: "NODE",
-            tokenSupply: tokenSupply,
-            modelId: modelId
-        });
-        return _createNodeWithToken(params);
-    }
-
-    function addNodeDirectForUser(bytes32 parentId, string memory content, bool createNFT, address author, string memory modelId) external returns (bytes32) {
-        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        
-        if (createNFT) {
-            // Use existing NFT creation path with custom author
-            uint256 tokenSupply = _calculateTokenSupply(content);
-            NodeCreationParams memory params = NodeCreationParams({
-                parentId: parentId,
-                content: content,
-                isRoot: false,
-                author: author, // Use provided author instead of msg.sender
-                tokenName: "NODE",
-                tokenSymbol: "NODE",
-                tokenSupply: tokenSupply,
-                modelId: modelId
-            });
-            return _createNodeWithToken(params);
-        } else {
-            // Use direct storage path with custom author
-            return _createNodeDirect(parentId, content, false, author, modelId);
-        }
-    }
-
-    function addNodeWithTokenForUser(
-        bytes32 parentId, 
-        string memory content,
-        string memory tokenName,
-        string memory tokenSymbol,
-        address author,
-        string memory modelId
-    ) external returns (bytes32) {
-        require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
-        
-        // Calculate token supply based on content length (characters / 4, minimum 1)
-        uint256 tokenSupply = _calculateTokenSupply(content);
-        NodeCreationParams memory params = NodeCreationParams({
-            parentId: parentId,
-            content: content,
-            isRoot: false,
-            author: author, // Use provided author instead of msg.sender
-            tokenName: tokenName,
-            tokenSymbol: tokenSymbol,
-            tokenSupply: tokenSupply,
-            modelId: modelId
-        });
-        return _createNodeWithToken(params);
-    }
     
     /**
      * @dev Calculate token supply approximation based on content length
