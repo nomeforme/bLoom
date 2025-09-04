@@ -3,6 +3,7 @@ const { handleUpdateNode } = require('./nodeUpdate');
 const { handleImportNodes } = require('./nodeImport');
 const { handleTokenBalance, handleReportGasCost } = require('./tokenBalance');
 const { handleIPFSOperations } = require('./ipfs');
+const { handleTreeCreation } = require('./treeCreation');
 
 function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -10,6 +11,7 @@ function setupSocketHandlers(io) {
 
     // Register all socket handlers
     handleGenerateNodes(socket, io);
+    handleTreeCreation(socket, io);
     handleUpdateNode(socket, io);
     handleImportNodes(socket, io);
     handleTokenBalance(socket, io);

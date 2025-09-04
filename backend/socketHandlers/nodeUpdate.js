@@ -75,23 +75,19 @@ function handleUpdateNode(socket, io) {
         }
         
         // Create the child node with appropriate mode
+        const author = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000" 
+          ? data.userAccount 
+          : wallet.address;
+          
         const childReceipt = await queueTransaction(async (nonce) => {
-          const childTx = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000"
-            ? await treeContract.addNodeDirectForUser(
-                nodeId, 
-                finalChildContent,
-                options.storageMode === 'full', // createNFT = true when in full mode
-                data.userAccount, // Set the user as the author and NFT owner
-                modelId || '', // modelId from the selected node being edited
-                { nonce }
-              )
-            : await treeContract.addNodeDirect(
-                nodeId, 
-                finalChildContent,
-                options.storageMode === 'full', // createNFT = true when in full mode
-                modelId || '', // modelId from the selected node being edited
-                { nonce }
-              );
+          const childTx = await treeContract.addNodeDirect(
+            nodeId, 
+            finalChildContent,
+            options.storageMode === 'full', // createNFT = true when in full mode
+            modelId || '', // modelId from the selected node being edited
+            author, // author parameter
+            { nonce }
+          );
           return await childTx.wait();
         });
         childTxHash = childReceipt.hash;
@@ -146,23 +142,19 @@ function handleUpdateNode(socket, io) {
         }
         
         // Create the sibling node with appropriate mode (same parent as current node)
+        const siblingAuthor = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000" 
+          ? data.userAccount 
+          : wallet.address;
+          
         const siblingReceipt = await queueTransaction(async (nonce) => {
-          const siblingTx = data.userAccount && data.userAccount !== "0x0000000000000000000000000000000000000000"
-            ? await treeContract.addNodeDirectForUser(
-                options.parentId, 
-                finalSiblingContent,
-                options.storageMode === 'full', // createNFT = true when in full mode
-                data.userAccount, // Set the user as the author and NFT owner
-                modelId || '', // modelId from the selected node being edited
-                { nonce }
-              )
-            : await treeContract.addNodeDirect(
-                options.parentId, 
-                finalSiblingContent,
-                options.storageMode === 'full', // createNFT = true when in full mode
-                modelId || '', // modelId from the selected node being edited
-                { nonce }
-              );
+          const siblingTx = await treeContract.addNodeDirect(
+            options.parentId, 
+            finalSiblingContent,
+            options.storageMode === 'full', // createNFT = true when in full mode
+            modelId || '', // modelId from the selected node being edited
+            siblingAuthor, // author parameter
+            { nonce }
+          );
           return await siblingTx.wait();
         });
         childTxHash = siblingReceipt.hash; // Reuse the childTxHash variable for consistency
