@@ -336,11 +336,7 @@ const LeftSidebar = ({ className, currentTree, selectedNode, isGeneratingChildre
         </div>
 
         {(isGeneratingChildren || isGeneratingSiblings) && (
-          <div style={{
-            marginTop: '14px',
-            textAlign: 'center',
-            fontFamily: "'Inconsolata', monospace"
-          }}>
+          <div className="generating-section">
             <div style={{ fontSize: '16px' }}>
               <span className="gen-fade">
                 {isGeneratingChildren ? 'Generating children…' : 'Generating siblings…'}
