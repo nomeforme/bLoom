@@ -11,9 +11,12 @@
   background: #2d2d2d;
   padding: 12px; /* reduced padding */
   box-sizing: border-box;
-  overflow-y: auto; /* restore scrolling */
+  overflow: hidden; /* prevent sidebar itself from scrolling */
   border-right: 1px solid #444;
   order: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 .right-sidebar {
@@ -24,6 +27,13 @@
   overflow-y: auto;
   border-left: 1px solid #444;
   order: 3;
+  scrollbar-width: none; /* Firefox: hide scrollbar but keep scrolling */
+  -ms-overflow-style: none; /* IE/Edge: hide scrollbar but keep scrolling */
+}
+
+/* Hide scrollbar for webkit browsers (Chrome, Safari) but keep scrolling */
+.right-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .graph-container {
@@ -387,17 +397,26 @@
 /* Left sidebar specific styles */
 .left-sidebar .section {
   margin-bottom: 0; /* Remove bottom margin in sidebar to maximize space */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 
 .path-content {
-  height: calc(100vh - 120px); /* default when not generating */
+  flex: 1;
   overflow-y: auto;
   padding-right: 10px;
+  min-height: 0; /* Important for flexbox scrolling */
 }
 
-/* When generating, reserve more space for the status line */
-.left-sidebar.generating .path-content {
-  height: calc(100vh - 180px);
+/* Generating section positioned at bottom of sidebar */
+.left-sidebar .generating-section {
+  flex-shrink: 0; /* Don't shrink this section */
+  margin-top: 14px;
+  text-align: center;
+  font-family: 'Inconsolata', monospace;
+  padding-bottom: 10px; /* Add some bottom padding */
 }
 
 .path-node {
