@@ -755,19 +755,15 @@ const RightSidebar = ({
             marginBottom: '8px'
           }}
         >
-          {availableModels.map(model => {
-            // Use config provider name instead of backend provider (which is API compatibility)
-            const configProvider = modelsConfig.models[model.id]?.provider || model.provider;
-            return (
-              <option 
-                key={model.id} 
-                value={model.id}
-                disabled={model.available === false}
-              >
-                {model.name} ({configProvider}) {model.available === false ? ' - Unavailable' : ''}
-              </option>
-            );
-          })}
+          {availableModels.map(model => (
+            <option 
+              key={model.id} 
+              value={model.id}
+              disabled={model.available === false}
+            >
+              {model.name} {model.available === false ? ' - Unavailable' : ''}
+            </option>
+          ))}
         </select>
         {selectedModel && modelsConfig.models[selectedModel] && (
           <div style={{ fontSize: '10px', color: '#888', lineHeight: '1.3' }}>

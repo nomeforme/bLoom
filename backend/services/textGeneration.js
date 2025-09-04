@@ -1,6 +1,8 @@
 const axios = require('axios');
 const { LLM_CONFIG } = require('../config/llm');
 
+const { AnthropicBedrock } = require('@anthropic-ai/bedrock-sdk');
+
 // Enhanced text generation function with multiple providers
 async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, maxTokens) {
   try {
@@ -9,8 +11,16 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       throw new Error(`Unknown model: ${modelKey}`);
     }
 
-    if (!modelConfig.apiKey || modelConfig.apiKey === '' || modelConfig.apiKey === 'your-api-key-here') {
-      throw new Error(`API key not configured for model: ${modelKey}`);
+    // Check credentials based on provider type
+    if (modelConfig.provider === 'bedrock') {
+      if (!modelConfig.awsAccessKey || !modelConfig.awsSecretKey || 
+          modelConfig.awsAccessKey === '' || modelConfig.awsSecretKey === '') {
+        throw new Error(`AWS credentials not configured for model: ${modelKey}`);
+      }
+    } else {
+      if (!modelConfig.apiKey || modelConfig.apiKey === '' || modelConfig.apiKey === 'your-api-key-here') {
+        throw new Error(`API key not configured for model: ${modelKey}`);
+      }
     }
 
     const finalTemp = temperature || modelConfig.defaultTemp;
@@ -54,6 +64,41 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       const generatedText = response.data.content[0].text.trim();
       const completionTokens = response.data.usage?.output_tokens || 0;
       console.log(`✅ Generated text from Anthropic:`, {
+        length: generatedText.length,
+        words: generatedText.split(/\s+/).length,
+        completionTokens: completionTokens,
+        preview: generatedText.substring(0, 100) + (generatedText.length > 100 ? '...' : ''),
+        fullText: generatedText
+      });
+      return { text: generatedText, completionTokens };
+      
+    } else if (modelConfig.provider === 'bedrock') {
+      // Amazon Bedrock via Anthropic SDK
+      console.log(`📤 Sending request to Amazon Bedrock for model: ${modelConfig.id}`);
+      console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
+      
+      const client = new AnthropicBedrock({
+        awsAccessKey: modelConfig.awsAccessKey || process.env.AWS_ACCESS_KEY_ID,
+        awsSecretKey: modelConfig.awsSecretKey || process.env.AWS_SECRET_ACCESS_KEY,
+        awsRegion: modelConfig.awsRegion || process.env.AWS_REGION || 'us-east-1'
+      });
+      
+      const message = await client.messages.create({
+        model: modelConfig.id,
+        max_tokens: finalMaxTokens,
+        temperature: finalTemp,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      
+      console.log(`📥 Bedrock API Response received:`, {
+        model: message.model,
+        stopReason: message.stop_reason,
+        usage: message.usage
+      });
+      
+      const generatedText = message.content[0].text.trim();
+      const completionTokens = message.usage?.output_tokens || 0;
+      console.log(`✅ Generated text from Bedrock:`, {
         length: generatedText.length,
         words: generatedText.split(/\s+/).length,
         completionTokens: completionTokens,
