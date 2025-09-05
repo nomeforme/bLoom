@@ -34,6 +34,21 @@ function App() {
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
   
+  // Chain switching callback
+  const handleChainSwitch = useCallback(async (newChainConfig) => {
+    console.log('🔄 Handling chain switch to:', newChainConfig.name);
+    
+    // Clear current UI state
+    setSelectedNode(null);
+    setSelectedNodeNFT(null);
+    setCurrentTree(null);
+    setTrees([]);
+    setTreeNodeMemory(new Map());
+    setIsLoadingTrees(true);
+    
+    console.log('🔄 Cleared UI state, will reload trees once connected');
+  }, []);
+  
   const {
     provider,
     signer,
@@ -55,8 +70,10 @@ function App() {
     startIPFSResolution,
     useIPFSRetrieval,
     setUseIPFSRetrieval,
-    nativeCurrencySymbol
-  } = useBlockchain(socket);
+    nativeCurrencySymbol,
+    chainConfig,
+    isChainSwitching
+  } = useBlockchain(socket, handleChainSwitch);
 
   useEffect(() => {
     // Log active chain configuration on startup
@@ -127,32 +144,54 @@ function App() {
     };
   }, [socket, currentTree?.address, getTree, addNotification, socketHandlers, memoryHandlers]);
 
-  // Load existing trees when user connects
+  // Handle tree selection with node memory
+  const handleTreeSelect = useCallback((newTree) => {
+    memoryHandlers.handleTreeSelect(newTree, currentTree, selectedNode);
+    
+    // Start IPFS resolution for the new tree
+    if (newTree && startIPFSResolution) {
+      startIPFSResolution(newTree, setCurrentTree, setTrees);
+    }
+  }, [currentTree, selectedNode, memoryHandlers, startIPFSResolution]);
+
+  // Load existing trees when user connects or chain switches
   useEffect(() => {
     const loadExistingTrees = async () => {
-      if (connected && getAllTrees) {
+      if (connected && getAllTrees && !isChainSwitching) {
         try {
-          console.log('Loading all trees');
+          console.log('Loading all trees for chain:', chainConfig?.name || 'Unknown');
           setIsLoadingTrees(true);
           const allTrees = await getAllTrees();
           console.log('Found all trees:', allTrees);
           setTrees(allTrees);
-          
-          // If no current tree is selected and we have trees, select the first one
-          if (allTrees.length > 0 && !currentTree) {
-            console.log('Setting current tree to first tree:', allTrees[0]);
-            handleTreeSelect(allTrees[0]);
-          }
         } catch (error) {
           console.error('Error loading existing trees:', error);
+          setTrees([]);
         } finally {
           setIsLoadingTrees(false);
         }
       }
     };
 
-    loadExistingTrees();
-  }, [connected, getAllTrees]);
+    // Only run this effect for connection state changes and chain switches
+    if (isChainSwitching) {
+      const timer = setTimeout(loadExistingTrees, 1500);
+      return () => clearTimeout(timer);
+    } else if (connected && !isChainSwitching) {
+      loadExistingTrees();
+    }
+  }, [connected, getAllTrees, isChainSwitching, chainConfig?.chainId]);
+
+  // Separate effect for auto-selecting first tree
+  useEffect(() => {
+    if (trees.length > 0 && !currentTree && !isChainSwitching) {
+      console.log('Auto-selecting first tree:', trees[0]);
+      const timer = setTimeout(() => {
+        handleTreeSelect(trees[0]);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [trees, currentTree, isChainSwitching, handleTreeSelect]);
 
   const handleCreateTree = async (rootContent) => {
     if (!socket || !connected || !account) {
@@ -264,16 +303,6 @@ function App() {
     return generationHandler.generateNodes(parentId, count);
   }, [generationHandler]);
 
-  // Handle tree selection with node memory
-  const handleTreeSelect = useCallback((newTree) => {
-    memoryHandlers.handleTreeSelect(newTree, currentTree, selectedNode);
-    
-    // Start IPFS resolution for the new tree
-    if (newTree && startIPFSResolution) {
-      startIPFSResolution(newTree, setCurrentTree, setTrees);
-    }
-  }, [currentTree, selectedNode, memoryHandlers, startIPFSResolution]);
-
   // Handle model selection change
   const handleModelChange = useCallback((newModel) => {
     setSelectedModel(newModel);
@@ -378,6 +407,7 @@ function App() {
         cycleStorageMode={cycleStorageMode}
         ipfsAvailable={ipfsAvailable}
         nativeCurrencySymbol={nativeCurrencySymbol}
+        chainConfig={chainConfig}
         socket={socket}
       />
       
@@ -424,9 +454,11 @@ function App() {
       )}
       
       <div className="graph-container">
-        {isLoadingTrees && (
+        {(isLoadingTrees || isChainSwitching) && (
           <div className="graph-loading-overlay">
-            <div className="graph-loading-text gen-fade">Loading trees…</div>
+            <div className="graph-loading-text gen-fade">
+              {isChainSwitching ? `Switching to ${chainConfig?.name || 'new chain'}...` : 'Loading trees…'}
+            </div>
           </div>
         )}
         {isMobile && !connected && (

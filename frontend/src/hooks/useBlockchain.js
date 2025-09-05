@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { pinTextToIPFS, checkIPFSAvailability, isIPFSReference } from '../utils/ipfsUtils';
 import GlobalIPFSResolver from '../utils/globalIPFSResolver';
 import { getCurrentChainSymbol } from '../utils/chainUtils';
-import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
+import { getActiveChainConfig, getDefaultRpcUrl, switchActiveChain, isChainConfigured } from '../utils/chainConfig';
 
 // Contract ABI - in a real app, you'd import this from generated files
 const FACTORY_ABI = [
@@ -151,7 +151,7 @@ const resolveIPFSInBackground = async (treeResult, updateCallbacks = {}) => {
   globalIPFSResolver.activeResolutions.delete(treeResult.address);
 };
 
-export const useBlockchain = (socket = null) => {
+export const useBlockchain = (socket = null, onChainSwitch = null) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [factory, setFactory] = useState(null);
@@ -163,6 +163,7 @@ export const useBlockchain = (socket = null) => {
   const [nativeCurrencySymbol, setNativeCurrencySymbol] = useState('ETH');
   const [chainConfig, setChainConfig] = useState(null);
   const [factoryAddress, setFactoryAddress] = useState(null);
+  const [isChainSwitching, setIsChainSwitching] = useState(false);
 
   // Load chain configuration
   useEffect(() => {
@@ -224,17 +225,69 @@ export const useBlockchain = (socket = null) => {
       };
 
       // Listen for chain changes
-      const handleChainChanged = (chainId) => {
+      const handleChainChanged = async (chainId) => {
         // Reset connection state instead of reloading page
-        console.log('Chain changed to:', chainId);
+        const chainIdDecimal = parseInt(chainId, 16);
+        console.log('Chain changed to:', chainId, '(decimal:', chainIdDecimal + ')');
         
-        // Update currency symbol for new chain
-        getCurrentChainSymbol(provider).then(symbol => {
-          setNativeCurrencySymbol(symbol);
-        });
+        setIsChainSwitching(true);
         
-        disconnect();
-        // Note: User will need to reconnect manually after chain change
+        // Check if the new chain is supported
+        try {
+          const isSupported = await isChainConfigured(chainIdDecimal);
+          
+          if (isSupported) {
+            // Switch to the new chain in the backend configuration
+            console.log('🔄 Switching active chain to:', chainIdDecimal);
+            const newConfig = await switchActiveChain(chainIdDecimal);
+            console.log('✅ Active chain switched to:', newConfig.name);
+            
+            // Update chain configuration state
+            setChainConfig(newConfig);
+            setFactoryAddress(newConfig.factoryAddress);
+            
+            // Create new provider for the new chain RPC
+            const newProvider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(newProvider);
+            
+            // Update currency symbol for new chain
+            getCurrentChainSymbol(newProvider).then(symbol => {
+              setNativeCurrencySymbol(symbol);
+            });
+            
+            // Update signer and factory for new chain
+            if (connected && account) {
+              try {
+                const newSigner = await newProvider.getSigner();
+                setSigner(newSigner);
+                
+                if (newConfig.factoryAddress) {
+                  const factoryContract = new ethers.Contract(newConfig.factoryAddress, FACTORY_ABI, newSigner);
+                  setFactory(factoryContract);
+                }
+                
+                console.log('🔄 Updated provider and contracts for new chain');
+                
+                // Trigger soft refresh in parent component
+                if (onChainSwitch) {
+                  console.log('🔄 Triggering soft refresh for chain switch');
+                  onChainSwitch(newConfig);
+                }
+              } catch (error) {
+                console.error('❌ Error updating provider/signer for new chain:', error);
+              }
+            }
+          } else {
+            // Chain not supported - show alert and stay on current chain
+            alert(`Chain ${chainIdDecimal} is not supported. Please switch to a supported chain or add it to the configuration. Staying on current chain.`);
+            console.warn('🚫 Unsupported chain:', chainIdDecimal);
+          }
+        } catch (error) {
+          console.error('❌ Error handling chain change:', error);
+          alert('Error switching chains. Please check your connection and try again.');
+        } finally {
+          setIsChainSwitching(false);
+        }
       };
 
       window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -416,15 +469,14 @@ export const useBlockchain = (socket = null) => {
   };
 
   const getTree = useCallback(async (treeAddress) => {
-    if (!signer) throw new Error('Not connected');
+    if (!signer || !provider) throw new Error('Not connected');
 
     try {
-      console.log('Getting tree at address:', treeAddress);
+      console.log('Getting tree at address:', treeAddress, 'on chain:', chainConfig?.name);
       
-      // Create fresh provider to ensure we get latest blockchain state
-      const rpcUrl = await getDefaultRpcUrl();
-      const freshProvider = new ethers.JsonRpcProvider(rpcUrl);
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
+      // Use current provider to ensure correct chain
+      const currentProvider = provider;
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, currentProvider);
       
       // Check node count first
       const nodeCount = await treeContract.getNodeCount();
@@ -440,7 +492,7 @@ export const useBlockchain = (socket = null) => {
       
       // Get NFT contract address from the tree itself and create NFT contract instance BEFORE loading nodes
       const nftAddress = await treeContract.getNFTContract();
-      const nftContract = new ethers.Contract(nftAddress, NFT_ABI, freshProvider);
+      const nftContract = new ethers.Contract(nftAddress, NFT_ABI, currentProvider);
       
       const nodes = [];
       for (let i = 0; i < allNodeIds.length; i++) {
@@ -535,7 +587,7 @@ export const useBlockchain = (socket = null) => {
       console.error('Error getting tree:', error);
       throw error;
     }
-  }, [signer]);
+  }, [signer, provider]);
 
 
   const updateNode = useCallback(async (treeAddress, nodeId, newContent) => {
@@ -574,7 +626,7 @@ export const useBlockchain = (socket = null) => {
       console.error('Error updating node:', error);
       throw error;
     }
-  }, [signer]);
+  }, [signer, chainConfig, socket]);
 
   const getUserTrees = useCallback(async () => {
     if (!factory || !account) return [];
@@ -660,7 +712,7 @@ export const useBlockchain = (socket = null) => {
   };
 
   const checkNodeHasNFT = async (treeAddress, nodeId) => {
-    if (!signer) throw new Error('Not connected');
+    if (!signer || !provider) throw new Error('Not connected');
     
     // Validate inputs
     if (!treeAddress || !nodeId || nodeId === '0x0000000000000000000000000000000000000000000000000000000000000000') {
@@ -668,10 +720,10 @@ export const useBlockchain = (socket = null) => {
     }
 
     try {
-      // Use fresh provider to ensure we get latest blockchain state
-      const rpcUrl = await getDefaultRpcUrl();
-      const freshProvider = new ethers.JsonRpcProvider(rpcUrl);
-      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
+      console.log('Checking NFT for node:', nodeId, 'on chain:', chainConfig?.name);
+      // Use current provider instead of creating fresh one to ensure correct chain
+      const currentProvider = provider;
+      const treeContract = new ethers.Contract(treeAddress, TREE_ABI, currentProvider);
       const hasNFT = await treeContract.nodeHasNFT(nodeId);
       return hasNFT;
     } catch (error) {
@@ -714,6 +766,8 @@ export const useBlockchain = (socket = null) => {
     useIPFSRetrieval,
     setUseIPFSRetrieval,
     nativeCurrencySymbol,
+    chainConfig,
+    isChainSwitching,
     // Global IPFS resolver utilities
     getIPFSQueueStatus: () => globalIPFSResolver.getStatus(),
     cancelTreeIPFSResolution: (treeAddress) => globalIPFSResolver.cancelTreeResolution(treeAddress)
