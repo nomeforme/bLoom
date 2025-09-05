@@ -1,0 +1,337 @@
+# Example GraphQL queries for LoomChain Subgraph
+
+# Get all trees with basic info
+query GetAllTrees {
+  trees(first: 10, orderBy: createdAt, orderDirection: desc) {
+    id
+    address
+    creator
+    rootContent
+    nodeCount
+    createdAt
+  }
+}
+
+# Get a specific tree with all its nodes
+query GetTreeWithNodes($treeId: ID!) {
+  tree(id: $treeId) {
+    id
+    address
+    creator
+    rootContent
+    nodeCount
+    nftContract
+    createdAt
+    nodes(first: 100, orderBy: createdAt) {
+      id
+      nodeId
+      content
+      author
+      isRoot
+      hasNFT
+      modelId
+      timestamp
+      parent {
+        id
+        nodeId
+      }
+      children {
+        id
+        nodeId
+        content
+      }
+    }
+  }
+}
+
+# Get trees created by a specific user
+query GetUserTrees($creator: Bytes!) {
+  trees(where: { creator: $creator }, orderBy: createdAt, orderDirection: desc) {
+    id
+    address
+    rootContent
+    nodeCount
+    createdAt
+    nodes(first: 5, orderBy: createdAt) {
+      id
+      content
+      isRoot
+    }
+  }
+}
+
+# Get recent nodes across all trees
+query GetRecentNodes {
+  nodes(first: 20, orderBy: createdAt, orderDirection: desc) {
+    id
+    nodeId
+    content
+    author
+    timestamp
+    isRoot
+    hasNFT
+    tree {
+      id
+      address
+    }
+  }
+}
+
+# Get user statistics
+query GetUserStats($userAddress: ID!) {
+  userStat(id: $userAddress) {
+    address
+    treesCreated
+    nodesCreated
+    nodesUpdated
+    firstTreeCreated
+    lastActivity
+  }
+}
+
+# Get daily statistics
+query GetDailyStats($startDate: String!, $endDate: String!) {
+  dailyTreeStats(
+    where: { date_gte: $startDate, date_lte: $endDate }
+    orderBy: date
+    orderDirection: asc
+  ) {
+    date
+    treesCreated
+    nodesCreated
+    nodesUpdated
+    totalGasUsed
+  }
+}
+
+# Search trees by content (requires full-text search setup)
+query SearchTrees($searchTerm: String!) {
+  trees(where: { rootContent_contains: $searchTerm }) {
+    id
+    address
+    rootContent
+    creator
+    nodeCount
+    createdAt
+  }
+}
+
+# Get node update history
+query GetNodeUpdates($nodeId: ID!) {
+  node(id: $nodeId) {
+    id
+    content
+    nodeUpdates: nodeUpdates(orderBy: timestamp, orderDirection: desc) {
+      id
+      oldContent
+      newContent
+      updatedBy
+      timestamp
+      transactionHash
+    }
+  }
+}
+
+# Get tree hierarchy (root and immediate children)
+query GetTreeHierarchy($treeId: ID!) {
+  tree(id: $treeId) {
+    id
+    rootId
+    nodes(where: { isRoot: true }) {
+      id
+      nodeId
+      content
+      children(first: 10) {
+        id
+        nodeId
+        content
+        author
+        children(first: 5) {
+          id
+          nodeId
+          content
+        }
+      }
+    }
+  }
+}
+
+# Get factory statistics
+query GetFactoryStats {
+  factories {
+    id
+    totalTrees
+    createdAt
+    updatedAt
+    trees(first: 5, orderBy: createdAt, orderDirection: desc) {
+      id
+      creator
+      nodeCount
+      createdAt
+    }
+  }
+}
+
+# Get Node NFTs with full details
+query GetNodeNFTs {
+  nodeNFTs(first: 10, orderBy: createdAt, orderDirection: desc) {
+    id
+    tokenId
+    nodeId
+    owner
+    content
+    textContent
+    tokenBoundAccount
+    nftContract {
+      id
+      address
+      tree {
+        address
+        rootContent
+      }
+    }
+    nodeToken {
+      id
+      name
+      symbol
+      totalSupply
+    }
+    createdAt
+  }
+}
+
+# Get NFT for a specific node
+query GetNFTByNode($nodeId: Bytes!) {
+  nodeNFTs(where: { nodeId: $nodeId }) {
+    id
+    tokenId
+    owner
+    content
+    tokenBoundAccount
+    nodeToken {
+      id
+      name
+      symbol
+      totalSupply
+      mintEvents(first: 5) {
+        amount
+        reason
+        timestamp
+      }
+    }
+  }
+}
+
+# Get Token Activities
+query GetTokenActivities($tokenAddress: ID!) {
+  nodeToken(id: $tokenAddress) {
+    id
+    name
+    symbol
+    totalSupply
+    mintEvents(first: 20, orderBy: timestamp, orderDirection: desc) {
+      id
+      to
+      amount
+      reason
+      timestamp
+    }
+    burnEvents(first: 20, orderBy: timestamp, orderDirection: desc) {
+      id
+      from
+      amount
+      reason
+      timestamp
+    }
+  }
+}
+
+# Get User's NFTs
+query GetUserNFTs($owner: Bytes!) {
+  nodeNFTs(where: { owner: $owner }, orderBy: createdAt, orderDirection: desc) {
+    id
+    tokenId
+    nodeId
+    content
+    nftContract {
+      tree {
+        address
+        rootContent
+      }
+    }
+    nodeToken {
+      name
+      symbol
+      totalSupply
+    }
+    createdAt
+  }
+}
+
+# Get NFT Contracts
+query GetNFTContracts {
+  nftContracts(orderBy: createdAt, orderDirection: desc) {
+    id
+    address
+    creator
+    totalSupply
+    tree {
+      address
+      rootContent
+      nodeCount
+    }
+    nodeNFTs(first: 3, orderBy: createdAt, orderDirection: desc) {
+      tokenId
+      owner
+      content
+    }
+    createdAt
+  }
+}
+
+# Get Token Bound Accounts
+query GetTokenBoundAccounts {
+  tokenBoundAccounts(first: 10, orderBy: createdAt, orderDirection: desc) {
+    id
+    address
+    tokenId
+    nodeNFT {
+      tokenId
+      nodeId
+      owner
+      content
+    }
+    createdAt
+  }
+}
+
+# Enhanced Daily Statistics
+query GetEnhancedDailyStats($startDate: String!, $endDate: String!) {
+  dailyTreeStats(
+    where: { date_gte: $startDate, date_lte: $endDate }
+    orderBy: date
+    orderDirection: asc
+  ) {
+    date
+    treesCreated
+    nodesCreated
+    nodesUpdated
+    nftsCreated
+    tokensCreated
+    totalGasUsed
+  }
+}
+
+# Enhanced User Statistics
+query GetEnhancedUserStats($userAddress: ID!) {
+  userStat(id: $userAddress) {
+    address
+    treesCreated
+    nodesCreated
+    nodesUpdated
+    nftsOwned
+    tokensCreated
+    firstTreeCreated
+    lastActivity
+  }
+}

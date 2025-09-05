@@ -1,0 +1,178 @@
+type Factory @entity {
+  id: ID!
+  address: Bytes!
+  totalTrees: BigInt!
+  trees: [Tree!]! @derivedFrom(field: "factory")
+  nftFactory: NFTFactory
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type NFTFactory @entity {
+  id: ID!
+  address: Bytes!
+  registry: Bytes!
+  accountImplementation: Bytes!
+  salt: Bytes!
+  nftContracts: [NFTContract!]! @derivedFrom(field: "nftFactory")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Tree @entity {
+  id: ID! # tree address
+  factory: Factory!
+  treeId: Bytes!
+  address: Bytes!
+  creator: Bytes!
+  rootContent: String!
+  rootTokenSupply: BigInt!
+  nodeCount: BigInt!
+  nftContract: NFTContract
+  rootId: Bytes!
+  nodes: [Node!]! @derivedFrom(field: "tree")
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  updatedAt: BigInt!
+  transactionHash: Bytes!
+}
+
+type Node @entity {
+  id: ID! # tree address + node id
+  nodeId: Bytes!
+  tree: Tree!
+  parentId: Bytes
+  parent: Node
+  children: [Node!]! @derivedFrom(field: "parent")
+  content: String!
+  author: Bytes!
+  timestamp: BigInt!
+  isRoot: Boolean!
+  hasNFT: Boolean!
+  modelId: String
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  updatedAt: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeUpdate @entity {
+  id: ID! # transaction hash + log index
+  node: Node!
+  oldContent: String!
+  newContent: String!
+  updatedBy: Bytes!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# NFT and Token entities
+type NFTContract @entity {
+  id: ID! # nft contract address
+  address: Bytes!
+  nftFactory: NFTFactory!
+  tree: Tree
+  treeId: Bytes
+  creator: Bytes!
+  totalSupply: BigInt!
+  nodeNFTs: [NodeNFT!]! @derivedFrom(field: "nftContract")
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeNFT @entity {
+  id: ID! # nft contract address + token id
+  tokenId: BigInt!
+  nodeId: Bytes!
+  nftContract: NFTContract!
+  owner: Bytes!
+  content: String!
+  textContent: String!
+  tokenBoundAccount: Bytes!
+  nodeToken: NodeToken
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  updatedAt: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeToken @entity {
+  id: ID! # token contract address
+  address: Bytes!
+  nodeNFT: NodeNFT!
+  name: String!
+  symbol: String!
+  totalSupply: BigInt!
+  initialSupply: BigInt!
+  decimals: Int!
+  tokenBoundAccount: Bytes!
+  mintEvents: [TokenMintEvent!]! @derivedFrom(field: "nodeToken")
+  burnEvents: [TokenBurnEvent!]! @derivedFrom(field: "nodeToken")
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenBoundAccount @entity {
+  id: ID! # TBA address
+  address: Bytes!
+  nodeNFT: NodeNFT!
+  tokenId: BigInt!
+  registry: Bytes!
+  accountImplementation: Bytes!
+  salt: Bytes!
+  chainId: BigInt!
+  tokenContract: Bytes!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenMintEvent @entity {
+  id: ID! # transaction hash + log index
+  nodeToken: NodeToken!
+  to: Bytes!
+  amount: BigInt!
+  reason: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenBurnEvent @entity {
+  id: ID! # transaction hash + log index
+  nodeToken: NodeToken!
+  from: Bytes!
+  amount: BigInt!
+  reason: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Statistics entities for analytics
+type DailyTreeStat @entity {
+  id: ID! # date as YYYY-MM-DD
+  date: String!
+  treesCreated: BigInt!
+  nodesCreated: BigInt!
+  nodesUpdated: BigInt!
+  nftsCreated: BigInt!
+  tokensCreated: BigInt!
+  uniqueAuthors: BigInt!
+  totalGasUsed: BigInt!
+}
+
+type UserStat @entity {
+  id: ID! # user address
+  address: Bytes!
+  treesCreated: BigInt!
+  nodesCreated: BigInt!
+  nodesUpdated: BigInt!
+  nftsOwned: BigInt!
+  tokensCreated: BigInt!
+  firstTreeCreated: BigInt!
+  lastActivity: BigInt!
+}
