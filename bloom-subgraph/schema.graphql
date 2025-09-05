@@ -9,3 +9,115 @@ type TreeCreated @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type NFTContractCreated @entity(immutable: true) {
+  id: Bytes!
+  nftContract: Bytes! # address
+  creator: Bytes! # address
+  treeId: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeCreated @entity(immutable: true) {
+  id: Bytes!
+  nodeId: Bytes! # bytes32
+  parentId: Bytes! # bytes32
+  author: Bytes! # address
+  timestamp: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeUpdated @entity(immutable: true) {
+  id: Bytes!
+  nodeId: Bytes! # bytes32
+  author: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MetadataSet @entity(immutable: true) {
+  id: Bytes!
+  nodeId: Bytes! # bytes32
+  key: String! # string
+  value: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeNFTMinted @entity(immutable: true) {
+  id: Bytes!
+  tokenId: BigInt! # uint256
+  nodeId: Bytes! # bytes32
+  owner: Bytes! # address
+  content: String! # string
+  tokenBoundAccount: Bytes! # address
+  nodeTokenContract: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NodeTokenCreated @entity(immutable: true) {
+  id: Bytes!
+  tokenId: BigInt! # uint256
+  nodeTokenContract: Bytes! # address
+  tokenBoundAccount: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenBoundAccountCreated @entity(immutable: true) {
+  id: Bytes!
+  tokenId: BigInt! # uint256
+  tokenBoundAccount: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokensMinted @entity(immutable: true) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  reason: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokensBurned @entity(immutable: true) {
+  id: Bytes!
+  from: Bytes! # address
+  amount: BigInt! # uint256
+  reason: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type NFTTransfer @entity(immutable: true) {
+  id: Bytes!
+  from: Bytes! # address
+  to: Bytes! # address
+  tokenId: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenTransfer @entity(immutable: true) {
+  id: Bytes!
+  from: Bytes! # address
+  to: Bytes! # address
+  value: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

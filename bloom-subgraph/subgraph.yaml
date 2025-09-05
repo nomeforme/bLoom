@@ -20,7 +20,95 @@ dataSources:
       abis:
         - name: LoomFactory
           file: ./abis/LoomFactory.json
+        - name: LoomTree
+          file: ./abis/LoomTree.json
+        - name: LoomNodeNFT
+          file: ./abis/LoomNodeNFT.json
+        - name: NodeToken
+          file: ./abis/NodeToken.json
       eventHandlers:
         - event: TreeCreated(indexed bytes32,indexed address,indexed address,address,string)
           handler: handleTreeCreated
       file: ./src/loom-factory.ts
+templates:
+  - kind: ethereum/contract
+    name: LoomTree
+    network: scroll
+    source:
+      abi: LoomTree
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - NodeCreated
+        - NodeUpdated
+        - MetadataSet
+      abis:
+        - name: LoomTree
+          file: ./abis/LoomTree.json
+        - name: LoomNodeNFT
+          file: ./abis/LoomNodeNFT.json
+        - name: NodeToken
+          file: ./abis/NodeToken.json
+      eventHandlers:
+        - event: NodeCreated(indexed bytes32,indexed bytes32,indexed address,uint256)
+          handler: handleNodeCreated
+        - event: NodeUpdated(indexed bytes32,indexed address)
+          handler: handleNodeUpdated
+        - event: MetadataSet(indexed bytes32,string,string)
+          handler: handleMetadataSet
+      file: ./src/loom-tree.ts
+  - kind: ethereum/contract
+    name: LoomNodeNFT
+    network: scroll
+    source:
+      abi: LoomNodeNFT
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - NodeNFTMinted
+        - NodeTokenCreated
+        - TokenBoundAccountCreated
+        - NFTTransfer
+      abis:
+        - name: LoomNodeNFT
+          file: ./abis/LoomNodeNFT.json
+        - name: NodeToken
+          file: ./abis/NodeToken.json
+      eventHandlers:
+        - event: NodeNFTMinted(indexed uint256,indexed bytes32,indexed address,string,address,address)
+          handler: handleNodeNFTMinted
+        - event: NodeTokenCreated(indexed uint256,indexed address,indexed address)
+          handler: handleNodeTokenCreated
+        - event: TokenBoundAccountCreated(indexed uint256,indexed address)
+          handler: handleTokenBoundAccountCreated
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleNFTTransfer
+      file: ./src/loom-node-nft.ts
+  - kind: ethereum/contract
+    name: NodeToken
+    network: scroll
+    source:
+      abi: NodeToken
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - TokensMinted
+        - TokensBurned
+        - TokenTransfer
+      abis:
+        - name: NodeToken
+          file: ./abis/NodeToken.json
+      eventHandlers:
+        - event: TokensMinted(indexed address,uint256,string)
+          handler: handleTokensMinted
+        - event: TokensBurned(indexed address,uint256,string)
+          handler: handleTokensBurned
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTokenTransfer
+      file: ./src/node-token.ts
