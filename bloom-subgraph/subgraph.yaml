@@ -8,7 +8,7 @@ dataSources:
     name: LoomFactory
     network: scroll
     source:
-      address: "0x75f2517f89482630816924e1BBbEfD855f70A4c2"
+      address: "0xCF0422b51D03dE4E43aedDd7Ab0D014DCf322A4D"
       abi: LoomFactory
       startBlock: 20699628
     mapping:
@@ -52,7 +52,7 @@ templates:
         - name: NodeToken
           file: ./abis/NodeToken.json
       eventHandlers:
-        - event: NodeCreated(indexed bytes32,indexed bytes32,indexed address,uint256)
+        - event: NodeCreated(indexed bytes32,indexed bytes32,indexed address,uint256,bool)
           handler: handleNodeCreated
         - event: NodeUpdated(indexed bytes32,indexed address)
           handler: handleNodeUpdated

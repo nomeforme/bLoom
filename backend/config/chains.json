@@ -10,6 +10,7 @@
       "baseFee": "1000000",
       "explorerUrl": "http://localhost:4000",
       "isTestnet": true,
+      "subgraphVersion": "v0.0.1",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",
@@ -24,6 +25,7 @@
       "gasPrice": "30000000",
       "explorerUrl": "https://sepolia.scrollscan.com",
       "isTestnet": true,
+      "subgraphVersion": "v0.0.3",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",
@@ -34,10 +36,11 @@
       "chainId": 534352,
       "name": "Scroll",
       "rpcUrl": "https://scroll-mainnet.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
-      "factoryAddress": "0x75f2517f89482630816924e1BBbEfD855f70A4c2",
+      "factoryAddress": "0xCF0422b51D03dE4E43aedDd7Ab0D014DCf322A4D",
       "gasPrice": "120108",
       "explorerUrl": "https://scrollscan.com",
       "isTestnet": true,
+      "subgraphVersion": "v0.0.4",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",
@@ -52,6 +55,7 @@
       "gasPrice": "3000000",
       "explorerUrl": "https://sepolia.etherscan.io",
       "isTestnet": true,
+      "subgraphVersion": "v0.0.1",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",

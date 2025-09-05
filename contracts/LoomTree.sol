@@ -40,7 +40,8 @@ contract LoomTree {
         bytes32 indexed nodeId,
         bytes32 indexed parentId,
         address indexed author,
-        uint256 timestamp
+        uint256 timestamp,
+        bool hasNFT
     );
     
     event NodeUpdated(
@@ -165,10 +166,10 @@ contract LoomTree {
             nodes[params.parentId].children.push(nodeId);
         }
         
-        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp);
-        
         // Set hasNFT flag and mint NFT for the node with content and token parameters
         newNode.hasNFT = true;
+        
+        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp, true);
         nftContract.mintNodeNFT(params.author, nodeId, params.content, params.tokenName, params.tokenSymbol, params.tokenSupply);
         
         return nodeId;
@@ -199,7 +200,7 @@ contract LoomTree {
             nodes[parentId].children.push(nodeId);
         }
         
-        emit NodeCreated(nodeId, parentId, author, block.timestamp);
+        emit NodeCreated(nodeId, parentId, author, block.timestamp, false);
         
         return nodeId;
     }
