@@ -1,105 +1,210 @@
 /**
  * Frontend multi-chain configuration utility
- * Provides dynamic chain configuration based on environment variables
+ * Fetches chain configuration from backend API
  */
 
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+
+// Cache for chain configurations
+let chainConfigCache = null;
+let activeChainCache = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 30000; // 30 seconds
+
 /**
- * Get configuration for a specific chain (frontend version)
+ * Check if cache is valid
+ * @returns {boolean} True if cache is still valid
+ */
+function isCacheValid() {
+  return chainConfigCache && activeChainCache && (Date.now() - cacheTimestamp) < CACHE_DURATION;
+}
+
+/**
+ * Fetch chain configuration from backend API
+ * @returns {Promise<object>} Chain configurations
+ */
+async function fetchChainConfigs() {
+  if (isCacheValid()) {
+    return { chains: chainConfigCache, active: activeChainCache };
+  }
+
+  try {
+    const [chainsResponse, activeResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/chains`),
+      fetch(`${API_BASE_URL}/api/chains/active`)
+    ]);
+
+    if (!chainsResponse.ok || !activeResponse.ok) {
+      throw new Error('Failed to fetch chain configuration');
+    }
+
+    const chainsData = await chainsResponse.json();
+    const activeData = await activeResponse.json();
+
+    if (!chainsData.success || !activeData.success) {
+      throw new Error('API returned error response');
+    }
+
+    // Update cache
+    chainConfigCache = chainsData.data;
+    activeChainCache = activeData.data;
+    cacheTimestamp = Date.now();
+
+    return { chains: chainConfigCache, active: activeChainCache };
+  } catch (error) {
+    console.error('Error fetching chain configuration:', error);
+    // Return fallback configuration
+    return getFallbackConfig();
+  }
+}
+
+/**
+ * Get fallback configuration when API is unavailable
+ * @returns {object} Fallback chain configurations
+ */
+function getFallbackConfig() {
+  const fallbackChains = {
+    '31337': {
+      chainId: 31337,
+      name: 'Local Anvil',
+      rpcUrl: 'http://localhost:8545',
+      factoryAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+      explorerUrl: 'http://localhost:4000'
+    },
+    '11155111': {
+      chainId: 11155111,
+      name: 'Sepolia Testnet',
+      rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v',
+      factoryAddress: '0x0a275e9170D873374f7532e77Af34448D77C3a44',
+      explorerUrl: 'https://sepolia.etherscan.io'
+    }
+  };
+  
+  return { 
+    chains: fallbackChains, 
+    active: fallbackChains['31337'] 
+  };
+}
+
+/**
+ * Get configuration for a specific chain
  * @param {string|number} chainId - The chain ID
- * @returns {object} Chain configuration object
+ * @returns {Promise<object>} Chain configuration object
  */
-export function getChainConfig(chainId) {
-  const id = chainId.toString();
-  
-  const config = {
-    chainId: parseInt(id),
-    name: process.env[`REACT_APP_CHAIN_${id}_NAME`],
-    rpcUrl: process.env[`REACT_APP_CHAIN_${id}_RPC_URL`],
-    factoryAddress: process.env[`REACT_APP_CHAIN_${id}_FACTORY_ADDRESS`],
-    explorerUrl: process.env[`REACT_APP_CHAIN_${id}_EXPLORER_URL`],
-    gasPrice: process.env[`REACT_APP_CHAIN_${id}_GAS_PRICE`]
-  };
-
-  // Remove undefined values
-  Object.keys(config).forEach(key => {
-    if (config[key] === undefined) {
-      delete config[key];
-    }
-  });
-
-  return config;
+export async function getChainConfig(chainId) {
+  const { chains } = await fetchChainConfigs();
+  return chains[chainId.toString()] || null;
 }
 
 /**
- * Get the currently active chain configuration (frontend version)
- * @returns {object} Active chain configuration
+ * Get the currently active chain configuration
+ * @returns {Promise<object>} Active chain configuration
  */
-export function getActiveChainConfig() {
-  const activeChainId = process.env.REACT_APP_ACTIVE_CHAIN_ID || '31337';
-  const config = getChainConfig(activeChainId);
-  
-  // Fallback to legacy env vars for backward compatibility
-  return {
-    chainId: parseInt(activeChainId),
-    name: config.name || 'Local Chain',
-    rpcUrl: config.rpcUrl || 'http://localhost:8545',
-    factoryAddress: config.factoryAddress || process.env.REACT_APP_FACTORY_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    explorerUrl: config.explorerUrl,
-    gasPrice: config.gasPrice,
-    ...config
-  };
+export async function getActiveChainConfig() {
+  const { active } = await fetchChainConfigs();
+  return active;
 }
 
 /**
- * Get all available chain configurations (frontend version)
- * @returns {object} Object with chainId as keys and config as values
+ * Get all available chain configurations
+ * @returns {Promise<object>} Object with chainId as keys and config as values
  */
-export function getAllChainConfigs() {
-  const chains = {};
-  
-  // Extract chain IDs from environment variables
-  const chainIds = new Set();
-  Object.keys(process.env).forEach(key => {
-    const match = key.match(/^REACT_APP_CHAIN_(\d+)_/);
-    if (match) {
-      chainIds.add(match[1]);
-    }
-  });
-
-  // Get config for each chain
-  chainIds.forEach(chainId => {
-    const config = getChainConfig(chainId);
-    if (config.rpcUrl) { // Only include chains with RPC URL
-      chains[chainId] = config;
-    }
-  });
-
+export async function getAllChainConfigs() {
+  const { chains } = await fetchChainConfigs();
   return chains;
 }
 
 /**
- * Check if a chain is configured (frontend version)
+ * Check if a chain is configured
  * @param {string|number} chainId - The chain ID to check
- * @returns {boolean} True if chain is configured
+ * @returns {Promise<boolean>} True if chain is configured
  */
-export function isChainConfigured(chainId) {
-  const config = getChainConfig(chainId);
-  return !!config.rpcUrl;
+export async function isChainConfigured(chainId) {
+  const config = await getChainConfig(chainId);
+  return !!config;
 }
 
 /**
- * Get supported chain IDs (frontend version)
- * @returns {string[]} Array of supported chain IDs
+ * Get supported chain IDs
+ * @returns {Promise<string[]>} Array of supported chain IDs
  */
-export function getSupportedChainIds() {
-  return Object.keys(getAllChainConfigs());
+export async function getSupportedChainIds() {
+  const chains = await getAllChainConfigs();
+  return Object.keys(chains);
 }
 
 /**
  * Get the default RPC URL for the active chain
- * @returns {string} RPC URL
+ * @returns {Promise<string>} RPC URL
  */
-export function getDefaultRpcUrl() {
-  const config = getActiveChainConfig();
+export async function getDefaultRpcUrl() {
+  const config = await getActiveChainConfig();
   return config.rpcUrl;
+}
+
+/**
+ * Switch the active chain (frontend helper)
+ * @param {string|number} chainIdOrAlias - Chain ID or alias to switch to
+ * @returns {Promise<object>} New active chain configuration
+ */
+export async function switchActiveChain(chainIdOrAlias) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chains/active`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ chainId: chainIdOrAlias })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to switch chain');
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to switch chain');
+    }
+
+    // Clear cache to force refresh
+    chainConfigCache = null;
+    activeChainCache = null;
+    cacheTimestamp = 0;
+
+    return data.data;
+  } catch (error) {
+    console.error('Error switching chain:', error);
+    throw error;
+  }
+}
+
+/**
+ * Clear the configuration cache (useful for forcing refresh)
+ */
+export function clearConfigCache() {
+  chainConfigCache = null;
+  activeChainCache = null;
+  cacheTimestamp = 0;
+}
+
+/**
+ * Get chain aliases
+ * @returns {Promise<object>} Object with alias as keys and chain IDs as values
+ */
+export async function getChainAliases() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chains/aliases`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch aliases');
+    }
+    const data = await response.json();
+    return data.success ? data.data : {};
+  } catch (error) {
+    console.error('Error fetching aliases:', error);
+    return {
+      local: '31337',
+      sepolia: '11155111',
+      'scroll-sepolia': '534351'
+    };
+  }
 }

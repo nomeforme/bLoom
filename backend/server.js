@@ -13,6 +13,7 @@ const tokenBalanceRoutes = require('./routes/tokenBalance');
 const modelsRoutes = require('./routes/models');
 const generateRoutes = require('./routes/generate');
 const ipfsRoutes = require('./routes/ipfs');
+const chainsRoutes = require('./routes/chains');
 
 // Import services
 const { setupSocketHandlers } = require('./socketHandlers');
@@ -41,6 +42,7 @@ app.use('/api/token-balance', tokenBalanceRoutes);
 app.use('/api/models', modelsRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/ipfs', ipfsRoutes);
+app.use('/api/chains', chainsRoutes);
 
 // Setup Socket.IO handlers
 setupSocketHandlers(io);
