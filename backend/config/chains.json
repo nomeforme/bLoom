@@ -1,5 +1,5 @@
 {
-  "activeChainId": "31337",
+  "activeChainId": "534351",
   "chains": {
     "31337": {
       "chainId": 31337,
@@ -21,7 +21,7 @@
       "name": "Scroll Sepolia",
       "rpcUrl": "https://scroll-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
       "factoryAddress": "",
-      "gasPrice": "3000000",
+      "gasPrice": "30000000",
       "explorerUrl": "https://sepolia.scrollscan.com",
       "isTestnet": true,
       "nativeCurrency": {
