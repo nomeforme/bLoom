@@ -158,56 +158,43 @@ const RightSidebar = ({
     }
   }, [selectedModel, onModelChange]);
 
-  // Check if node has NFT when selected node changes
+  // Check if node has NFT using GraphQL hasNFT flag
   useEffect(() => {
-    const checkIfNodeHasNFT = async () => {
-      if (!selectedNode?.id || !currentTree?.address || !connected || !checkNodeHasNFT) {
-        setNodeHasNFT(false);
-        setCurrentTokenBalance(null);
-        setIsCheckingNFT(false);
-        return;
-      }
+    if (!selectedNode?.id || !connected) {
+      setNodeHasNFT(false);
+      setCurrentTokenBalance(null);
+      setIsCheckingNFT(false);
+      return;
+    }
 
-      // Skip if node ID is invalid
-      if (selectedNode.id === '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        setNodeHasNFT(false);
-        setCurrentTokenBalance(null);
-        setIsCheckingNFT(false);
-        return;
-      }
+    // Skip if node ID is invalid
+    if (selectedNode.id === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      setNodeHasNFT(false);
+      setCurrentTokenBalance(null);
+      setIsCheckingNFT(false);
+      return;
+    }
 
-      setIsCheckingNFT(true);
-      
-      // Add a small delay to avoid race conditions with node creation
-      setTimeout(async () => {
-        try {
-          const hasNFT = await checkNodeHasNFT(currentTree.address, selectedNode.id);
-          setNodeHasNFT(hasNFT);
-          
-          // Only fetch token balance if node has NFT
-          if (hasNFT && socket) {
-            setIsLoadingBalance(true);
-            socket.emit('getTokenBalance', {
-              treeAddress: currentTree.address,
-              nodeId: selectedNode.id
-            });
-          } else {
-            setCurrentTokenBalance(null);
-            setIsLoadingBalance(false);
-          }
-        } catch (error) {
-          console.error('Error checking NFT status for node:', error);
-          setNodeHasNFT(false);
-          setCurrentTokenBalance(null);
-          setIsLoadingBalance(false);
-        } finally {
-          setIsCheckingNFT(false);
-        }
-      }, 100); // Small delay to let blockchain state settle
-    };
-
-    checkIfNodeHasNFT();
-  }, [selectedNode?.id, currentTree?.address, connected, checkNodeHasNFT, socket]);
+    setIsCheckingNFT(true);
+    
+    // Use hasNFT flag directly from GraphQL data (NodeCreated event)
+    const hasNFT = selectedNode.hasNFT || false;
+    setNodeHasNFT(hasNFT);
+    
+    // Only fetch token balance if node has NFT
+    if (hasNFT && socket) {
+      setIsLoadingBalance(true);
+      socket.emit('getTokenBalance', {
+        treeAddress: currentTree?.address,
+        nodeId: selectedNode.id
+      });
+    } else {
+      setCurrentTokenBalance(null);
+      setIsLoadingBalance(false);
+    }
+    
+    setIsCheckingNFT(false);
+  }, [selectedNode?.id, selectedNode?.hasNFT, connected, socket, currentTree?.address]);
 
   // Set up socket listeners for token balance updates
   useEffect(() => {
@@ -929,7 +916,7 @@ const RightSidebar = ({
             {nodeHasNFT && (
               <>
                 <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
-            {selectedNodeNFT ? (
+            {selectedNodeNFT && (selectedNodeNFT.nodeTokenContract || selectedNode.nodeTokenContract) ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
                 border: '1px solid #4CAF50',
@@ -939,9 +926,12 @@ const RightSidebar = ({
               }}>
                 <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
                   {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    // Use structured data from GraphQL first, fallback to parsed metadata
+                    const nodeTokenContract = selectedNodeNFT.nodeTokenContract || selectedNode.nodeTokenContract;
+                    const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content || '');
                     
-                    if (metadata && metadata.nodeTokenContract) {
+                    if (nodeTokenContract) {
                       return (
                         <div>
                           <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
@@ -958,15 +948,15 @@ const RightSidebar = ({
                             marginBottom: '8px',
                             cursor: 'pointer'
                           }}
-                          onClick={() => copyToClipboard(metadata.nodeTokenContract)}
+                          onClick={() => copyToClipboard(nodeTokenContract)}
                           title="Click to copy full address"
                           >
-                            {metadata.nodeTokenContract}
+                            {nodeTokenContract}
                           </div>
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>• Token Name: {metadata.tokenName || 'NODE'}</div>
-                            <div>• Token Symbol: {metadata.tokenSymbol || 'NODE'}</div>
-                            <div>• Initial Supply: {metadata.tokenSupply || '1000'} {metadata.tokenSymbol || 'NODE'}</div>
+                            <div>• Token Name: {metadata?.tokenName || 'NODE'}</div>
+                            <div>• Token Symbol: {metadata?.tokenSymbol || 'NODE'}</div>
+                            <div>• Initial Supply: {metadata?.tokenSupply || '1000'} {metadata?.tokenSymbol || 'NODE'}</div>
                             <div>
                               • Current Balance: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
                                 {
@@ -974,24 +964,13 @@ const RightSidebar = ({
                                   currentTokenBalance !== null ? currentTokenBalance : 
                                   'N/A'
                                 }
-                              </span> {currentTokenBalance !== null && !isLoadingBalance ? (metadata.tokenSymbol || 'NODE') : ''}
+                              </span> {currentTokenBalance !== null && !isLoadingBalance ? (metadata?.tokenSymbol || 'NODE') : ''}
                             </div>
                             <div>• Token Type: ERC20</div>
                             <div>• Held by Token Bound Account</div>
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            Held by TBA: {metadata.tokenBoundAccount ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(metadata.tokenBoundAccount)} title="Click to copy full address">{ellipseAddress(metadata.tokenBoundAccount)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
-                    } else if (metadata) {
-                      return (
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            No Node Token found in NFT metadata
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
+                            Held by TBA: {tokenBoundAccount ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(tokenBoundAccount)} title="Click to copy full address">{ellipseAddress(tokenBoundAccount)}</span> : 'N/A'}
                           </div>
                         </div>
                       );
@@ -999,7 +978,7 @@ const RightSidebar = ({
                       return (
                         <div>
                           <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            Could not parse NFT metadata for token info
+                            No Node Token contract found
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                             NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
@@ -1033,7 +1012,7 @@ const RightSidebar = ({
             {nodeHasNFT && (
               <>
                 <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
-            {selectedNodeNFT ? (
+            {selectedNodeNFT && (selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount) ? (
               <div style={{ 
                 backgroundColor: '#1a1a1a', 
                 border: '1px solid #4CAF50',
@@ -1043,9 +1022,11 @@ const RightSidebar = ({
               }}>
                 <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
                   {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
+                    // Use structured data from GraphQL first, fallback to parsed metadata
+                    const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
+                    const metadata = parseNFTMetadata(selectedNodeNFT.content || '');
                     
-                    if (metadata && metadata.tokenBoundAccount) {
+                    if (tokenBoundAccount) {
                       return (
                         <div>
                           <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
@@ -1062,10 +1043,10 @@ const RightSidebar = ({
                             marginBottom: '8px',
                             cursor: 'pointer'
                           }}
-                          onClick={() => copyToClipboard(metadata.tokenBoundAccount)}
+                          onClick={() => copyToClipboard(tokenBoundAccount)}
                           title="Click to copy full address"
                           >
-                            {metadata.tokenBoundAccount}
+                            {tokenBoundAccount}
                           </div>
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
                             <div>• This NFT has its own Ethereum account</div>
@@ -1078,22 +1059,11 @@ const RightSidebar = ({
                           </div>
                         </div>
                       );
-                    } else if (metadata) {
-                      return (
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            No Token Bound Account found in NFT metadata
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
                     } else {
                       return (
                         <div>
                           <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            Could not parse NFT metadata for TBA info
+                            No Token Bound Account found
                           </div>
                           <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
                             NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}

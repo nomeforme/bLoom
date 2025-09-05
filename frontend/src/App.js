@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import io from 'socket.io-client';
+import { ApolloProvider } from '@apollo/client/react';
 import LoomGraph from './components/LoomGraph';
 import RightSidebar from './components/RightSidebar';
 import LeftSidebar from './components/LeftSidebar';
-import { useBlockchain } from './hooks/useBlockchain';
+import { useBlockchainGraph } from './hooks/useBlockchainGraph';
+import { useRealtimeGraph } from './hooks/useGraphSubscriptions';
+import { GraphProvider, useGraphContext } from './components/GraphProvider';
 import { createSocketHandlers } from './utils/socketHandlers';
 import { createGenerationHandler } from './utils/generationUtils';
 import { createNodeHandlers } from './utils/nodeUtils';
@@ -12,10 +15,11 @@ import { createImportHandler } from './utils/importUtils';
 import { createMemoryHandlers } from './utils/memoryUtils';
 import { createNotificationSystem } from './utils/notificationUtils';
 import { getActiveChainConfig } from './utils/chainConfig';
+import { graphClient } from './config/graphql';
 import modelsConfig from './config/models.json';
 import './App.css';
 
-function App() {
+function AppInner() {
   const graphRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -56,7 +60,19 @@ function App() {
     useIPFSRetrieval,
     setUseIPFSRetrieval,
     nativeCurrencySymbol
-  } = useBlockchain(socket);
+  } = useBlockchainGraph(socket, useGraphContext());
+
+  // Real-time Graph subscriptions
+  const {
+    recentEvents,
+    eventCounts,
+    isConnected: graphConnected,
+    pollingStats,
+    refreshNow: refreshGraph
+  } = useRealtimeGraph((notification) => {
+    // Add notifications for real-time events
+    addNotification(notification.message, notification.type);
+  });
 
   useEffect(() => {
     // Log active chain configuration on startup
@@ -209,24 +225,23 @@ function App() {
     }
   }, [currentTree, memoryHandlers]);
 
-  // Fetch NFT information when a node is selected
+  // Set NFT information from GraphQL data when a node is selected
   useEffect(() => {
-    const fetchNodeNFT = async () => {
-      if (selectedNode && currentTree && getNodeNFTInfo) {
-        try {
-          const nftInfo = await getNodeNFTInfo(currentTree, selectedNode.id);
-          setSelectedNodeNFT(nftInfo);
-        } catch (error) {
-          console.error('Error fetching NFT info:', error);
-          setSelectedNodeNFT(null);
-        }
-      } else {
-        setSelectedNodeNFT(null);
-      }
-    };
-
-    fetchNodeNFT();
-  }, [selectedNode, currentTree, getNodeNFTInfo]);
+    // Use GraphQL data directly from the node object instead of making additional RPC calls
+    if (selectedNode && selectedNode.hasNFT && (selectedNode.tokenBoundAccount || selectedNode.nodeTokenContract)) {
+      // Use the GraphQL data directly from the node object
+      setSelectedNodeNFT({
+        tokenId: selectedNode.tokenId,
+        nodeId: selectedNode.nodeId,
+        owner: selectedNode.author,
+        content: selectedNode.originalContent || selectedNode.content,
+        tokenBoundAccount: selectedNode.tokenBoundAccount,
+        nodeTokenContract: selectedNode.nodeTokenContract
+      });
+    } else {
+      setSelectedNodeNFT(null);
+    }
+  }, [selectedNode]);
 
   // Initialize node handlers
   const nodeHandlers = createNodeHandlers(
@@ -494,6 +509,16 @@ function App() {
         </>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ApolloProvider client={graphClient}>
+      <GraphProvider>
+        <AppInner />
+      </GraphProvider>
+    </ApolloProvider>
   );
 }
 
