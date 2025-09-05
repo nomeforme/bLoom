@@ -46,12 +46,13 @@ const GET_TREE_NODES = gql`
       author
       timestamp
       treeAddress
+      hasNFT
       blockNumber
       blockTimestamp
       transactionHash
     }
     
-    # Get all NFTs minted for nodes
+    # Get all NFTs minted for nodes (unfiltered since NFTs don't have treeAddress field)
     nodeNFTMinteds(first: $first, orderBy: "blockTimestamp") {
       id
       tokenId
@@ -266,6 +267,13 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
     nftMap.set(nft.nodeId, nft);
   });
 
+  console.log('🔍 NFT mapping for tree:', {
+    treeAddress: treeData.treeAddress,
+    totalNfts: filteredNfts.length,
+    nftNodeIds: Array.from(nftMap.keys()).map(id => id.substring(0, 10) + '...'),
+    nodeIds: nodeCreations.map(n => n.nodeId.substring(0, 10) + '...')
+  });
+
   // Create a map of metadata by nodeId
   const metadataMap = new Map();
   metadataSets.forEach(meta => {
@@ -280,23 +288,33 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
     const nftData = nftMap.get(nodeCreation.nodeId);
     const metadata = metadataMap.get(nodeCreation.nodeId) || {};
     
-    // Determine content source and type using hasNFT from NodeCreated event
+    // Determine content source and type
     let content = '';
     let hasNFT = nodeCreation.hasNFT || false; // Use hasNFT from the event
     let originalContent = '';
     
-    if (hasNFT && nftData) {
-      content = nftData.content || '';
+    // First priority: Use NFT content if available (regardless of hasNFT flag)
+    if (nftData && nftData.content) {
+      content = nftData.content;
       originalContent = content;
+      hasNFT = true; // Ensure hasNFT is true if we have NFT data
+      console.log('✅ Using NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
     } else if (hasNFT && !nftData) {
-      // Node has NFT but we don't have the NFT data yet
-      content = 'Loading...';
+      // Node should have NFT but we don't have the NFT data yet
+      content = 'Loading NFT content...';
       originalContent = '';
+      console.log('⏳ Node has NFT but no data yet:', nodeCreation.nodeId.substring(0, 10) + '...');
+    } else if (hasNFT) {
+      // hasNFT is true but no content in nftData
+      content = 'NFT content not available';
+      originalContent = '';
+      console.log('⚠️ Node has NFT flag but no content:', nodeCreation.nodeId.substring(0, 10) + '...');
     } else {
       // Lightweight node - content stored directly in contract
       // We'll need to fetch this from RPC as fallback
       content = 'Content in contract storage';
       originalContent = '';
+      console.log('📄 Node uses contract storage:', nodeCreation.nodeId.substring(0, 10) + '...');
     }
     
     // Handle IPFS content display
