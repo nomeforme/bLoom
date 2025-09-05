@@ -26,6 +26,8 @@ type NodeCreated @entity(immutable: true) {
   parentId: Bytes! # bytes32
   author: Bytes! # address
   timestamp: BigInt! # uint256
+  treeAddress: Bytes! # address - the tree contract that emitted this event
+  hasNFT: Boolean! # bool - whether this node has NFT/ERC20/ERC6551
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -35,6 +37,7 @@ type NodeUpdated @entity(immutable: true) {
   id: Bytes!
   nodeId: Bytes! # bytes32
   author: Bytes! # address
+  treeAddress: Bytes! # address - the tree contract that emitted this event
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -45,6 +48,7 @@ type MetadataSet @entity(immutable: true) {
   nodeId: Bytes! # bytes32
   key: String! # string
   value: String! # string
+  treeAddress: Bytes! # address - the tree contract that emitted this event
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

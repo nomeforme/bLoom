@@ -17,6 +17,8 @@ export function handleNodeCreated(event: NodeCreatedEvent): void {
   entity.parentId = event.params.parentId
   entity.author = event.params.author
   entity.timestamp = event.params.timestamp
+  entity.treeAddress = event.address // ← This is the key! The tree contract address
+  entity.hasNFT = event.params.hasNFT // ← New field from updated event
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
@@ -31,6 +33,7 @@ export function handleNodeUpdated(event: NodeUpdatedEvent): void {
   )
   entity.nodeId = event.params.nodeId
   entity.author = event.params.author
+  entity.treeAddress = event.address
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
@@ -46,6 +49,7 @@ export function handleMetadataSet(event: MetadataSetEvent): void {
   entity.nodeId = event.params.nodeId
   entity.key = event.params.key
   entity.value = event.params.value
+  entity.treeAddress = event.address
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
