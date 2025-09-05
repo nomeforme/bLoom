@@ -46,6 +46,11 @@ try {
     forgeArgs.push('--with-gas-price', chainConfig.gasPrice);
   }
 
+  // Add nonce if provided as environment variable
+  if (process.env.NONCE) {
+    forgeArgs.push('--nonce', process.env.NONCE);
+  }
+
   // Execute forge command and capture output
   let deploymentOutput = '';
   
