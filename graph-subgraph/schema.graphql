@@ -1,4 +1,4 @@
-type Factory @entity {
+type Factory @entity(immutable: false) {
   id: ID!
   address: Bytes!
   totalTrees: BigInt!
@@ -8,7 +8,7 @@ type Factory @entity {
   updatedAt: BigInt!
 }
 
-type NFTFactory @entity {
+type NFTFactory @entity(immutable: false) {
   id: ID!
   address: Bytes!
   registry: Bytes!
@@ -19,7 +19,7 @@ type NFTFactory @entity {
   updatedAt: BigInt!
 }
 
-type Tree @entity {
+type Tree @entity(immutable: false) {
   id: ID! # tree address
   factory: Factory!
   treeId: Bytes!
@@ -37,7 +37,7 @@ type Tree @entity {
   transactionHash: Bytes!
 }
 
-type Node @entity {
+type Node @entity(immutable: false) {
   id: ID! # tree address + node id
   nodeId: Bytes!
   tree: Tree!
@@ -56,7 +56,7 @@ type Node @entity {
   transactionHash: Bytes!
 }
 
-type NodeUpdate @entity {
+type NodeUpdate @entity(immutable: false) {
   id: ID! # transaction hash + log index
   node: Node!
   oldContent: String!
@@ -68,7 +68,7 @@ type NodeUpdate @entity {
 }
 
 # NFT and Token entities
-type NFTContract @entity {
+type NFTContract @entity(immutable: false) {
   id: ID! # nft contract address
   address: Bytes!
   nftFactory: NFTFactory!
@@ -82,7 +82,7 @@ type NFTContract @entity {
   transactionHash: Bytes!
 }
 
-type NodeNFT @entity {
+type NodeNFT @entity(immutable: false) {
   id: ID! # nft contract address + token id
   tokenId: BigInt!
   nodeId: Bytes!
@@ -98,7 +98,7 @@ type NodeNFT @entity {
   transactionHash: Bytes!
 }
 
-type NodeToken @entity {
+type NodeToken @entity(immutable: false) {
   id: ID! # token contract address
   address: Bytes!
   nodeNFT: NodeNFT!
@@ -106,7 +106,7 @@ type NodeToken @entity {
   symbol: String!
   totalSupply: BigInt!
   initialSupply: BigInt!
-  decimals: Int!
+  decimals: BigInt!
   tokenBoundAccount: Bytes!
   mintEvents: [TokenMintEvent!]! @derivedFrom(field: "nodeToken")
   burnEvents: [TokenBurnEvent!]! @derivedFrom(field: "nodeToken")
@@ -115,7 +115,7 @@ type NodeToken @entity {
   transactionHash: Bytes!
 }
 
-type TokenBoundAccount @entity {
+type TokenBoundAccount @entity(immutable: false) {
   id: ID! # TBA address
   address: Bytes!
   nodeNFT: NodeNFT!
@@ -130,7 +130,7 @@ type TokenBoundAccount @entity {
   transactionHash: Bytes!
 }
 
-type TokenMintEvent @entity {
+type TokenMintEvent @entity(immutable: false) {
   id: ID! # transaction hash + log index
   nodeToken: NodeToken!
   to: Bytes!
@@ -141,7 +141,7 @@ type TokenMintEvent @entity {
   transactionHash: Bytes!
 }
 
-type TokenBurnEvent @entity {
+type TokenBurnEvent @entity(immutable: false) {
   id: ID! # transaction hash + log index
   nodeToken: NodeToken!
   from: Bytes!
@@ -153,7 +153,7 @@ type TokenBurnEvent @entity {
 }
 
 # Statistics entities for analytics
-type DailyTreeStat @entity {
+type DailyTreeStat @entity(immutable: false) {
   id: ID! # date as YYYY-MM-DD
   date: String!
   treesCreated: BigInt!
@@ -165,7 +165,7 @@ type DailyTreeStat @entity {
   totalGasUsed: BigInt!
 }
 
-type UserStat @entity {
+type UserStat @entity(immutable: false) {
   id: ID! # user address
   address: Bytes!
   treesCreated: BigInt!

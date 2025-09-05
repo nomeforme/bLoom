@@ -1,0 +1,40 @@
+type Factory @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  totalTrees: BigInt!
+  trees: [Tree!]! @derivedFrom(field: "factory")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Tree @entity(immutable: false) {
+  id: ID! # tree address
+  factory: Factory!
+  treeId: Bytes!
+  address: Bytes!
+  creator: Bytes!
+  rootContent: String!
+  rootTokenSupply: BigInt!
+  nodeCount: BigInt!
+  rootId: Bytes!
+  nodes: [Node!]! @derivedFrom(field: "tree")
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  updatedAt: BigInt!
+  transactionHash: Bytes!
+}
+
+type Node @entity(immutable: false) {
+  id: ID! # tree address + node id
+  nodeId: Bytes!
+  tree: Tree!
+  content: String!
+  author: Bytes!
+  timestamp: BigInt!
+  isRoot: Boolean!
+  hasNFT: Boolean!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  updatedAt: BigInt!
+  transactionHash: Bytes!
+}
