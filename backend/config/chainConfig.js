@@ -1,35 +1,67 @@
 /**
  * Multi-chain configuration utility
- * Provides dynamic chain configuration based on environment variables
+ * Reads chain configuration from chains.json and private keys from environment variables
  */
+
+const fs = require('fs');
+const path = require('path');
+
+// Load chains configuration
+const chainsConfigPath = path.join(__dirname, 'chains.json');
+let chainsConfig;
+
+function loadChainsConfig() {
+  if (!chainsConfig) {
+    try {
+      const configData = fs.readFileSync(chainsConfigPath, 'utf8');
+      chainsConfig = JSON.parse(configData);
+    } catch (error) {
+      console.error('Error loading chains configuration:', error.message);
+      throw new Error('Failed to load chains configuration');
+    }
+  }
+  return chainsConfig;
+}
+
+/**
+ * Resolve chain ID from alias or return as-is
+ * @param {string|number} chainIdOrAlias - Chain ID or alias (e.g., 'local', 'sepolia')
+ * @returns {string} Chain ID
+ */
+function resolveChainId(chainIdOrAlias) {
+  const config = loadChainsConfig();
+  const input = chainIdOrAlias.toString().toLowerCase();
+  
+  // Check if it's an alias
+  if (config.aliases && config.aliases[input]) {
+    return config.aliases[input].toString();
+  }
+  
+  return chainIdOrAlias.toString();
+}
 
 /**
  * Get configuration for a specific chain
- * @param {string|number} chainId - The chain ID
+ * @param {string|number} chainIdOrAlias - The chain ID or alias
  * @returns {object} Chain configuration object
  */
-function getChainConfig(chainId) {
-  const id = chainId.toString();
+function getChainConfig(chainIdOrAlias) {
+  const config = loadChainsConfig();
+  const chainId = resolveChainId(chainIdOrAlias);
   
-  const config = {
-    chainId: parseInt(id),
-    name: process.env[`CHAIN_${id}_NAME`],
-    rpcUrl: process.env[`CHAIN_${id}_RPC_URL`],
-    factoryAddress: process.env[`CHAIN_${id}_FACTORY_ADDRESS`],
-    privateKey: process.env[`CHAIN_${id}_PRIVATE_KEY`],
-    gasPrice: process.env[`CHAIN_${id}_GAS_PRICE`],
-    baseFee: process.env[`CHAIN_${id}_BASE_FEE`],
-    explorerUrl: process.env[`CHAIN_${id}_EXPLORER_URL`]
-  };
+  if (!config.chains[chainId]) {
+    throw new Error(`Chain configuration not found for ID: ${chainId}`);
+  }
 
-  // Remove undefined values
-  Object.keys(config).forEach(key => {
-    if (config[key] === undefined) {
-      delete config[key];
-    }
-  });
+  const chainConfig = { ...config.chains[chainId] };
+  
+  // Add private key from environment variables
+  const privateKey = process.env[`PRIVATE_KEY_${chainId}`] || process.env.PRIVATE_KEY;
+  if (privateKey) {
+    chainConfig.privateKey = privateKey;
+  }
 
-  return config;
+  return chainConfig;
 }
 
 /**
@@ -37,45 +69,62 @@ function getChainConfig(chainId) {
  * @returns {object} Active chain configuration
  */
 function getActiveChainConfig() {
-  const activeChainId = process.env.ACTIVE_CHAIN_ID || '31337';
-  const config = getChainConfig(activeChainId);
+  const config = loadChainsConfig();
+  const activeChainId = config.activeChainId;
   
-  // Fallback to legacy env vars for backward compatibility
-  return {
-    chainId: parseInt(activeChainId),
-    name: config.name || 'Local Chain',
-    rpcUrl: config.rpcUrl || process.env.RPC_URL || 'http://localhost:8545',
-    factoryAddress: config.factoryAddress || process.env.FACTORY_ADDRESS,
-    privateKey: config.privateKey || process.env.PRIVATE_KEY,
-    gasPrice: config.gasPrice,
-    baseFee: config.baseFee,
-    explorerUrl: config.explorerUrl,
-    ...config
-  };
+  return getChainConfig(activeChainId);
 }
 
 /**
- * Get all available chain configurations
+ * Set the active chain
+ * @param {string|number} chainIdOrAlias - Chain ID or alias to set as active
+ */
+function setActiveChain(chainIdOrAlias) {
+  const config = loadChainsConfig();
+  const chainId = resolveChainId(chainIdOrAlias);
+  
+  // Verify chain exists
+  if (!config.chains[chainId]) {
+    throw new Error(`Chain configuration not found for ID: ${chainId}`);
+  }
+  
+  config.activeChainId = chainId;
+  
+  // Write back to file
+  fs.writeFileSync(chainsConfigPath, JSON.stringify(config, null, 2));
+  
+  // Reload config
+  chainsConfig = null;
+}
+
+/**
+ * Get all available chain configurations (without private keys for security)
  * @returns {object} Object with chainId as keys and config as values
  */
 function getAllChainConfigs() {
+  const config = loadChainsConfig();
   const chains = {};
   
-  // Extract chain IDs from environment variables
-  const chainIds = new Set();
-  Object.keys(process.env).forEach(key => {
-    const match = key.match(/^CHAIN_(\d+)_/);
-    if (match) {
-      chainIds.add(match[1]);
-    }
+  Object.keys(config.chains).forEach(chainId => {
+    const chainConfig = { ...config.chains[chainId] };
+    // Remove private key for security
+    delete chainConfig.privateKey;
+    chains[chainId] = chainConfig;
   });
 
-  // Get config for each chain
-  chainIds.forEach(chainId => {
-    const config = getChainConfig(chainId);
-    if (config.rpcUrl) { // Only include chains with RPC URL
-      chains[chainId] = config;
-    }
+  return chains;
+}
+
+/**
+ * Get all available chain configurations with private keys (for server use)
+ * @returns {object} Object with chainId as keys and config as values
+ */
+function getAllChainConfigsWithKeys() {
+  const config = loadChainsConfig();
+  const chains = {};
+  
+  Object.keys(config.chains).forEach(chainId => {
+    chains[chainId] = getChainConfig(chainId);
   });
 
   return chains;
@@ -83,12 +132,17 @@ function getAllChainConfigs() {
 
 /**
  * Check if a chain is configured
- * @param {string|number} chainId - The chain ID to check
+ * @param {string|number} chainIdOrAlias - The chain ID or alias to check
  * @returns {boolean} True if chain is configured
  */
-function isChainConfigured(chainId) {
-  const config = getChainConfig(chainId);
-  return !!config.rpcUrl;
+function isChainConfigured(chainIdOrAlias) {
+  try {
+    const config = loadChainsConfig();
+    const chainId = resolveChainId(chainIdOrAlias);
+    return !!config.chains[chainId];
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
@@ -96,13 +150,42 @@ function isChainConfigured(chainId) {
  * @returns {string[]} Array of supported chain IDs
  */
 function getSupportedChainIds() {
-  return Object.keys(getAllChainConfigs());
+  const config = loadChainsConfig();
+  return Object.keys(config.chains);
+}
+
+/**
+ * Get all available aliases
+ * @returns {object} Object with alias as keys and chain IDs as values
+ */
+function getAliases() {
+  const config = loadChainsConfig();
+  return config.aliases || {};
+}
+
+/**
+ * Get chain name by ID or alias
+ * @param {string|number} chainIdOrAlias - Chain ID or alias
+ * @returns {string} Chain name
+ */
+function getChainName(chainIdOrAlias) {
+  try {
+    const chainConfig = getChainConfig(chainIdOrAlias);
+    return chainConfig.name;
+  } catch (error) {
+    return 'Unknown Chain';
+  }
 }
 
 module.exports = {
   getChainConfig,
   getActiveChainConfig,
+  setActiveChain,
   getAllChainConfigs,
+  getAllChainConfigsWithKeys,
   isChainConfigured,
-  getSupportedChainIds
+  getSupportedChainIds,
+  getAliases,
+  getChainName,
+  resolveChainId
 };

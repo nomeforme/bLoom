@@ -7,7 +7,8 @@ export const createSocketHandlers = (
   setIsGeneratingSiblings,
   addNotification,
   graphRef,
-  getTree
+  getTree,
+  memoryHandlers
 ) => {
   const handleGenerationComplete = (data) => {
     console.log('🎯 App: Global handleGenerationComplete called:', data);
@@ -89,7 +90,12 @@ export const createSocketHandlers = (
             if (stillExists) return prevTrees;
             return [...prevTrees, fullTree];
           });
-          setCurrentTree(fullTree);
+          // Use memory handler to properly set tree and select root node
+          if (memoryHandlers) {
+            memoryHandlers.handleTreeSelect(fullTree, currentTree, null);
+          } else {
+            setCurrentTree(fullTree);
+          }
         }).catch(error => {
           console.error('Socket: Error fetching full tree data:', error);
           const basicTree = {
@@ -105,7 +111,12 @@ export const createSocketHandlers = (
             if (stillExists) return prevTrees;
             return [...prevTrees, basicTree];
           });
-          setCurrentTree(basicTree);
+          // Use memory handler to properly set tree and select root node
+          if (memoryHandlers) {
+            memoryHandlers.handleTreeSelect(basicTree, currentTree, null);
+          } else {
+            setCurrentTree(basicTree);
+          }
         });
       } catch (error) {
         console.error('Socket: Error in tree creation handler:', error);
