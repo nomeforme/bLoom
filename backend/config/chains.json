@@ -1,0 +1,54 @@
+{
+  "activeChainId": "31337",
+  "chains": {
+    "31337": {
+      "chainId": 31337,
+      "name": "Local Anvil",
+      "rpcUrl": "http://localhost:8545",
+      "factoryAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "gasPrice": "3000000",
+      "baseFee": "1000000",
+      "explorerUrl": "http://localhost:4000",
+      "isTestnet": true,
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      }
+    },
+    "534351": {
+      "chainId": 534351,
+      "name": "Scroll Sepolia",
+      "rpcUrl": "https://scroll-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
+      "factoryAddress": "",
+      "gasPrice": "3000000",
+      "explorerUrl": "https://sepolia.scrollscan.com",
+      "isTestnet": true,
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      }
+    },
+    "11155111": {
+      "chainId": 11155111,
+      "name": "Sepolia Testnet",
+      "rpcUrl": "https://eth-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
+      "factoryAddress": "0x0a275e9170D873374f7532e77Af34448D77C3a44",
+      "gasPrice": "3000000",
+      "explorerUrl": "https://sepolia.etherscan.io",
+      "isTestnet": true,
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      }
+    }
+  },
+  "aliases": {
+    "local": "31337",
+    "sepolia": "11155111",
+    "scroll-sepolia": "534351",
+    "scroll": "534351"
+  }
+}

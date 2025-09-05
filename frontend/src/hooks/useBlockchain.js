@@ -43,9 +43,7 @@ const NFT_ABI = [
   "function symbol() external view returns (string memory)"
 ];
 
-// Get factory address from dynamic configuration
-const chainConfig = getActiveChainConfig();
-const FACTORY_ADDRESS = chainConfig.factoryAddress;
+// Factory address will be loaded dynamically
 
 // IPFS rate limiting configuration based on Pinata plans
 const IPFS_RATE_LIMITS = {
@@ -163,6 +161,25 @@ export const useBlockchain = (socket = null) => {
   const [ipfsAvailable, setIpfsAvailable] = useState(false);
   const [useIPFSRetrieval, setUseIPFSRetrieval] = useState(true); // Global toggle for IPFS resolution
   const [nativeCurrencySymbol, setNativeCurrencySymbol] = useState('ETH');
+  const [chainConfig, setChainConfig] = useState(null);
+  const [factoryAddress, setFactoryAddress] = useState(null);
+
+  // Load chain configuration
+  useEffect(() => {
+    const loadChainConfig = async () => {
+      try {
+        const config = await getActiveChainConfig();
+        setChainConfig(config);
+        setFactoryAddress(config.factoryAddress);
+      } catch (error) {
+        console.error('Error loading chain configuration:', error);
+        // Use fallback
+        setFactoryAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
+      }
+    };
+    
+    loadChainConfig();
+  }, []);
 
   useEffect(() => {
     // Check if MetaMask is available or use local provider
@@ -192,11 +209,13 @@ export const useBlockchain = (socket = null) => {
               setAccount(address);
               
               // Always create new factory contract with new signer
-              const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
-              setFactory(factoryContract);
-              setConnected(true);
-              
-              console.log('Account switched to:', address);
+              if (factoryAddress) {
+                const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
+                setFactory(factoryContract);
+                setConnected(true);
+                
+                console.log('Account switched to:', address);
+              }
             }
           } catch (error) {
             console.error('Error handling account change:', error);
@@ -230,16 +249,35 @@ export const useBlockchain = (socket = null) => {
       };
     } else {
       // Fallback to local Anvil node
-      const provider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
-      setProvider(provider);
-      
-      // Get chain symbol for local provider
-      getCurrentChainSymbol(provider).then(symbol => {
-        setNativeCurrencySymbol(symbol);
-      });
-      
-      // For development, auto-connect with a test account
-      connectWithTestAccount(provider);
+      const setupFallbackProvider = async () => {
+        try {
+          const rpcUrl = await getDefaultRpcUrl();
+          const provider = new ethers.JsonRpcProvider(rpcUrl);
+          setProvider(provider);
+          
+          // Get chain symbol for local provider
+          getCurrentChainSymbol(provider).then(symbol => {
+            setNativeCurrencySymbol(symbol);
+          });
+          
+          // For development, auto-connect with a test account
+          connectWithTestAccount(provider);
+        } catch (error) {
+          console.error('Error setting up fallback provider:', error);
+          // Use hardcoded fallback
+          const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+          setProvider(provider);
+          
+          // Get chain symbol for fallback provider
+          getCurrentChainSymbol(provider).then(symbol => {
+            setNativeCurrencySymbol(symbol);
+          });
+          
+          // For development, auto-connect with a test account
+          connectWithTestAccount(provider);
+        }
+      };
+      setupFallbackProvider();
     }
   }, [account]);
 
@@ -266,8 +304,10 @@ export const useBlockchain = (socket = null) => {
       setAccount(wallet.address);
       setConnected(true);
       
-      const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
-      setFactory(factoryContract);
+      if (factoryAddress) {
+        const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, wallet);
+        setFactory(factoryContract);
+      }
       
       console.log('Connected with test account:', wallet.address);
     } catch (error) {
@@ -289,8 +329,10 @@ export const useBlockchain = (socket = null) => {
         setAccount(address);
         setConnected(true);
         
-        const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
-        setFactory(factoryContract);
+        if (factoryAddress) {
+          const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
+          setFactory(factoryContract);
+        }
         
         console.log('Connected to account:', address);
       } else {
@@ -380,7 +422,8 @@ export const useBlockchain = (socket = null) => {
       console.log('Getting tree at address:', treeAddress);
       
       // Create fresh provider to ensure we get latest blockchain state
-      const freshProvider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
+      const rpcUrl = await getDefaultRpcUrl();
+      const freshProvider = new ethers.JsonRpcProvider(rpcUrl);
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       
       // Check node count first
@@ -626,7 +669,8 @@ export const useBlockchain = (socket = null) => {
 
     try {
       // Use fresh provider to ensure we get latest blockchain state
-      const freshProvider = new ethers.JsonRpcProvider(getDefaultRpcUrl());
+      const rpcUrl = await getDefaultRpcUrl();
+      const freshProvider = new ethers.JsonRpcProvider(rpcUrl);
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, freshProvider);
       const hasNFT = await treeContract.nodeHasNFT(nodeId);
       return hasNFT;

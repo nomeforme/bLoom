@@ -60,13 +60,21 @@ function App() {
 
   useEffect(() => {
     // Log active chain configuration on startup
-    const chainConfig = getActiveChainConfig();
-    console.log('🔗 Active Chain Configuration:');
-    console.log(`   Chain ID: ${chainConfig.chainId}`);
-    console.log(`   Chain Name: ${chainConfig.name}`);
-    console.log(`   RPC URL: ${chainConfig.rpcUrl}`);
-    console.log(`   Factory Address: ${chainConfig.factoryAddress}`);
-    console.log(`   Explorer URL: ${chainConfig.explorerUrl || 'Not configured'}`);
+    const logChainConfig = async () => {
+      try {
+        const chainConfig = await getActiveChainConfig();
+        console.log('🔗 Active Chain Configuration:');
+        console.log(`   Chain ID: ${chainConfig.chainId}`);
+        console.log(`   Chain Name: ${chainConfig.name}`);
+        console.log(`   RPC URL: ${chainConfig.rpcUrl}`);
+        console.log(`   Factory Address: ${chainConfig.factoryAddress}`);
+        console.log(`   Explorer URL: ${chainConfig.explorerUrl || 'Not configured'}`);
+      } catch (error) {
+        console.error('Error loading chain configuration:', error);
+      }
+    };
+    
+    logChainConfig();
     
     // Initialize socket connection
     const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
@@ -79,6 +87,15 @@ function App() {
   // Initialize notification system
   const { addNotification, removeNotification } = createNotificationSystem(setNotifications);
 
+  // Initialize memory handlers
+  const memoryHandlers = createMemoryHandlers(
+    treeNodeMemory,
+    setTreeNodeMemory,
+    setSelectedNode,
+    setCurrentTree,
+    graphRef
+  );
+
   // Initialize socket handlers
   const socketHandlers = createSocketHandlers(
     socket,
@@ -89,7 +106,8 @@ function App() {
     setIsGeneratingSiblings,
     addNotification,
     graphRef,
-    getTree
+    getTree,
+    memoryHandlers
   );
 
   // Handle socket events that depend on currentTree
@@ -107,7 +125,7 @@ function App() {
       socket.off('nodeCreated', socketHandlers.handleNodeCreated);
       socket.off('generationComplete', socketHandlers.handleGenerationComplete);
     };
-  }, [socket, currentTree?.address, getTree, addNotification, socketHandlers]);
+  }, [socket, currentTree?.address, getTree, addNotification, socketHandlers, memoryHandlers]);
 
   // Load existing trees when user connects
   useEffect(() => {
@@ -179,15 +197,6 @@ function App() {
       throw error; // Re-throw so UI can show error state
     }
   };
-
-  // Initialize memory handlers
-  const memoryHandlers = createMemoryHandlers(
-    treeNodeMemory,
-    setTreeNodeMemory,
-    setSelectedNode,
-    setCurrentTree,
-    graphRef
-  );
 
   const handleNodeSelect = useCallback((node) => {
     if (node === null) {
