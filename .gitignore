@@ -89,3 +89,5 @@ wheels/
 *.egg-info/
 
 dump.rdb
+
+loomchain-subgraph/generated/
