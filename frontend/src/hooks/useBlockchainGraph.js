@@ -5,7 +5,6 @@ import { pinTextToIPFS, checkIPFSAvailability, isIPFSReference } from '../utils/
 import GlobalIPFSResolver from '../utils/globalIPFSResolver';
 import { getCurrentChainSymbol } from '../utils/chainUtils';
 import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
-import { updateGraphEndpointFromChainConfig } from '../config/graphql';
 
 // Contract ABIs - only keeping what's needed for write operations
 const FACTORY_ABI = [
@@ -126,9 +125,6 @@ export const useBlockchainGraph = (socket = null, graphFunctions = {}) => {
         const config = await getActiveChainConfig();
         setChainConfig(config);
         setFactoryAddress(config.factoryAddress);
-        
-        // Update GraphQL endpoint based on chain configuration
-        updateGraphEndpointFromChainConfig(config);
       } catch (error) {
         console.error('Error loading chain configuration:', error);
         setFactoryAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
