@@ -7,6 +7,7 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 // Load chainConfig to validate the chain
 require('dotenv').config();
@@ -45,17 +46,62 @@ try {
     forgeArgs.push('--with-gas-price', chainConfig.gasPrice);
   }
 
-  // Execute forge command
+  // Execute forge command and capture output
+  let deploymentOutput = '';
+  
   const forge = spawn('forge', forgeArgs, {
-    stdio: 'inherit',
+    stdio: ['inherit', 'pipe', 'inherit'],
     cwd: path.join(__dirname, '..')
   });
 
+  // Capture stdout to extract factory address
+  forge.stdout.on('data', (data) => {
+    const output = data.toString();
+    process.stdout.write(output); // Still show output to user
+    deploymentOutput += output;
+  });
+
   forge.on('close', (code) => {
+    if (code === 0) {
+      // Parse factory address from deployment output
+      const factoryMatch = deploymentOutput.match(/LoomFactory deployed to: (0x[a-fA-F0-9]{40})/);
+      
+      if (factoryMatch) {
+        const factoryAddress = factoryMatch[1];
+        updateChainsJson(chainAlias, chainConfig.chainId, factoryAddress);
+      } else {
+        console.warn('Warning: Could not extract factory address from deployment output');
+      }
+    }
     process.exit(code);
   });
 
 } catch (error) {
   console.error('Error:', error.message);
   process.exit(1);
+}
+
+function updateChainsJson(chainAlias, chainId, factoryAddress) {
+  try {
+    const chainsPath = path.join(__dirname, '../backend/config/chains.json');
+    const chainsData = JSON.parse(fs.readFileSync(chainsPath, 'utf8'));
+    
+    // Update factory address for the chain
+    const chainIdStr = chainId.toString();
+    if (chainsData.chains[chainIdStr]) {
+      const oldAddress = chainsData.chains[chainIdStr].factoryAddress;
+      chainsData.chains[chainIdStr].factoryAddress = factoryAddress;
+      
+      // Write back to file
+      fs.writeFileSync(chainsPath, JSON.stringify(chainsData, null, 2));
+      
+      console.log(`\n✅ Updated chains.json for ${chainAlias}:`);
+      console.log(`   Old factory address: ${oldAddress || 'empty'}`);
+      console.log(`   New factory address: ${factoryAddress}`);
+    } else {
+      console.warn(`Warning: Chain ${chainIdStr} not found in chains.json`);
+    }
+  } catch (error) {
+    console.error('Error updating chains.json:', error.message);
+  }
 }
