@@ -32,6 +32,7 @@ const RightSidebar = ({
   cycleStorageMode,
   ipfsAvailable,
   nativeCurrencySymbol = 'ETH',
+  chainConfig,
   socket
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
@@ -702,12 +703,27 @@ const RightSidebar = ({
         {connected && (
           <div>
             <div style={{ 
-              fontSize: '14px', 
-              color: '#4CAF50', 
-              marginBottom: '2px',
-              fontWeight: 'bold'
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '2px' 
             }}>
-              {ellipseAddress(account)}
+              <div style={{ 
+                fontSize: '14px', 
+                color: '#4CAF50',
+                fontWeight: 'bold'
+              }}>
+                {ellipseAddress(account)}
+              </div>
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#888',
+                fontFamily: "'Inconsolata', monospace",
+                fontWeight: 'bold',
+                textAlign: 'right'
+              }}>
+                {chainConfig?.name || 'Unknown Chain'}
+              </div>
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

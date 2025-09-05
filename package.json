@@ -8,18 +8,15 @@
     "backend": "nodemon backend/server.js",
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "deploy": "forge script scripts/Deploy.s.sol --rpc-url $(node scripts/getChainConfig.js active rpcUrl) --private-key $(node scripts/getChainConfig.js active privateKey) --with-gas-price $(node scripts/getChainConfig.js active gasPrice) --broadcast",
     "anvil": "anvil --host 0.0.0.0 --gas-price $(node scripts/getChainConfig.js local gasPrice) --base-fee $(node scripts/getChainConfig.js local baseFee)",
     "test": "forge test",
     "build": "forge build",
     "blockscout": "docker-compose -f docker-compose.blockscout.yml up -d",
     "blockscout:stop": "docker-compose -f docker-compose.blockscout.yml down && sudo rm -rf blockscout-services-data",
     "blockscout:logs": "docker-compose -f docker-compose.blockscout.yml logs -f blockscout",
-    "chain": "node scripts/chain.js",
     "chain:info": "node scripts/chain.js info",
     "chain:list": "node scripts/chain.js list",
     "chain:use": "node scripts/chain.js switch",
-    "use": "node scripts/getChainConfig.js set",
     "deploy:to": "node scripts/deploy-to.js"
   },
   "dependencies": {
