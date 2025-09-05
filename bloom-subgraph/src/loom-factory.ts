@@ -1,5 +1,6 @@
 import { TreeCreated as TreeCreatedEvent } from "../generated/LoomFactory/LoomFactory"
 import { TreeCreated } from "../generated/schema"
+import { LoomTree, LoomNodeNFT } from "../generated/templates"
 
 export function handleTreeCreated(event: TreeCreatedEvent): void {
   let entity = new TreeCreated(
@@ -16,4 +17,8 @@ export function handleTreeCreated(event: TreeCreatedEvent): void {
   entity.transactionHash = event.transaction.hash
 
   entity.save()
+
+  // Start indexing the dynamically created contracts
+  LoomTree.create(event.params.treeAddress)
+  LoomNodeNFT.create(event.params.nftContractAddress)
 }
