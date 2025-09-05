@@ -2,119 +2,88 @@ import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/clien
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
-// Default configuration - will be updated when chain config is loaded
-let GRAPH_VERSION = 'v0.0.1'; // Default fallback
-let GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${GRAPH_VERSION}`;
+// Static configuration using environment variable
+const GRAPH_VERSION = process.env.REACT_APP_GRAPH_VERSION || 'v0.0.4';
+const GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${GRAPH_VERSION}`;
 
-console.log('📊 Initial Graph subgraph version:', GRAPH_VERSION);
-console.log('🔗 Initial Graph endpoint:', GRAPH_ENDPOINT);
+console.log('📊 Using Graph subgraph version:', GRAPH_VERSION);
+console.log('🔗 Graph endpoint:', GRAPH_ENDPOINT);
 
-// Function to get current GraphQL endpoint (dynamic)
-export const getGraphEndpoint = () => GRAPH_ENDPOINT;
-export const getGraphVersion = () => GRAPH_VERSION;
+// Create the HTTP link to The Graph
+const httpLink = createHttpLink({
+  uri: GRAPH_ENDPOINT,
+});
 
-// Function to update the GraphQL endpoint based on chain configuration
-export const updateGraphEndpointFromChainConfig = (chainConfig) => {
-  if (chainConfig?.subgraphVersion) {
-    GRAPH_VERSION = chainConfig.subgraphVersion;
-    GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${GRAPH_VERSION}`;
-    console.log('📊 Updated Graph subgraph version to:', GRAPH_VERSION);
-    console.log('🔗 Updated Graph endpoint to:', GRAPH_ENDPOINT);
-    
-    // Update the Apollo Client with the new endpoint
-    updateGraphClient(GRAPH_ENDPOINT);
-    
-    return GRAPH_ENDPOINT;
+// Error handling link
+const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
+  if (graphQLErrors) {
+    graphQLErrors.forEach(({ message, locations, path }) =>
+      console.error(
+        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`,
+      ),
+    );
   }
-  return GRAPH_ENDPOINT;
-};
 
-// Function to create Apollo Client with specific endpoint
-const createApolloClient = (endpoint) => {
-  const httpLink = createHttpLink({
-    uri: endpoint,
-  });
+  if (networkError) {
+    console.error(`[Network error]: ${networkError}`);
+  }
+});
 
-  // Error handling link
-  const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
-    if (graphQLErrors) {
-      graphQLErrors.forEach(({ message, locations, path }) =>
-        console.error(
-          `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`,
-        ),
-      );
+// Context link for adding headers if needed
+const authLink = setContext((_, { headers }) => {
+  return {
+    headers: {
+      ...headers,
+      'Content-Type': 'application/json',
     }
+  }
+});
 
-    if (networkError) {
-      console.error(`[Network error]: ${networkError}`);
-    }
-  });
-
-  // Context link for adding headers if needed
-  const authLink = setContext((_, { headers }) => {
-    return {
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json',
-      }
-    }
-  });
-
-  return new ApolloClient({
-    link: from([
-      errorLink,
-      authLink,
-      httpLink
-    ]),
-    cache: new InMemoryCache({
-      typePolicies: {
-        Query: {
-          fields: {
-            // Define cache policies for better performance
-            treeCreateds: {
-              merge(existing = [], incoming) {
-                return [...incoming];
-              }
-            },
-            nodeCreateds: {
-              merge(existing = [], incoming) {
-                return [...incoming];
-              }
-            },
-            nodeNFTMinteds: {
-              merge(existing = [], incoming) {
-                return [...incoming];
-              }
-            },
-            tokenTransfers: {
-              merge(existing = [], incoming) {
-                return [...incoming];
-              }
+// Apollo Client configuration
+export const graphClient = new ApolloClient({
+  link: from([
+    errorLink,
+    authLink,
+    httpLink
+  ]),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Query: {
+        fields: {
+          // Define cache policies for better performance
+          treeCreateds: {
+            merge(existing = [], incoming) {
+              return [...incoming];
+            }
+          },
+          nodeCreateds: {
+            merge(existing = [], incoming) {
+              return [...incoming];
+            }
+          },
+          nodeNFTMinteds: {
+            merge(existing = [], incoming) {
+              return [...incoming];
+            }
+          },
+          tokenTransfers: {
+            merge(existing = [], incoming) {
+              return [...incoming];
             }
           }
         }
       }
-    }),
-    defaultOptions: {
-      watchQuery: {
-        errorPolicy: 'ignore',
-      },
-      query: {
-        errorPolicy: 'all',
-      },
+    }
+  }),
+  defaultOptions: {
+    watchQuery: {
+      errorPolicy: 'ignore',
     },
-  });
-};
-
-// Initial Apollo Client
-export let graphClient = createApolloClient(GRAPH_ENDPOINT);
-
-// Function to update Apollo Client with new endpoint
-export const updateGraphClient = (endpoint) => {
-  console.log('🔄 Creating new Apollo Client with endpoint:', endpoint);
-  graphClient = createApolloClient(endpoint);
-  return graphClient;
-};
+    query: {
+      errorPolicy: 'all',
+    },
+  },
+});
 
 // GraphQL query fragments for reuse
 export const TREE_FRAGMENT = `
@@ -173,11 +142,9 @@ export const TOKEN_TRANSFER_FRAGMENT = `
   }
 `;
 
-// Helper function to update The Graph endpoint version
+// Helper function to update The Graph endpoint version (for reference)
 export const updateGraphEndpoint = (version) => {
   const newEndpoint = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${version}`;
   console.log('🔄 Updating Graph endpoint to:', newEndpoint);
-  // Note: In a production app, you'd want to recreate the client
-  // For now, this is informational
   return newEndpoint;
 };
