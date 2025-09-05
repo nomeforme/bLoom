@@ -1,0 +1,8 @@
+{
+  "scroll-sepolia": {
+    "LoomFactory": {
+      "address": "0x71836619c0647aE4C4ab8c47Ff12426887A54F7e",
+      "startBlock": 12049301
+    }
+  }
+}
