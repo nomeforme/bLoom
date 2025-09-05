@@ -114,11 +114,17 @@ const LoomGraph = forwardRef(({
           if (onNodeSelect && updatedNode.properties) {
             const nodeData = {
               id: updatedNode.properties.nodeId,
+              nodeId: updatedNode.properties.nodeId,
               content: updatedNode.properties.content,
               parentId: updatedNode.properties.parentId,
               author: updatedNode.properties.author,
               timestamp: updatedNode.properties.timestamp,
-              modelId: updatedNode.properties.modelId
+              modelId: updatedNode.properties.modelId,
+              hasNFT: updatedNode.properties.hasNFT,
+              tokenId: updatedNode.properties.tokenId,
+              tokenBoundAccount: updatedNode.properties.tokenBoundAccount,
+              nodeTokenContract: updatedNode.properties.nodeTokenContract,
+              originalContent: updatedNode.properties.originalContent
             };
             onNodeSelect(nodeData);
           }
@@ -163,11 +169,17 @@ const LoomGraph = forwardRef(({
         if (onNodeSelect) {
           onNodeSelect({
             id: node.properties.nodeId,
+            nodeId: node.properties.nodeId,
             content: node.properties.content,
             author: node.properties.author,
             timestamp: node.properties.timestamp,
             parentId: node.properties.parentId,
-            modelId: node.properties.modelId
+            modelId: node.properties.modelId,
+            hasNFT: node.properties.hasNFT,
+            tokenId: node.properties.tokenId,
+            tokenBoundAccount: node.properties.tokenBoundAccount,
+            nodeTokenContract: node.properties.nodeTokenContract,
+            originalContent: node.properties.originalContent
           });
         }
         
@@ -320,11 +332,17 @@ const LoomGraph = forwardRef(({
       if (onNodeSelect) {
         onNodeSelect({
           id: this.properties.nodeId,
+          nodeId: this.properties.nodeId,
           content: this.properties.content,
           author: this.properties.author,
           timestamp: this.properties.timestamp,
           parentId: this.properties.parentId,
-          modelId: this.properties.modelId
+          modelId: this.properties.modelId,
+          hasNFT: this.properties.hasNFT,
+          tokenId: this.properties.tokenId,
+          tokenBoundAccount: this.properties.tokenBoundAccount,
+          nodeTokenContract: this.properties.nodeTokenContract,
+          originalContent: this.properties.originalContent
         });
       }
       return true;
@@ -1147,7 +1165,13 @@ const LoomGraph = forwardRef(({
         parentId: nodeData.parentId,
         author: nodeData.author,
         timestamp: nodeData.timestamp,
-        modelId: nodeData.modelId
+        modelId: nodeData.modelId,
+        // Add NFT-related properties from GraphQL data
+        hasNFT: nodeData.hasNFT || false,
+        tokenId: nodeData.tokenId || null,
+        tokenBoundAccount: nodeData.tokenBoundAccount || null,
+        nodeTokenContract: nodeData.nodeTokenContract || null,
+        originalContent: nodeData.originalContent || null
       };
       
       // Position node based on tree structure
@@ -1758,11 +1782,17 @@ const LoomGraph = forwardRef(({
       if (onNodeSelect) {
         onNodeSelect({
           id: node.properties.nodeId,
+          nodeId: node.properties.nodeId,
           content: node.properties.content,
           author: node.properties.author,
           timestamp: node.properties.timestamp,
           parentId: node.properties.parentId,
-          modelId: node.properties.modelId
+          modelId: node.properties.modelId,
+          hasNFT: node.properties.hasNFT,
+          tokenId: node.properties.tokenId,
+          tokenBoundAccount: node.properties.tokenBoundAccount,
+          nodeTokenContract: node.properties.nodeTokenContract,
+          originalContent: node.properties.originalContent
         });
       }
     };

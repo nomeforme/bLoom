@@ -179,6 +179,13 @@ const RightSidebar = ({
     
     // Use hasNFT flag directly from GraphQL data (NodeCreated event)
     const hasNFT = selectedNode.hasNFT || false;
+    console.log('🔍 RightSidebar: Setting nodeHasNFT for node', selectedNode.id.substring(0, 10) + '...:', {
+      hasNFT: hasNFT,
+      selectedNodeHasNFT: selectedNode.hasNFT,
+      selectedNodeNFT: !!selectedNodeNFT,
+      tokenBoundAccount: selectedNode.tokenBoundAccount,
+      nodeTokenContract: selectedNode.nodeTokenContract
+    });
     setNodeHasNFT(hasNFT);
     
     // Only fetch token balance if node has NFT

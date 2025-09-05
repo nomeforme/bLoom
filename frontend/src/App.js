@@ -227,8 +227,22 @@ function AppInner() {
 
   // Set NFT information from GraphQL data when a node is selected
   useEffect(() => {
+    console.log('🔍 App.js: selectedNode changed:', selectedNode ? {
+      nodeId: selectedNode.nodeId?.substring(0, 10) + '...',
+      hasNFT: selectedNode.hasNFT,
+      tokenBoundAccount: selectedNode.tokenBoundAccount,
+      nodeTokenContract: selectedNode.nodeTokenContract,
+      tokenId: selectedNode.tokenId
+    } : null);
+
     // Use GraphQL data directly from the node object instead of making additional RPC calls
     if (selectedNode && selectedNode.hasNFT && (selectedNode.tokenBoundAccount || selectedNode.nodeTokenContract)) {
+      console.log('✅ App.js: Setting selectedNodeNFT with data:', {
+        tokenId: selectedNode.tokenId,
+        tokenBoundAccount: selectedNode.tokenBoundAccount,
+        nodeTokenContract: selectedNode.nodeTokenContract
+      });
+      
       // Use the GraphQL data directly from the node object
       setSelectedNodeNFT({
         tokenId: selectedNode.tokenId,
@@ -239,6 +253,12 @@ function AppInner() {
         nodeTokenContract: selectedNode.nodeTokenContract
       });
     } else {
+      console.log('❌ App.js: Setting selectedNodeNFT to null, conditions:', {
+        hasSelectedNode: !!selectedNode,
+        hasNFT: selectedNode?.hasNFT,
+        hasTokenBoundAccount: !!selectedNode?.tokenBoundAccount,
+        hasNodeTokenContract: !!selectedNode?.nodeTokenContract
+      });
       setSelectedNodeNFT(null);
     }
   }, [selectedNode]);
