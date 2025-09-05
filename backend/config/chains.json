@@ -20,7 +20,7 @@
       "chainId": 534351,
       "name": "Scroll Sepolia",
       "rpcUrl": "https://scroll-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
-      "factoryAddress": "",
+      "factoryAddress": "0x71836619c0647aE4C4ab8c47Ff12426887A54F7e",
       "gasPrice": "30000000",
       "explorerUrl": "https://sepolia.scrollscan.com",
       "isTestnet": true,
