@@ -1,0 +1,11 @@
+type TreeCreated @entity(immutable: true) {
+  id: Bytes!
+  treeId: Bytes! # bytes32
+  treeAddress: Bytes! # address
+  nftContractAddress: Bytes! # address
+  creator: Bytes! # address
+  rootContent: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
