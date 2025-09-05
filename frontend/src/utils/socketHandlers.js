@@ -83,20 +83,45 @@ export const createSocketHandlers = (
       }
       
       console.log('Socket: Adding tree from socket event');
-      try {
-        getTree(data.treeAddress).then(fullTree => {
+      // Move GraphQL call outside render cycle and add retry logic for subgraph indexing delays
+      const tryFetchTree = async (attempt = 1, maxAttempts = 5) => {
+        try {
+          const fullTree = await getTree(data.treeAddress);
+          
+          // If tree is partially loaded (subgraph hasn't indexed yet), retry after delay
+          if (fullTree.isPartiallyLoaded && attempt < maxAttempts) {
+            console.log(`🔄 Tree partially loaded, retrying in ${attempt * 2}s (attempt ${attempt}/${maxAttempts})`);
+            setTimeout(() => tryFetchTree(attempt + 1, maxAttempts), attempt * 2000);
+            
+            // Still add the partial tree to UI immediately
+            setTrees(prevTrees => {
+              const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
+              if (stillExists) return prevTrees;
+              return [...prevTrees, {...fullTree, rootContent: data.rootContent}]; // Use socket data for immediate display
+            });
+            return;
+          }
+          
+          // Full tree loaded successfully
           setTrees(prevTrees => {
-            const stillExists = prevTrees.some(tree => tree.address === data.treeAddress);
-            if (stillExists) return prevTrees;
-            return [...prevTrees, fullTree];
+            const existingIndex = prevTrees.findIndex(tree => tree.address === data.treeAddress);
+            if (existingIndex >= 0) {
+              // Update existing partial tree with full data
+              const updated = [...prevTrees];
+              updated[existingIndex] = fullTree;
+              return updated;
+            } else {
+              return [...prevTrees, fullTree];
+            }
           });
+          
           // Use memory handler to properly set tree and select root node
           if (memoryHandlers) {
             memoryHandlers.handleTreeSelect(fullTree, currentTree, null);
           } else {
             setCurrentTree(fullTree);
           }
-        }).catch(error => {
+        } catch (error) {
           console.error('Socket: Error fetching full tree data:', error);
           const basicTree = {
             address: data.treeAddress,
@@ -117,10 +142,11 @@ export const createSocketHandlers = (
           } else {
             setCurrentTree(basicTree);
           }
-        });
-      } catch (error) {
-        console.error('Socket: Error in tree creation handler:', error);
-      }
+        }
+      };
+      
+      // Start the fetch process
+      setTimeout(() => tryFetchTree(), 0);
       
       return prev;
     });

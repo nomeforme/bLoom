@@ -451,24 +451,31 @@ export const useGraph = () => {
       
       console.log('📊 Found all trees:', data.treeCreateds.length);
       
-      // Build tree objects with node data (with error handling)
-      const allTrees = await Promise.allSettled(
-        data.treeCreateds.map(async (treeData) => {
-          try {
-            return await getTreeWithNodes(treeData.treeAddress, treeData);
-          } catch (error) {
-            console.warn(`⚠️ Skipping tree ${treeData.treeAddress} due to error:`, error.message);
-            return null;
+      // Build tree objects with node data sequentially to avoid overwhelming GraphQL client
+      const successfulTrees = [];
+      
+      for (const treeData of data.treeCreateds) {
+        try {
+          const tree = await getTreeWithNodes(treeData.treeAddress, treeData);
+          if (tree) {
+            successfulTrees.push(tree);
           }
-        })
-      );
+        } catch (error) {
+          // Handle abort errors gracefully - they're common during page refresh
+          if (error.name === 'AbortError') {
+            console.warn(`🔄 Tree ${treeData.treeAddress} query was aborted (likely due to page refresh)`);
+          } else {
+            console.warn(`⚠️ Skipping tree ${treeData.treeAddress} due to error:`, error.message);
+          }
+          // Continue with other trees instead of failing completely
+        }
+        
+        // Small delay between requests to be gentle on GraphQL client
+        if (data.treeCreateds.indexOf(treeData) < data.treeCreateds.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
       
-      // Filter out failed trees and extract successful ones
-      const successfulTrees = allTrees
-        .filter(result => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value);
-      
-      setTrees(successfulTrees);
       return successfulTrees;
     } catch (error) {
       console.error('❌ Error fetching all trees from Graph:', error);
@@ -524,7 +531,20 @@ export const useGraph = () => {
         );
         
         if (!treeData) {
-          throw new Error('Tree not found in Graph data');
+          // For newly created trees, the subgraph might not have indexed yet
+          // Return a basic tree structure that will be updated when the subgraph catches up
+          console.warn('⚠️ Tree not found in Graph data (subgraph may be indexing):', treeAddress);
+          return {
+            address: treeAddress,
+            contract: null,
+            nftContract: null,
+            nftAddress: null,
+            rootId: null,
+            nodes: [],
+            nodeCount: 0,
+            rootContent: 'Loading from subgraph...',
+            isPartiallyLoaded: true // Flag to indicate this needs to be refreshed
+          };
         }
       }
       
