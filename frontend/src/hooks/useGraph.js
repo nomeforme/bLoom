@@ -324,7 +324,7 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       originalContent = content;
     }
 
-    return {
+    const nodeObject = {
       nodeId: nodeCreation.nodeId,
       parentId: nodeCreation.parentId,
       children: [], // Will be populated below
@@ -341,6 +341,15 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       // Add explicit fields for easier access in components
       id: nodeCreation.nodeId // Alias for nodeId for consistency
     };
+
+    console.log('📊 Final node object for', nodeCreation.nodeId.substring(0, 10) + '...:', {
+      hasNFT: nodeObject.hasNFT,
+      tokenBoundAccount: nodeObject.tokenBoundAccount,
+      nodeTokenContract: nodeObject.nodeTokenContract,
+      hasNftData: !!nftData
+    });
+
+    return nodeObject;
   });
 
   // Build parent-child relationships
