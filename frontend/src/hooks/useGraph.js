@@ -49,6 +49,9 @@ const GET_TREE_NODES = gql`
       hasNFT
       modelId
       content
+      tokenId
+      tokenBoundAccount
+      nodeTokenContract
       blockNumber
       blockTimestamp
       transactionHash
@@ -327,23 +330,27 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       modelId = nodeUpdate.modelId;
     }
     
-    // First priority: Use NFT content if available (regardless of hasNFT flag)
-    if (nftData && nftData.content) {
-      // For NFT nodes, updates would be in the NFT content, not in NodeUpdated events
-      content = nftData.content;
-      originalContent = content;
-      hasNFT = true; // Ensure hasNFT is true if we have NFT data
-      console.log('✅ Using NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
-    } else if (hasNFT && !nftData) {
-      // Node should have NFT but we don't have the NFT data yet
-      content = 'Loading NFT content...';
-      originalContent = '';
-      console.log('⏳ Node has NFT but no data yet:', nodeCreation.nodeId.substring(0, 10) + '...');
-    } else if (hasNFT) {
-      // hasNFT is true but no content in nftData
-      content = 'NFT content not available';
-      originalContent = '';
-      console.log('⚠️ Node has NFT flag but no content:', nodeCreation.nodeId.substring(0, 10) + '...');
+    // NEW APPROACH: Use NFT data directly from NodeCreated event if available
+    let tokenId = null;
+    let tokenBoundAccount = null;
+    let nodeTokenContract = null;
+    
+    if (hasNFT) {
+      // Use NFT data from the NodeCreated event (available immediately)
+      tokenId = nodeCreation.tokenId || null;
+      tokenBoundAccount = nodeCreation.tokenBoundAccount || null;
+      nodeTokenContract = nodeCreation.nodeTokenContract || null;
+      
+      // Use content from separate NFT events if available, otherwise show loading
+      if (nftData && nftData.content) {
+        content = nftData.content;
+        originalContent = content;
+        console.log('✅ Using NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+      } else {
+        content = 'Loading NFT content...';
+        originalContent = '';
+        console.log('⏳ NFT data available, waiting for content:', nodeCreation.nodeId.substring(0, 10) + '...');
+      }
     } else {
       // Lightweight node - prioritize updated content over original content
       if (nodeUpdate && nodeUpdate.content) {
@@ -379,9 +386,9 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       content: displayContent,
       originalContent: originalContent,
       hasNFT: hasNFT,
-      tokenId: nftData?.tokenId || null,
-      tokenBoundAccount: nftData?.tokenBoundAccount || null,
-      nodeTokenContract: nftData?.nodeTokenContract || null,
+      tokenId: tokenId,
+      tokenBoundAccount: tokenBoundAccount,
+      nodeTokenContract: nodeTokenContract,
       // Add explicit fields for easier access in components
       id: nodeCreation.nodeId // Alias for nodeId for consistency
     };
@@ -390,7 +397,8 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       hasNFT: nodeObject.hasNFT,
       tokenBoundAccount: nodeObject.tokenBoundAccount,
       nodeTokenContract: nodeObject.nodeTokenContract,
-      hasNftData: !!nftData
+      hasEventData: !!(nodeCreation.tokenId || nodeCreation.tokenBoundAccount),
+      hasNftContentData: !!nftData
     });
 
     return nodeObject;

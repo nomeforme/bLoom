@@ -48,7 +48,11 @@ export const createMemoryHandlers = (
           parentId: rememberedNode.parentId,
           author: rememberedNode.author,
           timestamp: rememberedNode.timestamp,
-          modelId: rememberedNode.modelId
+          modelId: rememberedNode.modelId,
+          hasNFT: rememberedNode.hasNFT,
+          tokenId: rememberedNode.tokenId,
+          tokenBoundAccount: rememberedNode.tokenBoundAccount,
+          nodeTokenContract: rememberedNode.nodeTokenContract
         });
         
         if (graphRef.current) {
@@ -74,7 +78,11 @@ export const createMemoryHandlers = (
             parentId: rootNode.parentId,
             author: rootNode.author,
             timestamp: rootNode.timestamp,
-            modelId: rootNode.modelId
+            modelId: rootNode.modelId,
+            hasNFT: rootNode.hasNFT,
+            tokenId: rootNode.tokenId,
+            tokenBoundAccount: rootNode.tokenBoundAccount,
+            nodeTokenContract: rootNode.nodeTokenContract
           });
           
           // Also select in LiteGraph
@@ -105,7 +113,11 @@ export const createMemoryHandlers = (
           parentId: rootNode.parentId,
           author: rootNode.author,
           timestamp: rootNode.timestamp,
-          modelId: rootNode.modelId
+          modelId: rootNode.modelId,
+          hasNFT: rootNode.hasNFT,
+          tokenId: rootNode.tokenId,
+          tokenBoundAccount: rootNode.tokenBoundAccount,
+          nodeTokenContract: rootNode.nodeTokenContract
         });
         
         // Also select in LiteGraph
