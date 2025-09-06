@@ -155,7 +155,7 @@ function handleGenerateNodes(socket, io) {
           await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model} - ${modeDescription}`, io);
           
           // Log all events for debugging
-          console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256)')}`);
+          console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256,bool,string)')}`);
           
           receipt.logs.forEach((log, index) => {
             try {
@@ -195,7 +195,8 @@ function handleGenerateNodes(socket, io) {
               author: parsedEvent.args.author,
               timestamp: Number(parsedEvent.args.timestamp),
               treeAddress: treeAddress,
-              modelId: model || 'claude-3-haiku' // Include the model ID used for generation
+              hasNFT: parsedEvent.args.hasNFT, // Get hasNFT from event
+              modelId: parsedEvent.args.modelId || model || 'claude-3-haiku' // Use event modelId first, fallback to request model
             };
             
             console.log(`✅ Node ${i + 1} created successfully:`, {
