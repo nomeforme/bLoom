@@ -69,6 +69,10 @@ const NFT_MINTED_SUBSCRIPTION = gql`
 
 // Since The Graph Studio doesn't support subscriptions yet, we'll use polling
 // This simulates real-time updates by comparing with latest known block numbers
+
+// Configuration from environment variables
+const GRAPH_USER_ID = process.env.REACT_APP_GRAPH_USER_ID || '120278';
+const GRAPH_VERSION = process.env.REACT_APP_GRAPH_VERSION || 'v0.0.4';
 export const useGraphSubscriptions = (callbacks = {}) => {
   const [lastKnownBlockNumber, setLastKnownBlockNumber] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
@@ -168,7 +172,7 @@ export const useGraphSubscriptions = (callbacks = {}) => {
         }
       `;
 
-      const response = await fetch('https://api.studio.thegraph.com/query/120278/bloom-subgraph/v0.0.3', {
+      const response = await fetch(`https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${GRAPH_VERSION}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,7 +257,7 @@ export const useGraphSubscriptions = (callbacks = {}) => {
           }
         `;
 
-        const response = await fetch('https://api.studio.thegraph.com/query/120278/bloom-subgraph/v0.0.3', {
+        const response = await fetch(`https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${GRAPH_VERSION}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
