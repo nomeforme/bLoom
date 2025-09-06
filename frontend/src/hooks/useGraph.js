@@ -479,9 +479,9 @@ export const useGraph = () => {
     errorPolicy: 'all'
   });
   
-  // Recent activities query with polling for real-time updates
+  // Recent activities query - polling disabled since sockets provide real-time updates
   const { data: recentData, loading: recentLoading } = useQuery(GET_RECENT_ACTIVITIES, {
-    pollInterval: 15000, // Poll every 15 seconds for more responsive updates
+    // pollInterval: 15000, // Disabled - using socket events instead
     fetchPolicy: 'cache-and-network'
   });
 
