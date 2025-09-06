@@ -40,6 +40,8 @@ type NodeUpdated @entity(immutable: true) {
   nodeId: Bytes! # bytes32
   author: Bytes! # address
   treeAddress: Bytes! # address - the tree contract that emitted this event
+  modelId: String # string - the model ID used to update this node
+  content: String # string - updated content for lightweight nodes (hasNFT: false)
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
