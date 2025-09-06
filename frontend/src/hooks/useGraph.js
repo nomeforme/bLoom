@@ -48,6 +48,7 @@ const GET_TREE_NODES = gql`
       treeAddress
       hasNFT
       modelId
+      content
       blockNumber
       blockTimestamp
       transactionHash
@@ -311,11 +312,16 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       originalContent = '';
       console.log('⚠️ Node has NFT flag but no content:', nodeCreation.nodeId.substring(0, 10) + '...');
     } else {
-      // Lightweight node - content stored directly in contract
-      // We'll need to fetch this from RPC as fallback
-      content = 'Content in contract storage';
-      originalContent = '';
-      console.log('📄 Node uses contract storage:', nodeCreation.nodeId.substring(0, 10) + '...');
+      // Lightweight node - use content from subgraph if available, fallback to contract storage message
+      if (nodeCreation.content) {
+        content = nodeCreation.content;
+        originalContent = content;
+        console.log('✅ Using contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+      } else {
+        content = 'Content in contract storage';
+        originalContent = '';
+        console.log('📄 Node uses contract storage (content not indexed):', nodeCreation.nodeId.substring(0, 10) + '...');
+      }
     }
     
     // Handle IPFS content display
