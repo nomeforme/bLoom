@@ -57,13 +57,14 @@ export const createNodeHandlers = (
 
       await updatePromise;
       
+      // Show loading overlay immediately after blockchain confirmation
+      if (setIsLoadingTrees) {
+        setIsLoadingTrees(true);
+      }
+      
+      // Wait for subgraph indexing before refreshing
       setTimeout(async () => {
         try {
-          // Show loading overlay while tree reloads and node reselection happens
-          if (setIsLoadingTrees) {
-            setIsLoadingTrees(true);
-          }
-          
           const updatedTree = await getTree(treeAddress);
           
           if (currentTree?.address === treeAddress) {
@@ -103,7 +104,7 @@ export const createNodeHandlers = (
             setIsLoadingTrees(false);
           }
         }
-      }, 1000);
+      }, 5000); // Increased delay to account for subgraph indexing
       
     } catch (error) {
       console.error('Error updating node:', error);
