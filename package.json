@@ -20,7 +20,10 @@
     "chain:list": "node scripts/chain.js list",
     "chain:use": "node scripts/chain.js switch",
     "use": "node scripts/getChainConfig.js set",
-    "deploy:to": "node scripts/deploy-to.js"
+    "deploy:to": "node scripts/deploy-to.js",
+    "subgraph:deploy": "bash scripts/deploy-subgraph.sh",
+    "subgraph:deploy:quick": "bash scripts/deploy-subgraph.sh --quick",
+    "subgraph:deploy:test": "bash scripts/deploy-subgraph.sh --test"
   },
   "dependencies": {
     "express": "^4.18.2",

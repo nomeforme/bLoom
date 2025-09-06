@@ -90,12 +90,28 @@ get_version() {
     print_status "Using version: $VERSION"
 }
 
+# Function to update ABIs from contracts
+update_abis() {
+    print_status "Updating ABIs from compiled contracts..."
+    
+    # Copy fresh ABIs from forge output
+    if [ -d "out" ]; then
+        cp "out/LoomTree.sol/LoomTree.json" "$SUBGRAPH_DIR/abis/LoomTree.json"
+        cp "out/LoomFactory.sol/LoomFactory.json" "$SUBGRAPH_DIR/abis/LoomFactory.json"
+        cp "out/LoomNodeNFT.sol/LoomNodeNFT.json" "$SUBGRAPH_DIR/abis/LoomNodeNFT.json"
+        cp "out/NodeToken.sol/NodeToken.json" "$SUBGRAPH_DIR/abis/NodeToken.json"
+        print_success "ABIs updated from compiled contracts"
+    else
+        print_warning "No 'out' directory found. Make sure contracts are compiled with 'forge build'"
+    fi
+}
+
 # Function to run codegen
 run_codegen() {
     print_status "Generating types from schema and ABIs..."
     cd "$SUBGRAPH_DIR"
     
-    if yarn codegen; then
+    if npm run codegen; then
         print_success "Code generation completed successfully"
     else
         print_error "Code generation failed"
@@ -110,7 +126,7 @@ build_subgraph() {
     print_status "Building subgraph..."
     cd "$SUBGRAPH_DIR"
     
-    if yarn build; then
+    if npm run build; then
         print_success "Build completed successfully"
     else
         print_error "Build failed"
@@ -235,6 +251,7 @@ main() {
         fi
     fi
     
+    update_abis
     run_codegen
     build_subgraph
     deploy_subgraph

@@ -47,6 +47,7 @@ const GET_TREE_NODES = gql`
       timestamp
       treeAddress
       hasNFT
+      modelId
       blockNumber
       blockTimestamp
       transactionHash
@@ -331,7 +332,7 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       author: nodeCreation.author,
       timestamp: parseInt(nodeCreation.timestamp),
       isRoot: nodeCreation.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000',
-      modelId: metadata.modelId || '',
+      modelId: nodeCreation.modelId || '',
       content: displayContent,
       originalContent: originalContent,
       hasNFT: hasNFT,
