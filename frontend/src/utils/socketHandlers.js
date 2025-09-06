@@ -8,7 +8,8 @@ export const createSocketHandlers = (
   addNotification,
   graphRef,
   getTree,
-  memoryHandlers
+  memoryHandlers,
+  selectedNode
 ) => {
   // Track ongoing tree fetches to prevent duplicates
   const pendingTreeFetches = new Set();
@@ -43,6 +44,13 @@ export const createSocketHandlers = (
               : node
           )
         };
+        
+        // If the updated node is currently selected, mark it for reselection using a persistent ref
+        if (selectedNode && selectedNode.id === data.nodeId && graphRef.current) {
+          console.log('🔄 Marking node for reselection after content update');
+          graphRef.current.setPendingReselect(data.nodeId);
+        }
+        
         return updatedTree;
       });
 
