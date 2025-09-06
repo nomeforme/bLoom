@@ -148,6 +148,18 @@ export const TOKEN_TRANSFER_FRAGMENT = `
   }
 `;
 
+export const NFT_CONTENT_UPDATE_FRAGMENT = `
+  fragment NFTContentUpdateDetails on NodeNFTContentUpdated {
+    id
+    tokenId
+    nodeId
+    content
+    blockNumber
+    blockTimestamp
+    transactionHash
+  }
+`;
+
 // Helper function to update The Graph endpoint version (for reference)
 export const updateGraphEndpoint = (version) => {
   const newEndpoint = `https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${version}`;
