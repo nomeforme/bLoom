@@ -124,7 +124,8 @@ function AppInner() {
     addNotification,
     graphRef,
     getTree,
-    memoryHandlers
+    memoryHandlers,
+    selectedNode
   );
 
   // Handle socket events that depend on currentTree

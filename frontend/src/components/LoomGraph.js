@@ -16,6 +16,7 @@ const LoomGraph = forwardRef(({
 }, ref) => {
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
+  const pendingReselectRef = useRef(null);
   
   // Log whenever storageMode prop changes and update graph object
   useEffect(() => {
@@ -140,6 +141,10 @@ const LoomGraph = forwardRef(({
           .find(node => node.properties.nodeId === nodeId);
       }
       return null;
+    },
+    setPendingReselect: (nodeId) => {
+      console.log('📌 Setting pendingReselectRef:', nodeId?.substring(0, 8) + '...');
+      pendingReselectRef.current = nodeId;
     },
     selectNodeByKeyboard: (node) => {
       if (graphRef.current && node) {
@@ -1887,8 +1892,21 @@ const LoomGraph = forwardRef(({
     graph.onCreateTree = onCreateTree;
     graph.storageMode = storageMode;
     
+    // Preserve pending reselection state across graph.clear()
+    const pendingContentUpdate = graph.pendingContentUpdateReselect;
+    const pendingReselect = graph.pendingReSelectNodeId;
+    
     // Clear existing nodes
     graph.clear();
+    
+    // Restore pending reselection state
+    if (pendingContentUpdate) {
+      graph.pendingContentUpdateReselect = pendingContentUpdate;
+      console.log('🔄 Preserved pendingContentUpdateReselect across graph.clear():', pendingContentUpdate.substring(0, 8) + '...');
+    }
+    if (pendingReselect) {
+      graph.pendingReSelectNodeId = pendingReselect;
+    }
     
     // Add nodes from current tree in proper order (parents first)
     if (currentTree.nodes) {
@@ -2026,6 +2044,92 @@ const LoomGraph = forwardRef(({
     }
     graph.__genPrev = { children: !!isGeneratingChildren, siblings: !!isGeneratingSiblings };
   }, [isGeneratingChildren, isGeneratingSiblings]);
+
+  // Handle reselection for content updates (when not generating)
+  useEffect(() => {
+    const graph = graphRef.current;
+    const pendingNodeId = pendingReselectRef.current;
+    
+    console.log('🔍 Reselection effect triggered:', {
+      hasGraph: !!graph,
+      pendingFromRef: pendingNodeId?.substring(0, 8) + '...' || 'none',
+      pendingId: graph?.pendingReSelectNodeId?.substring(0, 8) + '...' || 'none',
+      isGeneratingChildren,
+      isGeneratingSiblings
+    });
+    
+    if (!graph) return;
+    
+    // Check for content update reselection using persistent ref
+    if (pendingNodeId && !isGeneratingChildren && !isGeneratingSiblings) {
+      console.log('🔄 Processing pending reselection for content update:', pendingNodeId.substring(0, 8) + '...');
+      
+      setTimeout(() => {
+        const node = graph.findNodesByType('loom/node').find(n => n.properties?.nodeId === pendingNodeId);
+        if (node) {
+          console.log('✅ Reselecting node after content update:', pendingNodeId.substring(0, 8) + '...');
+          graph.selectedNodeForKeyboard = node;
+          
+          // Use LiteGraph's built-in selection
+          const canvas = graph.canvasInstance;
+          if (canvas && typeof canvas.selectNode === 'function') {
+            canvas.selectNode(node);
+          } else {
+            // Fallback if API unavailable
+            graph.findNodesByType("loom/node").forEach(n => { n.selected = false; });
+            node.selected = true;
+          }
+          
+          // Trigger the node selection callback to update React state
+          if (onNodeSelect) {
+            onNodeSelect({
+              id: node.properties.nodeId,
+              nodeId: node.properties.nodeId,
+              content: node.properties.content,
+              parentId: node.properties.parentId,
+              author: node.properties.author,
+              timestamp: node.properties.timestamp,
+              modelId: node.properties.modelId,
+              hasNFT: node.properties.hasNFT,
+              tokenId: node.properties.tokenId,
+              tokenBoundAccount: node.properties.tokenBoundAccount,
+              nodeTokenContract: node.properties.nodeTokenContract,
+              originalContent: node.properties.originalContent
+            });
+          }
+          
+          // Clear the pending reselection
+          pendingReselectRef.current = null;
+        } else {
+          console.warn('⚠️ Node not found for reselection:', pendingNodeId.substring(0, 8) + '...');
+        }
+      }, 100);
+      return;
+    }
+    
+    // Original generation-based reselection logic
+    if (!graph.pendingReSelectNodeId) return;
+    if (isGeneratingChildren || isGeneratingSiblings) return;
+    
+    console.log('🔄 Processing pending reselection for generation:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
+    
+    setTimeout(() => {
+      if (!graph.pendingReSelectNodeId) return;
+      const node = graph.findNodesByType('loom/node').find(n => n.properties?.nodeId === graph.pendingReSelectNodeId);
+      if (node) {
+        console.log('✅ Reselecting node after generation:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
+        graph.selectedNodeForKeyboard = node;
+        try { 
+          selectNodeProgrammatically(node);
+        } catch (err) {
+          console.warn('Reselection failed:', err);
+        }
+        graph.pendingReSelectNodeId = null;
+      } else {
+        console.warn('⚠️ Node not found for reselection:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
+      }
+    }, 100);
+  }, [currentTree, isGeneratingChildren, isGeneratingSiblings]);
 
   const addLoomNode = (nodeData) => {
     if (graphRef.current && graphRef.current.addLoomNode) {
