@@ -41,12 +41,14 @@ contract LoomTree {
         bytes32 indexed parentId,
         address indexed author,
         uint256 timestamp,
-        bool hasNFT
+        bool hasNFT,
+        string modelId
     );
     
     event NodeUpdated(
         bytes32 indexed nodeId,
-        address indexed author
+        address indexed author,
+        string modelId
     );
     
     event MetadataSet(
@@ -169,7 +171,7 @@ contract LoomTree {
         // Set hasNFT flag and mint NFT for the node with content and token parameters
         newNode.hasNFT = true;
         
-        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp, true);
+        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp, true, params.modelId);
         nftContract.mintNodeNFT(params.author, nodeId, params.content, params.tokenName, params.tokenSymbol, params.tokenSupply);
         
         return nodeId;
@@ -200,7 +202,7 @@ contract LoomTree {
             nodes[parentId].children.push(nodeId);
         }
         
-        emit NodeCreated(nodeId, parentId, author, block.timestamp, false);
+        emit NodeCreated(nodeId, parentId, author, block.timestamp, false, modelId);
         
         return nodeId;
     }
@@ -236,7 +238,7 @@ contract LoomTree {
             // Handle direct storage nodes
             nodes[nodeId].content = newContent;
         }
-        emit NodeUpdated(nodeId, msg.sender);
+        emit NodeUpdated(nodeId, msg.sender, nodes[nodeId].modelId);
     }
     
     function setNodeMetadata(bytes32 nodeId, string memory key, string memory value) external {

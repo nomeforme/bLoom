@@ -1,7 +1,8 @@
 import {
   NodeCreated as NodeCreatedEvent,
   NodeUpdated as NodeUpdatedEvent,
-  MetadataSet as MetadataSetEvent
+  MetadataSet as MetadataSetEvent,
+  LoomTree
 } from "../generated/templates/LoomTree/LoomTree"
 import {
   NodeCreated,
@@ -19,6 +20,7 @@ export function handleNodeCreated(event: NodeCreatedEvent): void {
   entity.timestamp = event.params.timestamp
   entity.treeAddress = event.address // ← This is the key! The tree contract address
   entity.hasNFT = event.params.hasNFT // ← New field from updated event
+  entity.modelId = event.params.modelId // ← Get modelId directly from event
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
