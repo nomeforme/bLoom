@@ -36,7 +36,7 @@
       "chainId": 534352,
       "name": "Scroll",
       "rpcUrl": "https://scroll-mainnet.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
-      "factoryAddress": "0xF3da3bfe91d5aB84fa6d82ee6848116F08a3800c",
+      "factoryAddress": "0xf94B96b2a6d8FaebE507a689027682deEC6c2B9e",
       "gasPrice": "120108",
       "explorerUrl": "https://scrollscan.com",
       "isTestnet": true,

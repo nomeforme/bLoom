@@ -26,7 +26,11 @@ export const createSocketHandlers = (
       parentId: data.parentId,
       content: data.content?.substring(0, 50) + '...',
       treeAddress: data.treeAddress,
-      currentTreeAddress: currentTree?.address
+      currentTreeAddress: currentTree?.address,
+      hasNFT: data.hasNFT,
+      tokenId: data.tokenId,
+      tokenBoundAccount: data.tokenBoundAccount?.substring(0, 10) + '...' || null,
+      nodeTokenContract: data.nodeTokenContract?.substring(0, 10) + '...' || null
     });
     
     // Only add node to graph if it belongs to the currently displayed tree
@@ -44,7 +48,11 @@ export const createSocketHandlers = (
         author: data.author,
         timestamp: data.timestamp,
         isRoot: false,
-        modelId: data.modelId
+        modelId: data.modelId,
+        hasNFT: data.hasNFT,
+        tokenId: data.tokenId,
+        tokenBoundAccount: data.tokenBoundAccount,
+        nodeTokenContract: data.nodeTokenContract
       };
 
       setCurrentTree(prevTree => {
