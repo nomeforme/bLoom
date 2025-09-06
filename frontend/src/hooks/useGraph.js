@@ -54,6 +54,19 @@ const GET_TREE_NODES = gql`
       transactionHash
     }
     
+    # Get node updates for specific tree
+    nodeUpdateds(where: { treeAddress: $treeAddress }, first: $first, orderBy: "blockTimestamp") {
+      id
+      nodeId
+      author
+      treeAddress
+      modelId
+      content
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    
     # Get all NFTs minted for nodes (unfiltered since NFTs don't have treeAddress field)
     nodeNFTMinteds(first: $first, orderBy: "blockTimestamp") {
       id
@@ -239,10 +252,11 @@ const calculateTokenBalance = (transfers, mints, burns, userAddress) => {
 };
 
 // Helper function to build tree structure from Graph data
-const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSets) => {
+const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds, metadataSets) => {
   console.log('🔄 Building tree from Graph data:', {
     treeAddress: treeData.treeAddress,
     nodeCount: nodeCreations.length,
+    nodeUpdateCount: nodeUpdates.length,
     nftCount: nftMinteds.length,
     metadataCount: metadataSets.length
   });
@@ -259,8 +273,19 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
   console.log('🔄 Final filtered data for tree:', {
     treeAddress: treeData.treeAddress,
     nodeCount: nodeCreations.length,
+    nodeUpdateCount: nodeUpdates.length,
     filteredNftCount: filteredNfts.length,
     metadataCount: metadataSets.length
+  });
+
+  // Create a map of the latest updates by nodeId for quick lookup
+  const nodeUpdateMap = new Map();
+  nodeUpdates.forEach(update => {
+    const existing = nodeUpdateMap.get(update.nodeId);
+    // Keep the latest update (highest blockTimestamp)
+    if (!existing || parseInt(update.blockTimestamp) > parseInt(existing.blockTimestamp)) {
+      nodeUpdateMap.set(update.nodeId, update);
+    }
   });
 
   // Create a map of NFT data by nodeId for quick lookup
@@ -289,14 +314,22 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
   const nodes = nodeCreations.map(nodeCreation => {
     const nftData = nftMap.get(nodeCreation.nodeId);
     const metadata = metadataMap.get(nodeCreation.nodeId) || {};
+    const nodeUpdate = nodeUpdateMap.get(nodeCreation.nodeId);
     
     // Determine content source and type
     let content = '';
     let hasNFT = nodeCreation.hasNFT || false; // Use hasNFT from the event
     let originalContent = '';
+    let modelId = nodeCreation.modelId || '';
+    
+    // If there's an update, use the updated modelId
+    if (nodeUpdate && nodeUpdate.modelId) {
+      modelId = nodeUpdate.modelId;
+    }
     
     // First priority: Use NFT content if available (regardless of hasNFT flag)
     if (nftData && nftData.content) {
+      // For NFT nodes, updates would be in the NFT content, not in NodeUpdated events
       content = nftData.content;
       originalContent = content;
       hasNFT = true; // Ensure hasNFT is true if we have NFT data
@@ -312,11 +345,15 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       originalContent = '';
       console.log('⚠️ Node has NFT flag but no content:', nodeCreation.nodeId.substring(0, 10) + '...');
     } else {
-      // Lightweight node - use content from subgraph if available, fallback to contract storage message
-      if (nodeCreation.content) {
+      // Lightweight node - prioritize updated content over original content
+      if (nodeUpdate && nodeUpdate.content) {
+        content = nodeUpdate.content;
+        originalContent = content;
+        console.log('✅ Using UPDATED contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+      } else if (nodeCreation.content) {
         content = nodeCreation.content;
         originalContent = content;
-        console.log('✅ Using contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+        console.log('✅ Using original contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else {
         content = 'Content in contract storage';
         originalContent = '';
@@ -338,7 +375,7 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nftMinteds, metadataSet
       author: nodeCreation.author,
       timestamp: parseInt(nodeCreation.timestamp),
       isRoot: nodeCreation.parentId === '0x0000000000000000000000000000000000000000000000000000000000000000',
-      modelId: nodeCreation.modelId || '',
+      modelId: modelId, // Use the resolved modelId (from update if available)
       content: displayContent,
       originalContent: originalContent,
       hasNFT: hasNFT,
@@ -409,7 +446,7 @@ export const useGraph = () => {
   });
   const [getTreeNodesQuery, { loading: treeNodesLoading }] = useLazyQuery(GET_TREE_NODES, {
     errorPolicy: 'all',
-    fetchPolicy: 'cache-first'
+    fetchPolicy: 'cache-and-network' // Changed from 'cache-first' to get updates
   });
   const [getNodeNFTInfoQuery] = useLazyQuery(GET_NODE_NFT_INFO, {
     errorPolicy: 'all',
@@ -422,9 +459,9 @@ export const useGraph = () => {
     errorPolicy: 'all'
   });
   
-  // Recent activities query
+  // Recent activities query with polling for real-time updates
   const { data: recentData, loading: recentLoading } = useQuery(GET_RECENT_ACTIVITIES, {
-    pollInterval: 30000, // Poll every 30 seconds
+    pollInterval: 15000, // Poll every 15 seconds for more responsive updates
     fetchPolicy: 'cache-and-network'
   });
 
@@ -585,6 +622,7 @@ export const useGraph = () => {
       const tree = buildTreeFromGraphData(
         treeData,
         data.nodeCreateds || [],
+        data.nodeUpdateds || [],
         data.nodeNFTMinteds || [],
         data.metadataSets || []
       );
@@ -709,6 +747,28 @@ export const useGraph = () => {
     }
   }, [getNodeTokenInfoQuery]);
 
+  // Function to refresh current tree data (for after edit operations)
+  const refreshCurrentTree = useCallback(async () => {
+    if (currentTree?.address) {
+      console.log('🔄 Refreshing current tree data after edit operation...');
+      try {
+        const refreshedTree = await getTreeWithNodes(currentTree.address);
+        if (refreshedTree) {
+          setCurrentTree(refreshedTree);
+          
+          // Also update the tree in the trees list if it exists
+          setTrees(prevTrees => 
+            prevTrees.map(tree => 
+              tree.address === refreshedTree.address ? refreshedTree : tree
+            )
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing current tree:', error);
+      }
+    }
+  }, [currentTree?.address, getTreeWithNodes]);
+
   return {
     // State
     trees,
@@ -725,6 +785,7 @@ export const useGraph = () => {
     getTokenBalance,
     getNodeTokenInfo,
     setCurrentTree,
+    refreshCurrentTree, // New function to refresh after edits
     
     // Utilities
     buildTreeFromGraphData
