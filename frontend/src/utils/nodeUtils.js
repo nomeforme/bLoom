@@ -5,7 +5,8 @@ export const createNodeHandlers = (
   setCurrentTree,
   setTrees,
   graphRef = null, // Optional: only needed for re-selection after edits
-  setIsLoadingTrees = null // Optional: for showing loading overlay during tree reload
+  setIsLoadingTrees = null, // Optional: for showing loading overlay during tree reload
+  invalidateNFTCache = null // Optional: for invalidating NFT cache when nodes are updated
 ) => {
   const handleAddNode = async (parentId, content, modelId = '') => {
     // Frontend addNode removed - all node creation should go through backend socket handlers
@@ -76,6 +77,23 @@ export const createNodeHandlers = (
               tree.address === treeAddress ? updatedTree : tree
             )
           );
+          
+          // Invalidate NFT cache for the updated node to force fresh data on next access
+          if (invalidateNFTCache) {
+            // Find the updated node in the tree to log its new content
+            const updatedNode = updatedTree.nodes?.find(n => n.nodeId === nodeId);
+            if (updatedNode) {
+              console.log('🗑️ Invalidated NFT cache after node update:', {
+                nodeId: nodeId.substring(0, 10) + '...',
+                hasNFT: updatedNode.hasNFT,
+                newContentLength: updatedNode.content?.length || 0,
+                newContentPreview: updatedNode.content?.substring(0, 100) + '...' || 'No content'
+              });
+            } else {
+              console.log('🗑️ Invalidated NFT cache after node update:', nodeId.substring(0, 8) + '...');
+            }
+            invalidateNFTCache(nodeId);
+          }
           
           // Re-select the edited node after tree update, similar to post-generation
           if (graphRef?.current?.reselectNode) {

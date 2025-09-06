@@ -53,6 +53,7 @@ function AppInner() {
     getAllTrees,
     getNodeNFTInfo,
     checkNodeHasNFT,
+    invalidateNFTCache,
     storageMode,
     cycleStorageMode,
     ipfsAvailable,
@@ -235,7 +236,7 @@ function AppInner() {
       tokenId: selectedNode.tokenId
     } : null);
 
-    // Use GraphQL data directly from the node object instead of making additional RPC calls
+    // Use GraphQL data directly from the node object (now includes latest updated content)
     if (selectedNode && selectedNode.hasNFT && (selectedNode.tokenBoundAccount || selectedNode.nodeTokenContract)) {
       console.log('✅ App.js: Setting selectedNodeNFT with data:', {
         tokenId: selectedNode.tokenId,
@@ -243,7 +244,7 @@ function AppInner() {
         nodeTokenContract: selectedNode.nodeTokenContract
       });
       
-      // Use the GraphQL data directly from the node object
+      // Use the GraphQL data directly from the node object (already includes latest content)
       setSelectedNodeNFT({
         tokenId: selectedNode.tokenId,
         nodeId: selectedNode.nodeId,
@@ -271,7 +272,8 @@ function AppInner() {
     setCurrentTree,
     setTrees,
     graphRef,
-    setIsLoadingTrees
+    setIsLoadingTrees,
+    invalidateNFTCache
   );
 
   const handleAddNode = useCallback(async (parentId, content) => {

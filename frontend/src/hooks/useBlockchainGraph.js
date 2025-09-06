@@ -491,6 +491,19 @@ export const useBlockchainGraph = (socket = null, graphFunctions = {}) => {
     }
   }, [graphFunctions.getNodeNFTInfo]);
 
+  // Invalidate NFT cache when nodes are updated
+  const invalidateNFTCache = useCallback((nodeId) => {
+    try {
+      if (graphFunctions.invalidateNFTCache) {
+        graphFunctions.invalidateNFTCache(nodeId);
+      } else {
+        console.warn('⚠️ Graph invalidateNFTCache not available');
+      }
+    } catch (error) {
+      console.error('Error invalidating NFT cache:', error);
+    }
+  }, [graphFunctions.invalidateNFTCache]);
+
   // Storage mode cycling
   const cycleStorageMode = () => {
     const modes = ipfsAvailable ? ['full', 'lightweight', 'ipfs'] : ['full', 'lightweight'];
@@ -541,6 +554,7 @@ export const useBlockchainGraph = (socket = null, graphFunctions = {}) => {
     getAllTrees,
     getNodeNFTInfo,
     checkNodeHasNFT,
+    invalidateNFTCache,
     
     // Graph-specific data
     trees, // From Graph state
