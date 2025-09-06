@@ -29,6 +29,7 @@ type NodeCreated @entity(immutable: true) {
   treeAddress: Bytes! # address - the tree contract that emitted this event
   hasNFT: Boolean! # bool - whether this node has NFT/ERC20/ERC6551
   modelId: String # string - the model ID used to generate this node
+  content: String # string - content for lightweight nodes (hasNFT: false)
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
