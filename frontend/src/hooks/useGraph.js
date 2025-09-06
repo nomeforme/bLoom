@@ -112,6 +112,14 @@ const GET_NODE_NFT_INFO = gql`
       blockTimestamp
       transactionHash
     }
+    nodeUpdateds(where: { nodeId: $nodeId }, orderBy: blockTimestamp, orderDirection: desc, first: 1) {
+      id
+      nodeId
+      content
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
   }
 `;
 
@@ -341,11 +349,15 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       tokenBoundAccount = nodeCreation.tokenBoundAccount || null;
       nodeTokenContract = nodeCreation.nodeTokenContract || null;
       
-      // Use content from separate NFT events if available, otherwise show loading
-      if (nftData && nftData.content) {
+      // Prioritize updated content over original NFT content
+      if (nodeUpdate && nodeUpdate.content) {
+        content = nodeUpdate.content;
+        originalContent = nftData?.content || '';
+        console.log('✅ Using UPDATED content for NFT node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+      } else if (nftData && nftData.content) {
         content = nftData.content;
         originalContent = content;
-        console.log('✅ Using NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
+        console.log('✅ Using original NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else {
         content = 'Loading NFT content...';
         originalContent = '';
@@ -648,12 +660,24 @@ export const useGraph = () => {
     }
   }, [getTreeNodesQuery, getAllTreesQuery]);
 
+  // Invalidate NFT cache for a specific node (useful when node is updated)
+  const invalidateNFTCache = useCallback((nodeId) => {
+    if (!nodeId) return;
+    const normalizedNodeId = nodeId.toLowerCase();
+    if (nftCache.current.has(normalizedNodeId)) {
+      nftCache.current.delete(normalizedNodeId);
+      console.log('🗑️ Invalidated NFT cache for node:', normalizedNodeId.substring(0, 10) + '...');
+    }
+  }, []);
+
   // Get node NFT info with caching and request deduplication
   const getNodeNFTInfo = useCallback(async (nodeId) => {
     if (!nodeId) return null;
     
     const normalizedNodeId = nodeId.toLowerCase();
-    console.log('🔍 getNodeNFTInfo called for nodeId:', normalizedNodeId.substring(0, 10) + '...');
+    console.log('🔍 getNodeNFTInfo called for nodeId:', normalizedNodeId.substring(0, 10) + '...', {
+      cacheHit: nftCache.current.has(normalizedNodeId) ? 'YES' : 'NO'
+    });
     
     // Check cache first
     if (nftCache.current.has(normalizedNodeId)) {
@@ -676,10 +700,38 @@ export const useGraph = () => {
         let result = null;
         if (data?.nodeNFTMinteds?.length > 0) {
           const nftData = data.nodeNFTMinteds[0];
+          
+          // Check if there's a more recent NodeUpdated event with content
+          let content = nftData.content; // Default to mint content
+          if (data?.nodeUpdateds?.length > 0) {
+            const updateData = data.nodeUpdateds[0]; // Most recent update
+            if (updateData.content && updateData.content.trim()) {
+              content = updateData.content; // Use updated content
+              console.log('🔄 Using updated content from NodeUpdated event for NFT node:', {
+                nodeId: normalizedNodeId.substring(0, 10) + '...',
+                originalLength: nftData.content?.length || 0,
+                updatedLength: updateData.content?.length || 0,
+                updatedPreview: updateData.content?.substring(0, 100) + '...' || 'No content'
+              });
+            } else {
+              console.log('📦 Using original mint content for NFT node:', {
+                nodeId: normalizedNodeId.substring(0, 10) + '...',
+                contentLength: nftData.content?.length || 0,
+                reason: 'No updated content found'
+              });
+            }
+          } else {
+            console.log('📦 Using original mint content for NFT node:', {
+              nodeId: normalizedNodeId.substring(0, 10) + '...',
+              contentLength: nftData.content?.length || 0,
+              reason: 'No NodeUpdated events found'
+            });
+          }
+          
           result = {
             tokenId: nftData.tokenId,
             owner: nftData.owner,
-            content: nftData.content,
+            content: content,
             tokenBoundAccount: nftData.tokenBoundAccount,
             nodeTokenContract: nftData.nodeTokenContract,
             nodeId: nftData.nodeId
@@ -794,6 +846,7 @@ export const useGraph = () => {
     getNodeTokenInfo,
     setCurrentTree,
     refreshCurrentTree, // New function to refresh after edits
+    invalidateNFTCache, // New function to invalidate cache when nodes are updated
     
     // Utilities
     buildTreeFromGraphData
