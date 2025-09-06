@@ -74,6 +74,16 @@ type NodeNFTMinted @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
+type NodeNFTContentUpdated @entity(immutable: true) {
+  id: Bytes!
+  tokenId: BigInt! # uint256
+  nodeId: Bytes! # bytes32
+  content: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
 type NodeTokenCreated @entity(immutable: true) {
   id: Bytes!
   tokenId: BigInt! # uint256

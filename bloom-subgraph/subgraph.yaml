@@ -8,7 +8,7 @@ dataSources:
     name: LoomFactory
     network: scroll
     source:
-      address: "0xf94B96b2a6d8FaebE507a689027682deEC6c2B9e"
+      address: "0xbC7c8847f05FBa04BAac986310A741204764A7d5"
       abi: LoomFactory
       startBlock: 20699628
     mapping:
@@ -70,6 +70,7 @@ templates:
       language: wasm/assemblyscript
       entities:
         - NodeNFTMinted
+        - NodeNFTContentUpdated
         - NodeTokenCreated
         - TokenBoundAccountCreated
         - NFTTransfer
@@ -81,6 +82,8 @@ templates:
       eventHandlers:
         - event: NodeNFTMinted(indexed uint256,indexed bytes32,indexed address,string,address,address)
           handler: handleNodeNFTMinted
+        - event: NodeNFTContentUpdated(indexed uint256,indexed bytes32,string)
+          handler: handleNodeNFTContentUpdated
         - event: NodeTokenCreated(indexed uint256,indexed address,indexed address)
           handler: handleNodeTokenCreated
         - event: TokenBoundAccountCreated(indexed uint256,indexed address)

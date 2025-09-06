@@ -848,7 +848,7 @@ const RightSidebar = ({
                   <div style={{ fontWeight: 'bold' }}>NFT Token ID: #{selectedNodeNFT.tokenId}</div>
                 </div>
                 
-                {/* Display the actual content from NFT */}
+                {/* Display the most recent NFT content (from updates if available, otherwise from mint) */}
                 <div style={{ 
                   backgroundColor: '#0a0a0a',
                   border: '1px solid #333',
@@ -858,13 +858,11 @@ const RightSidebar = ({
                   fontSize: '11px'
                 }}>
                   {(() => {
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content);
-                    let content;
-                    if (metadata) {
-                      content = metadata.description || selectedNodeNFT.content;
-                    } else {
-                      content = selectedNodeNFT.content;
-                    }
+                    // Use the most recent content available:
+                    // 1. Latest NFT content update (if any updates exist)
+                    // 2. Current node content (from NodeUpdated events) 
+                    // 3. Original NFT content (from NodeNFTMinted event)
+                    const content = selectedNodeNFT.latestContent || selectedNode.content || selectedNodeNFT.content || '';
                     
                     // Clip content to maximum 300 characters for right sidebar
                     const maxLength = 300;

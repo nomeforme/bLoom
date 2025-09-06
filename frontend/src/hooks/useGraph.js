@@ -120,6 +120,22 @@ const GET_NODE_NFT_INFO = gql`
       blockTimestamp
       transactionHash
     }
+    
+    # Get the latest NFT content update for this node
+    nodeNFTContentUpdateds(
+      where: { nodeId: $nodeId }, 
+      orderBy: blockTimestamp, 
+      orderDirection: desc,
+      first: 1
+    ) {
+      id
+      tokenId
+      nodeId
+      content
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
   }
 `;
 
@@ -701,12 +717,30 @@ export const useGraph = () => {
         if (data?.nodeNFTMinteds?.length > 0) {
           const nftData = data.nodeNFTMinteds[0];
           
-          // Check if there's a more recent NodeUpdated event with content
+          // Determine the most recent content in priority order:
+          // 1. Latest NFT content update (NodeNFTContentUpdated event)
+          // 2. Latest node update (NodeUpdated event) 
+          // 3. Original NFT mint content (NodeNFTMinted event)
           let content = nftData.content; // Default to mint content
-          if (data?.nodeUpdateds?.length > 0) {
-            const updateData = data.nodeUpdateds[0]; // Most recent update
+          let latestContent = null; // For RightSidebar usage
+          
+          if (data?.nodeNFTContentUpdateds?.length > 0) {
+            // Use most recent NFT content update
+            const nftUpdateData = data.nodeNFTContentUpdateds[0];
+            content = nftUpdateData.content;
+            latestContent = nftUpdateData.content;
+            console.log('🎨 Using updated NFT content from NodeNFTContentUpdated event for NFT node:', {
+              nodeId: normalizedNodeId.substring(0, 10) + '...',
+              originalLength: nftData.content?.length || 0,
+              updatedLength: nftUpdateData.content?.length || 0,
+              updatedPreview: nftUpdateData.content?.substring(0, 100) + '...' || 'No content'
+            });
+          } else if (data?.nodeUpdateds?.length > 0) {
+            // Fallback to node update content
+            const updateData = data.nodeUpdateds[0];
             if (updateData.content && updateData.content.trim()) {
-              content = updateData.content; // Use updated content
+              content = updateData.content;
+              latestContent = updateData.content;
               console.log('🔄 Using updated content from NodeUpdated event for NFT node:', {
                 nodeId: normalizedNodeId.substring(0, 10) + '...',
                 originalLength: nftData.content?.length || 0,
@@ -724,7 +758,7 @@ export const useGraph = () => {
             console.log('📦 Using original mint content for NFT node:', {
               nodeId: normalizedNodeId.substring(0, 10) + '...',
               contentLength: nftData.content?.length || 0,
-              reason: 'No NodeUpdated events found'
+              reason: 'No update events found'
             });
           }
           
@@ -732,6 +766,7 @@ export const useGraph = () => {
             tokenId: nftData.tokenId,
             owner: nftData.owner,
             content: content,
+            latestContent: latestContent, // Most recent content from NFT updates, falls back to node updates
             tokenBoundAccount: nftData.tokenBoundAccount,
             nodeTokenContract: nftData.nodeTokenContract,
             nodeId: nftData.nodeId

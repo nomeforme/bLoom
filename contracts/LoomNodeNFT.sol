@@ -44,6 +44,12 @@ contract LoomNodeNFT is ERC721, Ownable {
         address indexed tokenBoundAccount
     );
     
+    event NodeNFTContentUpdated(
+        uint256 indexed tokenId,
+        bytes32 indexed nodeId,
+        string content
+    );
+    
     constructor(
         address _registry,
         address _accountImplementation,
@@ -104,6 +110,8 @@ contract LoomNodeNFT is ERC721, Ownable {
         
         tokenURIs[tokenId] = metadata;
         textContent[tokenId] = newContent; // Update text content
+        
+        emit NodeNFTContentUpdated(tokenId, nodeId, newContent);
     }
     
     function mintNodeNFT(
