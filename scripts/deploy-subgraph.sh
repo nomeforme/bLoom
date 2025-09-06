@@ -17,6 +17,14 @@ SUBGRAPH_DIR="bloom-subgraph"
 SUBGRAPH_NAME="bloom-subgraph"
 DEPLOY_KEY_FILE=".graph-deploy-key"
 
+# Load environment variables
+if [ -f ".env" ]; then
+    export $(cat .env | sed 's/#.*//g' | xargs)
+fi
+
+# Set default project ID if not set
+GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID:-"120278"}
+
 # Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -70,7 +78,7 @@ get_version() {
         VERSION="$1"
     else
         # Auto-increment version based on existing deployments
-        CURRENT_VERSION=$(curl -s "https://api.studio.thegraph.com/query/120278/bloom-subgraph/version" 2>/dev/null || echo "0.0.0")
+        CURRENT_VERSION=$(curl -s "https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/version" 2>/dev/null || echo "0.0.0")
         if [[ $CURRENT_VERSION =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
             MAJOR=${BASH_REMATCH[1]}
             MINOR=${BASH_REMATCH[2]}
@@ -195,7 +203,7 @@ deploy_subgraph() {
     
     if graph deploy --node https://api.studio.thegraph.com/deploy/ "$SUBGRAPH_NAME" --version-label "$VERSION"; then
         print_success "Deployment completed successfully!"
-        print_success "Subgraph endpoint: https://api.studio.thegraph.com/query/120278/bloom-subgraph/$VERSION"
+        print_success "Subgraph endpoint: https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/$VERSION"
         print_success "Studio URL: https://thegraph.com/studio/subgraph/bloom-subgraph"
     else
         print_error "Deployment failed"
@@ -209,7 +217,7 @@ deploy_subgraph() {
 test_deployment() {
     print_status "Testing deployment with sample query..."
     
-    ENDPOINT="https://api.studio.thegraph.com/query/120278/bloom-subgraph/$VERSION"
+    ENDPOINT="https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/$VERSION"
     
     # Simple test query
     QUERY='{"query":"{ treeCreateds(first: 1) { id treeId creator } }"}'

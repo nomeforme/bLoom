@@ -2,9 +2,10 @@ import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/clien
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
-// Static configuration using environment variable
+// Static configuration using environment variables
 const GRAPH_VERSION = process.env.REACT_APP_GRAPH_VERSION || 'v0.0.4';
-const GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${GRAPH_VERSION}`;
+const GRAPH_USER_ID = process.env.REACT_APP_GRAPH_USER_ID || '120278';
+const GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${GRAPH_VERSION}`;
 
 console.log('📊 Using Graph subgraph version:', GRAPH_VERSION);
 console.log('🔗 Graph endpoint:', GRAPH_ENDPOINT);
@@ -149,7 +150,7 @@ export const TOKEN_TRANSFER_FRAGMENT = `
 
 // Helper function to update The Graph endpoint version (for reference)
 export const updateGraphEndpoint = (version) => {
-  const newEndpoint = `https://api.studio.thegraph.com/query/120278/bloom-subgraph/${version}`;
+  const newEndpoint = `https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${version}`;
   console.log('🔄 Updating Graph endpoint to:', newEndpoint);
   return newEndpoint;
 };
