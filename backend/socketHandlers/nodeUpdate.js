@@ -110,6 +110,24 @@ function handleUpdateNode(socket, io) {
           const parsedEvent = treeContract.interface.parseLog(nodeCreatedEvent);
           childNodeId = parsedEvent.args.nodeId;
           console.log('Child node created with ID:', childNodeId);
+          
+          // Emit nodeCreated event for the new child node (same as generation flow)
+          const childNodeData = {
+            nodeId: parsedEvent.args.nodeId,
+            parentId: parsedEvent.args.parentId,
+            content: options.childContent, // Use the original content, not from event
+            author: parsedEvent.args.author,
+            timestamp: Number(parsedEvent.args.timestamp),
+            treeAddress: treeAddress,
+            hasNFT: parsedEvent.args.hasNFT,
+            modelId: parsedEvent.args.modelId || modelId || '',
+            tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null,
+            tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null,
+            nodeTokenContract: parsedEvent.args.nodeTokenContract || null
+          };
+          
+          console.log('📡 Emitting nodeCreated event for child node created during split');
+          io.emit('nodeCreated', childNodeData);
         }
       }
       
@@ -177,6 +195,24 @@ function handleUpdateNode(socket, io) {
           const parsedEvent = treeContract.interface.parseLog(nodeCreatedEvent);
           childNodeId = parsedEvent.args.nodeId; // Reuse the childNodeId variable for consistency
           console.log('Sibling node created with ID:', childNodeId);
+          
+          // Emit nodeCreated event for the new sibling node (same as generation flow)
+          const siblingNodeData = {
+            nodeId: parsedEvent.args.nodeId,
+            parentId: parsedEvent.args.parentId,
+            content: options.siblingContent, // Use the original content, not from event
+            author: parsedEvent.args.author,
+            timestamp: Number(parsedEvent.args.timestamp),
+            treeAddress: treeAddress,
+            hasNFT: parsedEvent.args.hasNFT,
+            modelId: parsedEvent.args.modelId || modelId || '',
+            tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null,
+            tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null,
+            nodeTokenContract: parsedEvent.args.nodeTokenContract || null
+          };
+          
+          console.log('📡 Emitting nodeCreated event for sibling node created during split');
+          io.emit('nodeCreated', siblingNodeData);
         }
       }
       
