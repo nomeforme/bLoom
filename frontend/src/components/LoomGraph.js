@@ -92,49 +92,6 @@ const LoomGraph = forwardRef(({
         graphRef.current.reorganizeNodes(targetNodeId);
       }
     },
-    reselectNode: (nodeId) => {
-      if (graphRef.current) {
-        const graph = graphRef.current;
-        // Find the node by nodeId
-        const updatedNode = graph.findNodesByType("loom/node").find(node => 
-          node.properties?.nodeId === nodeId
-        );
-        
-        if (updatedNode) {
-          console.log('Re-selecting edited node:', nodeId.substring(0, 8) + '...');
-          graph.selectedNodeForKeyboard = updatedNode;
-          
-          // Use the same selection method as post-generation
-          if (typeof graph.canvasInstance?.selectNode === 'function') {
-            graph.canvasInstance.selectNode(updatedNode);
-          } else if (typeof graph.canvasInstance?.selectNodeByKeyboard === 'function') {
-            graph.canvasInstance.selectNodeByKeyboard(updatedNode);
-          }
-          
-          // IMPORTANT: Update React state by calling onNodeSelect
-          if (onNodeSelect && updatedNode.properties) {
-            const nodeData = {
-              id: updatedNode.properties.nodeId,
-              nodeId: updatedNode.properties.nodeId,
-              content: updatedNode.properties.content,
-              parentId: updatedNode.properties.parentId,
-              author: updatedNode.properties.author,
-              timestamp: updatedNode.properties.timestamp,
-              modelId: updatedNode.properties.modelId,
-              hasNFT: updatedNode.properties.hasNFT,
-              tokenId: updatedNode.properties.tokenId,
-              tokenBoundAccount: updatedNode.properties.tokenBoundAccount,
-              nodeTokenContract: updatedNode.properties.nodeTokenContract,
-              originalContent: updatedNode.properties.originalContent
-            };
-            onNodeSelect(nodeData);
-          }
-          
-          return true;
-        }
-      }
-      return false;
-    },
     findNodeById: (nodeId) => {
       if (graphRef.current) {
         return graphRef.current.findNodesByType("loom/node")
@@ -1892,21 +1849,8 @@ const LoomGraph = forwardRef(({
     graph.onCreateTree = onCreateTree;
     graph.storageMode = storageMode;
     
-    // Preserve pending reselection state across graph.clear()
-    const pendingContentUpdate = graph.pendingContentUpdateReselect;
-    const pendingReselect = graph.pendingReSelectNodeId;
-    
     // Clear existing nodes
     graph.clear();
-    
-    // Restore pending reselection state
-    if (pendingContentUpdate) {
-      graph.pendingContentUpdateReselect = pendingContentUpdate;
-      console.log('🔄 Preserved pendingContentUpdateReselect across graph.clear():', pendingContentUpdate.substring(0, 8) + '...');
-    }
-    if (pendingReselect) {
-      graph.pendingReSelectNodeId = pendingReselect;
-    }
     
     // Add nodes from current tree in proper order (parents first)
     if (currentTree.nodes) {
@@ -2053,7 +1997,6 @@ const LoomGraph = forwardRef(({
     console.log('🔍 Reselection effect triggered:', {
       hasGraph: !!graph,
       pendingFromRef: pendingNodeId?.substring(0, 8) + '...' || 'none',
-      pendingId: graph?.pendingReSelectNodeId?.substring(0, 8) + '...' || 'none',
       isGeneratingChildren,
       isGeneratingSiblings
     });
@@ -2107,28 +2050,6 @@ const LoomGraph = forwardRef(({
       return;
     }
     
-    // Original generation-based reselection logic
-    if (!graph.pendingReSelectNodeId) return;
-    if (isGeneratingChildren || isGeneratingSiblings) return;
-    
-    console.log('🔄 Processing pending reselection for generation:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
-    
-    setTimeout(() => {
-      if (!graph.pendingReSelectNodeId) return;
-      const node = graph.findNodesByType('loom/node').find(n => n.properties?.nodeId === graph.pendingReSelectNodeId);
-      if (node) {
-        console.log('✅ Reselecting node after generation:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
-        graph.selectedNodeForKeyboard = node;
-        try { 
-          selectNodeProgrammatically(node);
-        } catch (err) {
-          console.warn('Reselection failed:', err);
-        }
-        graph.pendingReSelectNodeId = null;
-      } else {
-        console.warn('⚠️ Node not found for reselection:', graph.pendingReSelectNodeId.substring(0, 8) + '...');
-      }
-    }, 100);
   }, [currentTree, isGeneratingChildren, isGeneratingSiblings]);
 
   const addLoomNode = (nodeData) => {
