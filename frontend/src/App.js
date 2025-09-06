@@ -135,11 +135,13 @@ function AppInner() {
 
     socket.on('treeCreated', socketHandlers.handleTreeCreated);
     socket.on('nodeCreated', socketHandlers.handleNodeCreated);
+    socket.on('nodeUpdated', socketHandlers.handleNodeUpdated);
     socket.on('generationComplete', socketHandlers.handleGenerationComplete);
 
     return () => {
       socket.off('treeCreated', socketHandlers.handleTreeCreated);
       socket.off('nodeCreated', socketHandlers.handleNodeCreated);
+      socket.off('nodeUpdated', socketHandlers.handleNodeUpdated);
       socket.off('generationComplete', socketHandlers.handleGenerationComplete);
     };
   }, [socket, currentTree?.address, getTree, addNotification, socketHandlers, memoryHandlers]);
@@ -272,8 +274,7 @@ function AppInner() {
     setCurrentTree,
     setTrees,
     graphRef,
-    setIsLoadingTrees,
-    invalidateNFTCache
+    setIsLoadingTrees
   );
 
   const handleAddNode = useCallback(async (parentId, content) => {
