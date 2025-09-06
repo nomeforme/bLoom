@@ -50,17 +50,11 @@ export function handleNodeUpdated(event: NodeUpdatedEvent): void {
   entity.treeAddress = event.address
   entity.modelId = event.params.modelId // ← Get modelId directly from updated event
 
-  // For lightweight nodes, get updated content from contract storage
-  // Check if the node has NFT using the nodeHasNFT function
+  // Get updated content from contract storage for all nodes (both lightweight and NFT)
   let contract = LoomTree.bind(event.address)
-  let hasNFTResult = contract.try_nodeHasNFT(event.params.nodeId)
-  
-  if (!hasNFTResult.reverted && !hasNFTResult.value) {
-    // Node is lightweight, get the updated content
-    let contentResult = contract.try_getNodeContent(event.params.nodeId)
-    if (!contentResult.reverted) {
-      entity.content = contentResult.value
-    }
+  let contentResult = contract.try_getNodeContent(event.params.nodeId)
+  if (!contentResult.reverted) {
+    entity.content = contentResult.value
   }
 
   entity.blockNumber = event.block.number
