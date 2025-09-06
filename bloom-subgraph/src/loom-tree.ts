@@ -22,6 +22,15 @@ export function handleNodeCreated(event: NodeCreatedEvent): void {
   entity.hasNFT = event.params.hasNFT // ← New field from updated event
   entity.modelId = event.params.modelId // ← Get modelId directly from event
 
+  // For lightweight nodes (hasNFT: false), get content from contract storage
+  if (!event.params.hasNFT) {
+    let contract = LoomTree.bind(event.address)
+    let contentResult = contract.try_getNodeContent(event.params.nodeId)
+    if (!contentResult.reverted) {
+      entity.content = contentResult.value
+    }
+  }
+
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
