@@ -73,6 +73,7 @@ export const useGraphSubscriptions = (callbacks = {}) => {
   const [lastKnownBlockNumber, setLastKnownBlockNumber] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState(null);
+  const [isVisible, setIsVisible] = useState(!document.hidden);
   
   // Use refs for callbacks to avoid stale closures
   const callbacksRef = useRef(callbacks);
@@ -283,6 +284,18 @@ export const useGraphSubscriptions = (callbacks = {}) => {
     initializeBlockNumber();
   }, []);
 
+  // Handle visibility changes to pause polling when tab is hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = !document.hidden;
+      console.log('📡 Tab visibility changed:', visible ? 'visible' : 'hidden');
+      setIsVisible(visible);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // Setup polling interval - stable reference to prevent constant restarts
   const intervalRef = useRef(null);
   
@@ -294,10 +307,11 @@ export const useGraphSubscriptions = (callbacks = {}) => {
       clearInterval(intervalRef.current);
     }
 
-    console.log('📡 Starting Graph real-time polling from block:', lastKnownBlockNumber);
-    intervalRef.current = setInterval(() => {
-      pollForUpdates();
-    }, 15000); // Poll every 15 seconds
+    console.log('📡 Polling disabled - using socket-based real-time updates only');
+    // Polling disabled since all events are handled via sockets in real-time
+    // intervalRef.current = setInterval(() => {
+    //   pollForUpdates();
+    // }, 15000);
 
     return () => {
       console.log('📡 Stopping Graph real-time polling...');
