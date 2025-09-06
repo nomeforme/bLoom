@@ -1,11 +1,13 @@
 import {
   NodeNFTMinted as NodeNFTMintedEvent,
+  NodeNFTContentUpdated as NodeNFTContentUpdatedEvent,
   NodeTokenCreated as NodeTokenCreatedEvent,
   TokenBoundAccountCreated as TokenBoundAccountCreatedEvent,
   Transfer as TransferEvent
 } from "../generated/templates/LoomNodeNFT/LoomNodeNFT"
 import {
   NodeNFTMinted,
+  NodeNFTContentUpdated,
   NodeTokenCreated,
   TokenBoundAccountCreated,
   NFTTransfer
@@ -22,6 +24,21 @@ export function handleNodeNFTMinted(event: NodeNFTMintedEvent): void {
   entity.content = event.params.content
   entity.tokenBoundAccount = event.params.tokenBoundAccount
   entity.nodeTokenContract = event.params.nodeTokenContract
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleNodeNFTContentUpdated(event: NodeNFTContentUpdatedEvent): void {
+  let entity = new NodeNFTContentUpdated(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  )
+  entity.tokenId = event.params.tokenId
+  entity.nodeId = event.params.nodeId
+  entity.content = event.params.content
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
