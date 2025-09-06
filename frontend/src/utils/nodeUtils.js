@@ -58,71 +58,77 @@ export const createNodeHandlers = (
 
       await updatePromise;
       
-      // Show loading overlay immediately after blockchain confirmation
-      if (setIsLoadingTrees) {
-        setIsLoadingTrees(true);
-      }
+      // DISABLED: Show loading overlay immediately after blockchain confirmation
+      // if (setIsLoadingTrees) {
+      //   setIsLoadingTrees(true);
+      // }
       
-      // Wait for subgraph indexing before refreshing
-      setTimeout(async () => {
-        try {
-          const updatedTree = await getTree(treeAddress);
-          
-          if (currentTree?.address === treeAddress) {
-            setCurrentTree(updatedTree);
-          }
-          
-          setTrees(prevTrees => 
-            prevTrees.map(tree => 
-              tree.address === treeAddress ? updatedTree : tree
-            )
-          );
-          
-          // Invalidate NFT cache for the updated node to force fresh data on next access
-          if (invalidateNFTCache) {
-            // Find the updated node in the tree to log its new content
-            const updatedNode = updatedTree.nodes?.find(n => n.nodeId === nodeId);
-            if (updatedNode) {
-              console.log('🗑️ Invalidated NFT cache after node update:', {
-                nodeId: nodeId.substring(0, 10) + '...',
-                hasNFT: updatedNode.hasNFT,
-                newContentLength: updatedNode.content?.length || 0,
-                newContentPreview: updatedNode.content?.substring(0, 100) + '...' || 'No content'
-              });
-            } else {
-              console.log('🗑️ Invalidated NFT cache after node update:', nodeId.substring(0, 8) + '...');
-            }
-            invalidateNFTCache(nodeId);
-          }
-          
-          // Re-select the edited node after tree update, similar to post-generation
-          if (graphRef?.current?.reselectNode) {
-            setTimeout(() => {
-              const success = graphRef.current.reselectNode(nodeId);
-              if (!success) {
-                console.warn('Failed to re-select edited node:', nodeId.substring(0, 8) + '...');
-              }
-              
-              // Hide loading overlay after node reselection is complete
-              if (setIsLoadingTrees) {
-                setIsLoadingTrees(false);
-              }
-            }, 100); // Small delay to ensure tree is fully updated
-          } else {
-            // If no reselection available, still hide loading overlay
-            if (setIsLoadingTrees) {
-              setIsLoadingTrees(false);
-            }
-          }
-        } catch (error) {
-          console.error('Error refreshing tree after node update:', error);
-          
-          // Hide loading overlay on error
-          if (setIsLoadingTrees) {
-            setIsLoadingTrees(false);
-          }
-        }
-      }, 5000); // Increased delay to account for subgraph indexing
+      // DISABLED: Wait for subgraph indexing before refreshing
+      // setTimeout(async () => {
+      //   try {
+      //     const updatedTree = await getTree(treeAddress);
+      //     
+      //     if (currentTree?.address === treeAddress) {
+      //       setCurrentTree(updatedTree);
+      //     }
+      //     
+      //     setTrees(prevTrees => 
+      //       prevTrees.map(tree => 
+      //         tree.address === treeAddress ? updatedTree : tree
+      //       )
+      //     );
+      //     
+      //     // Invalidate NFT cache for the updated node to force fresh data on next access
+      //     if (invalidateNFTCache) {
+      //       // Find the updated node in the tree to log its new content
+      //       const updatedNode = updatedTree.nodes?.find(n => n.nodeId === nodeId);
+      //       if (updatedNode) {
+      //         console.log('🗑️ Invalidated NFT cache after node update:', {
+      //           nodeId: nodeId.substring(0, 10) + '...',
+      //           hasNFT: updatedNode.hasNFT,
+      //           newContentLength: updatedNode.content?.length || 0,
+      //           newContentPreview: updatedNode.content?.substring(0, 100) + '...' || 'No content'
+      //         });
+      //       } else {
+      //         console.log('🗑️ Invalidated NFT cache after node update:', nodeId.substring(0, 8) + '...');
+      //       }
+      //       invalidateNFTCache(nodeId);
+      //     }
+      //     
+      //     // Re-select the edited node after tree update, similar to post-generation
+      //     if (graphRef?.current?.reselectNode) {
+      //       setTimeout(() => {
+      //         const success = graphRef.current.reselectNode(nodeId);
+      //         if (!success) {
+      //           console.warn('Failed to re-select edited node:', nodeId.substring(0, 8) + '...');
+      //         }
+      //         
+      //         // Hide loading overlay after node reselection is complete
+      //         if (setIsLoadingTrees) {
+      //           setIsLoadingTrees(false);
+      //         }
+      //       }, 100); // Small delay to ensure tree is fully updated
+      //     } else {
+      //       // If no reselection available, still hide loading overlay
+      //       if (setIsLoadingTrees) {
+      //         setIsLoadingTrees(false);
+      //       }
+      //     }
+      //   } catch (error) {
+      //     console.error('Error refreshing tree after node update:', error);
+      //     
+      //     // Hide loading overlay on error
+      //     if (setIsLoadingTrees) {
+      //       setIsLoadingTrees(false);
+      //     }
+      //   }
+      // }, 5000); // Increased delay to account for subgraph indexing
+      
+      // ENABLED: Just invalidate the cache for the edited node
+      if (invalidateNFTCache) {
+        console.log('🗑️ Invalidated NFT cache after node update:', nodeId.substring(0, 8) + '...');
+        invalidateNFTCache(nodeId);
+      }
       
     } catch (error) {
       console.error('Error updating node:', error);
