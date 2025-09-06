@@ -20,6 +20,51 @@ export const createSocketHandlers = (
     setIsGeneratingSiblings(false);
   };
 
+  const handleNodeUpdated = (data) => {
+    console.log('Socket nodeUpdated event received:', {
+      nodeId: data.nodeId,
+      content: data.content?.substring(0, 50) + '...',
+      treeAddress: data.treeAddress,
+      currentTreeAddress: currentTree?.address
+    });
+    
+    // Only update node if it belongs to the currently displayed tree
+    if (currentTree && data.treeAddress === currentTree.address) {
+      console.log('Updating current tree with updated node content');
+      
+      setCurrentTree(prevTree => {
+        if (!prevTree?.nodes) return prevTree;
+        
+        const updatedTree = {
+          ...prevTree,
+          nodes: prevTree.nodes.map(node => 
+            node.nodeId === data.nodeId 
+              ? { ...node, content: data.content }
+              : node
+          )
+        };
+        return updatedTree;
+      });
+
+      setTrees(prevTrees => 
+        prevTrees.map(tree => 
+          tree.address === data.treeAddress 
+            ? {
+                ...tree,
+                nodes: tree.nodes?.map(node => 
+                  node.nodeId === data.nodeId 
+                    ? { ...node, content: data.content }
+                    : node
+                ) || tree.nodes
+              }
+            : tree
+        )
+      );
+    } else {
+      console.log('Not updating tree - currentTree mismatch or null');
+    }
+  };
+
   const handleNodeCreated = (data) => {
     console.log('Socket nodeCreated event received:', {
       nodeId: data.nodeId,
@@ -187,6 +232,7 @@ export const createSocketHandlers = (
   return {
     handleGenerationComplete,
     handleNodeCreated,
+    handleNodeUpdated,
     handleTreeCreated
   };
 };

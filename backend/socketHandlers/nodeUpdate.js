@@ -216,6 +216,17 @@ function handleUpdateNode(socket, io) {
         }
       }
       
+      // Emit nodeUpdated socket event for real-time parent content update (similar to nodeCreated for children)
+      console.log('📡 Emitting nodeUpdated event for parent node content change');
+      io.emit('nodeUpdated', {
+        nodeId,
+        content: newContent,
+        treeAddress: treeAddress,
+        modelId: modelId || '',
+        timestamp: Date.now(),
+        txHash: updateReceipt.hash
+      });
+
       // Emit success response
       const response = {
         success: true,
