@@ -33,7 +33,7 @@ const TREE_ABI = [
   "function getRootId() external view returns (bytes32)",
   "function getNodeCount() external view returns (uint256)",
   "function getNFTContract() external view returns (address)",
-  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, address indexed author, uint256 timestamp, bool hasNFT, string modelId)",
+  "event NodeCreated(bytes32 indexed nodeId, bytes32 indexed parentId, address indexed author, uint256 timestamp, bool hasNFT, string modelId, uint256 tokenId, address tokenBoundAccount, address nodeTokenContract)",
   "event NodeUpdated(bytes32 indexed nodeId, address indexed author, string modelId)"
 ];
 

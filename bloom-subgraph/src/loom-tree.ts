@@ -21,6 +21,9 @@ export function handleNodeCreated(event: NodeCreatedEvent): void {
   entity.treeAddress = event.address // ← This is the key! The tree contract address
   entity.hasNFT = event.params.hasNFT // ← New field from updated event
   entity.modelId = event.params.modelId // ← Get modelId directly from event
+  entity.tokenId = event.params.tokenId // ← NFT token ID (0 for lightweight nodes)
+  entity.tokenBoundAccount = event.params.tokenBoundAccount // ← ERC6551 TBA (null for lightweight)
+  entity.nodeTokenContract = event.params.nodeTokenContract // ← ERC20 contract (null for lightweight)
 
   // For lightweight nodes (hasNFT: false), get content from contract storage
   if (!event.params.hasNFT) {

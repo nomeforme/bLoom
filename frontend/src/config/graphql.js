@@ -47,6 +47,8 @@ export const graphClient = new ApolloClient({
     httpLink
   ]),
   cache: new InMemoryCache({
+    // Force cache clear for schema changes
+    addTypename: false,
     typePolicies: {
       Query: {
         fields: {
@@ -109,6 +111,9 @@ export const NODE_FRAGMENT = `
     timestamp
     treeAddress
     hasNFT
+    tokenId
+    tokenBoundAccount
+    nodeTokenContract
     blockNumber
     blockTimestamp
     transactionHash

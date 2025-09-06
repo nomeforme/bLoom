@@ -106,6 +106,53 @@ update_abis() {
     fi
 }
 
+update_factory_address() {
+    print_status "Updating factory address from chains.json..."
+    
+    if [ ! -f "backend/config/chains.json" ]; then
+        print_warning "chains.json not found, skipping factory address update"
+        return
+    fi
+    
+    # Get active chain ID and factory address using Node.js
+    FACTORY_ADDRESS=$(node -e "
+        const chains = require('./backend/config/chains.json');
+        const activeChainId = chains.activeChainId;
+        const factoryAddress = chains.chains[activeChainId]?.factoryAddress;
+        if (factoryAddress) {
+            console.log(factoryAddress);
+        } else {
+            console.error('Factory address not found for active chain ' + activeChainId);
+            process.exit(1);
+        }
+    " 2>/dev/null)
+    
+    if [ $? -ne 0 ] || [ -z "$FACTORY_ADDRESS" ]; then
+        print_warning "Could not get factory address from chains.json, skipping update"
+        return
+    fi
+    
+    print_status "Found factory address: $FACTORY_ADDRESS"
+    
+    # Update the factory address in subgraph.yaml
+    if [ -f "$SUBGRAPH_DIR/subgraph.yaml" ]; then
+        # Use sed to replace the factory address
+        sed -i.bak "s/address: \"0x[a-fA-F0-9]\{40\}\"/address: \"$FACTORY_ADDRESS\"/" "$SUBGRAPH_DIR/subgraph.yaml"
+        
+        if [ $? -eq 0 ]; then
+            print_success "Factory address updated in subgraph.yaml"
+            # Remove backup file
+            rm -f "$SUBGRAPH_DIR/subgraph.yaml.bak"
+        else
+            print_error "Failed to update factory address in subgraph.yaml"
+            # Restore backup if it exists
+            [ -f "$SUBGRAPH_DIR/subgraph.yaml.bak" ] && mv "$SUBGRAPH_DIR/subgraph.yaml.bak" "$SUBGRAPH_DIR/subgraph.yaml"
+        fi
+    else
+        print_error "subgraph.yaml not found at $SUBGRAPH_DIR/subgraph.yaml"
+    fi
+}
+
 # Function to run codegen
 run_codegen() {
     print_status "Generating types from schema and ABIs..."
@@ -252,6 +299,7 @@ main() {
     fi
     
     update_abis
+    update_factory_address
     run_codegen
     build_subgraph
     deploy_subgraph

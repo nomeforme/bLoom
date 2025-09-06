@@ -30,6 +30,9 @@ type NodeCreated @entity(immutable: true) {
   hasNFT: Boolean! # bool - whether this node has NFT/ERC20/ERC6551
   modelId: String # string - the model ID used to generate this node
   content: String # string - content for lightweight nodes (hasNFT: false)
+  tokenId: BigInt # uint256 - NFT token ID (0 for lightweight nodes)
+  tokenBoundAccount: Bytes # address - ERC6551 token bound account (null for lightweight nodes)
+  nodeTokenContract: Bytes # address - ERC20 token contract (null for lightweight nodes)
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
