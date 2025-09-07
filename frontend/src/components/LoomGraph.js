@@ -138,6 +138,7 @@ const LoomGraph = forwardRef(({
             parentId: node.properties.parentId,
             modelId: node.properties.modelId,
             hasNFT: node.properties.hasNFT,
+            ipfsHash: node.properties.ipfsHash,
             tokenId: node.properties.tokenId,
             tokenBoundAccount: node.properties.tokenBoundAccount,
             nodeTokenContract: node.properties.nodeTokenContract,
@@ -218,7 +219,8 @@ const LoomGraph = forwardRef(({
         nodeId: "",
         parentId: "",
         author: "",
-        timestamp: 0
+        timestamp: 0,
+        ipfsHash: null
       };
       
       // Add output for children
@@ -301,6 +303,7 @@ const LoomGraph = forwardRef(({
           parentId: this.properties.parentId,
           modelId: this.properties.modelId,
           hasNFT: this.properties.hasNFT,
+          ipfsHash: this.properties.ipfsHash,
           tokenId: this.properties.tokenId,
           tokenBoundAccount: this.properties.tokenBoundAccount,
           nodeTokenContract: this.properties.nodeTokenContract,
@@ -1130,6 +1133,7 @@ const LoomGraph = forwardRef(({
         modelId: nodeData.modelId,
         // Add NFT-related properties from GraphQL data
         hasNFT: nodeData.hasNFT || false,
+        ipfsHash: nodeData.ipfsHash || null,
         tokenId: nodeData.tokenId || null,
         tokenBoundAccount: nodeData.tokenBoundAccount || null,
         nodeTokenContract: nodeData.nodeTokenContract || null,
@@ -1751,6 +1755,7 @@ const LoomGraph = forwardRef(({
           parentId: node.properties.parentId,
           modelId: node.properties.modelId,
           hasNFT: node.properties.hasNFT,
+          ipfsHash: node.properties.ipfsHash,
           tokenId: node.properties.tokenId,
           tokenBoundAccount: node.properties.tokenBoundAccount,
           nodeTokenContract: node.properties.nodeTokenContract,
@@ -2034,6 +2039,7 @@ const LoomGraph = forwardRef(({
               timestamp: node.properties.timestamp,
               modelId: node.properties.modelId,
               hasNFT: node.properties.hasNFT,
+              ipfsHash: node.properties.ipfsHash,
               tokenId: node.properties.tokenId,
               tokenBoundAccount: node.properties.tokenBoundAccount,
               nodeTokenContract: node.properties.nodeTokenContract,
