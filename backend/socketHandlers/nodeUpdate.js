@@ -157,7 +157,8 @@ function handleUpdateNode(socket, io) {
             timestamp: Number(parsedEvent.args.timestamp),
             treeAddress: treeAddress,
             hasNFT: parsedEvent.args.hasNFT,
-            modelId: parsedEvent.args.modelId || modelId || '',
+            ipfsHash: parsedEvent.args.ipfsHash || null,
+            modelId: parsedEvent.args.modelId || '',
             tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null,
             tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null,
             nodeTokenContract: parsedEvent.args.nodeTokenContract || null
@@ -243,7 +244,8 @@ function handleUpdateNode(socket, io) {
             timestamp: Number(parsedEvent.args.timestamp),
             treeAddress: treeAddress,
             hasNFT: parsedEvent.args.hasNFT,
-            modelId: parsedEvent.args.modelId || modelId || '',
+            ipfsHash: parsedEvent.args.ipfsHash || null,
+            modelId: parsedEvent.args.modelId || '',
             tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null,
             tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null,
             nodeTokenContract: parsedEvent.args.nodeTokenContract || null

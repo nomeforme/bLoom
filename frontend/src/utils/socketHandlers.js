@@ -113,6 +113,7 @@ export const createSocketHandlers = (
       isRoot: isRootNode,
       modelId: data.modelId,
       hasNFT: data.hasNFT,
+      ipfsHash: data.ipfsHash,
       tokenId: data.tokenId,
       tokenBoundAccount: data.tokenBoundAccount,
       nodeTokenContract: data.nodeTokenContract
