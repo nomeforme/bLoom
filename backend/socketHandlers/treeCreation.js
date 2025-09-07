@@ -131,6 +131,7 @@ function handleTreeCreation(socket, io) {
             timestamp: Number(parsedNodeEvent.args.timestamp),
             treeAddress: treeData.treeAddress, // Associate with the tree
             hasNFT: parsedNodeEvent.args.hasNFT,
+            ipfsHash: parsedNodeEvent.args.ipfsHash || null,
             modelId: parsedNodeEvent.args.modelId || model,
             tokenId: parsedNodeEvent.args.tokenId ? Number(parsedNodeEvent.args.tokenId) : null,
             tokenBoundAccount: parsedNodeEvent.args.tokenBoundAccount || null,
