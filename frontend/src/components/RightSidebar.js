@@ -5,6 +5,18 @@ import { getNodeTokenBalance } from '../utils/tokenUtils';
 import { parseNFTMetadata, formatTokenSupply } from '../utils/nftUtils';
 import modelsConfig from '../config/models.json';
 
+// Import subcomponents
+import SidebarHeader from './sidebar/SidebarHeader';
+import ModelSelector from './sidebar/ModelSelector';
+import SelectedNodeInfo from './sidebar/SelectedNodeInfo';
+import AIGenerationControls from './sidebar/AIGenerationControls';
+import TreeCreationForm from './sidebar/TreeCreationForm';
+import TreeList from './sidebar/TreeList';
+import BackupRestore from './sidebar/BackupRestore';
+import KeyboardShortcuts from './sidebar/KeyboardShortcuts';
+import Instructions from './sidebar/Instructions';
+import GasTrackerModal from './sidebar/GasTrackerModal';
+
 const RightSidebar = ({
   className,
   connected,
@@ -384,8 +396,6 @@ const RightSidebar = ({
     }
   };
 
-  // parseNFTMetadata now imported from utils/nftUtils.js
-
   const handleCreateTree = async () => {
     if (newTreeContent.trim()) {
       setIsCreatingTree(true);
@@ -528,1018 +538,103 @@ const RightSidebar = ({
     input.click();
   };
 
-
   return (
     <div className={className || "right-sidebar"}>
-      {/* Header Section */}
-      <div style={{ marginBottom: '15px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-          <h2 style={{ 
-            color: '#4CAF50', 
-            fontSize: '24px', 
-            fontWeight: 'bold',
-            margin: '0'
-          }}>bLoom</h2>
-          
-          {connected ? (
-              <button 
-                onClick={onDisconnect}
-                style={{ 
-                  padding: '6px 12px', 
-                  fontSize: '12px',
-                  minWidth: 'auto',
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #4CAF50',
-                  borderRadius: '4px',
-                  color: '#4CAF50',
-                  cursor: 'pointer',
-                  fontFamily: "'Inconsolata', monospace",
-                  transition: 'all 0.3s ease',
-                  outline: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#2a2a2a';
-                  e.target.style.borderColor = '#45a049';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#1a1a1a';
-                  e.target.style.borderColor = '#4CAF50';
-                }}
-              >
-                Disconnect
-              </button>
-            ) : (
-              <button className="btn" onClick={onConnect} style={{ fontSize: '12px', padding: '6px 12px' }}>
-                Connect Wallet
-              </button>
-            )}
-        </div>
-        </div>
-        
-        {connected && (
-          <div>
-            <div style={{ 
-              fontSize: '14px', 
-              color: '#4CAF50', 
-              marginBottom: '2px',
-              fontWeight: 'bold'
-            }}>
-              {ellipseAddress(account)}
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div 
-                style={{ 
-                  fontSize: '12px', 
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-                onClick={() => setShowGasModal(true)}
-                title="Press R to toggle gas tracker modal"
-              >
-                <span style={{ color: '#999' }}>Gas Used: </span>
-                <span style={{ color: '#4CAF50' }}>{totalGasCost.toFixed(4)} {nativeCurrencySymbol}</span>
-              </div>
-              <div style={{
-                fontSize: '12px',
-                fontFamily: "'Inconsolata', monospace",
-                fontWeight: 'bold'
-              }}>
-                <span style={{ color: '#999' }}>Mode: </span>
-                <span style={{ color: '#4CAF50' }}>{storageMode.toUpperCase()}</span>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div style={{ borderBottom: '1px solid #444', paddingBottom: '5px' }}></div>
+      {/* Header Section - Using subcomponent */}
+      <SidebarHeader
+        connected={connected}
+        account={account}
+        onConnect={onConnect}
+        onDisconnect={onDisconnect}
+        totalGasCost={totalGasCost}
+        nativeCurrencySymbol={nativeCurrencySymbol}
+        storageMode={storageMode}
+        setShowGasModal={setShowGasModal}
+      />
 
-      {/* AI Model Selector */}
-      <div style={{ marginBottom: '30px' }}>
-        <select 
-          value={selectedModel} 
-          onChange={(e) => setSelectedModel(e.target.value)}
-          disabled={isGeneratingChildren || isGeneratingSiblings}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #555',
-            backgroundColor: '#3d3d3d',
-            color: '#fff',
-            fontSize: '12px',
-            fontFamily: "'Inconsolata', monospace",
-            marginBottom: '8px'
-          }}
-        >
-          {availableModels.map(model => (
-            <option 
-              key={model.id} 
-              value={model.id}
-              disabled={model.available === false}
-            >
-              {model.name} {model.available === false ? ' - Unavailable' : ''}
-            </option>
-          ))}
-        </select>
-        {selectedModel && modelsConfig.models[selectedModel] && (
-          <div style={{ fontSize: '10px', color: '#888', lineHeight: '1.3' }}>
-            Model ID: {modelsConfig.models[selectedModel].modelId}
-          </div>
-        )}
-      </div>
+      {/* AI Model Selector - Using subcomponent */}
+      <ModelSelector
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        availableModels={availableModels}
+        isGeneratingChildren={isGeneratingChildren}
+        isGeneratingSiblings={isGeneratingSiblings}
+      />
 
-      {/* Selected Node Info */}
-      {selectedNode && (
-        <div className="section">
-          <h3>Selected Node</h3>
-          <div className="node-info">
-            {/* Node Info */}
-            <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>LoomTree: Node Info</h4>
-            <div style={{ 
-              backgroundColor: '#1a1a1a', 
-              border: '1px solid #4CAF50',
-              borderRadius: '6px',
-              padding: '10px',
-              marginBottom: '15px'
-            }}>
-              <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                  Node ID:
-                </div>
-                <div style={{ 
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  padding: '6px',
-                  fontFamily: 'monospace',
-                  fontSize: '10px',
-                  wordBreak: 'break-all',
-                  marginBottom: '8px',
-                  cursor: 'pointer'
-                }}
-                onClick={() => copyToClipboard(selectedNode.id)}
-                title="Click to copy full address"
-                >
-                  {selectedNode.id}
-                </div>
-                <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                  <div>• Created: {new Date(selectedNode.timestamp * 1000).toLocaleString()}</div>
-                  <div>• Author: {ellipseAddress(selectedNode.author)}</div>
-                  <div>• Parent: {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? ellipseAddress(selectedNode.parentId) : 'Root Node'}</div>
-                  <div>• Children: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{currentTree?.nodes ? currentTree.nodes.filter(node => node.parentId === selectedNode.id).length : 0}</span></div>
-                  <div>• Model: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{selectedNode.modelId || 'manual'}</span></div>
-                </div>
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  Node Author: <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span>
-                </div>
-              </div>
-            </div>
+      {/* Selected Node Info - Using subcomponent */}
+      <SelectedNodeInfo
+        selectedNode={selectedNode}
+        selectedNodeNFT={selectedNodeNFT}
+        nodeHasNFT={nodeHasNFT}
+        currentTree={currentTree}
+        currentTokenBalance={currentTokenBalance}
+        isLoadingBalance={isLoadingBalance}
+      />
 
-            {/* NFT Information - Only show for nodes with NFT/tokens */}
-            {nodeHasNFT && (
-              <>
-                <h4 style={{ color: '#4CAF50', marginBottom: '8px' }}>ERC721: Node NFT</h4>
-            {selectedNodeNFT ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #4CAF50',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '15px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                    NFT Contract Address:
-                  </div>
-                  <div style={{ 
-                    backgroundColor: '#0a0a0a',
-                    border: '1px solid #333',
-                    borderRadius: '4px',
-                    padding: '6px',
-                    fontFamily: 'monospace',
-                    fontSize: '10px',
-                    wordBreak: 'break-all',
-                    marginBottom: '8px',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => currentTree?.nftAddress && copyToClipboard(currentTree.nftAddress)}
-                  title="Click to copy full address"
-                  >
-                    {currentTree?.nftAddress || 'N/A'}
-                  </div>
-                  <div style={{ fontWeight: 'bold' }}>NFT Token ID: #{selectedNodeNFT.tokenId}</div>
-                </div>
-                
-                {/* Display the most recent NFT content (from updates if available, otherwise from mint) */}
-                <div style={{ 
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  marginBottom: '8px',
-                  fontSize: '11px'
-                }}>
-                  {(() => {
-                    // Use the most recent content available:
-                    // 1. Latest NFT content update (if any updates exist)
-                    // 2. Current node content (from NodeUpdated events) 
-                    // 3. Original NFT content (from NodeNFTMinted event)
-                    const content = selectedNodeNFT.latestContent || selectedNode.content || selectedNodeNFT.content || '';
-                    
-                    // Clip content to maximum 300 characters for right sidebar
-                    const maxLength = 300;
-                    if (content.length > maxLength) {
-                      return content.substring(0, maxLength) + '...';
-                    }
-                    return content;
-                  })()}
-                </div>
-                
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                    NFT Contract Address:
-                  </div>
-                  <div style={{ 
-                    backgroundColor: '#0a0a0a',
-                    border: '1px solid #333',
-                    borderRadius: '4px',
-                    padding: '6px',
-                    fontFamily: 'monospace',
-                    fontSize: '10px',
-                    wordBreak: 'break-all',
-                    marginBottom: '8px',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => currentTree?.nftAddress && copyToClipboard(currentTree.nftAddress)}
-                  title="Click to copy full address"
-                  >
-                    {currentTree?.nftAddress || 'N/A'}
-                  </div>
-                </div>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  {selectedNode ? 'Loading content from NFT...' : 'No content available'}
-                </div>
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', paddingBottom: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Held By: {selectedNode?.author ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(selectedNode.author)} title="Click to copy full address">{ellipseAddress(selectedNode.author)}</span> : 'N/A'}
-                </div>
-              </div>
-            )}
-              </>
-            )}
+      {/* AI Generation Controls - Using subcomponent */}
+      <AIGenerationControls
+        selectedNode={selectedNode}
+        connected={connected}
+        childrenCount={childrenCount}
+        setChildrenCount={setChildrenCount}
+        siblingCount={siblingCount}
+        setSiblingCount={setSiblingCount}
+        isGeneratingChildren={isGeneratingChildren}
+        isGeneratingSiblings={isGeneratingSiblings}
+        handleGenerateChildren={handleGenerateChildren}
+        handleGenerateSiblings={handleGenerateSiblings}
+      />
 
-            {/* Node Token Information - Only show for nodes with NFT/tokens */}
-            {nodeHasNFT && (
-              <>
-                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC20: Node Token</h4>
-            {selectedNodeNFT && (selectedNodeNFT.nodeTokenContract || selectedNode.nodeTokenContract) ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #4CAF50',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '15px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
-                  {(() => {
-                    // Use structured data from GraphQL first, fallback to parsed metadata
-                    const nodeTokenContract = selectedNodeNFT.nodeTokenContract || selectedNode.nodeTokenContract;
-                    const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
-                    const metadata = {
-                      ...parseNFTMetadata(selectedNodeNFT.content || ''),
-                      tokenSupply: selectedNodeNFT.tokenSupply
-                    };
-                    
-                    console.log('🔍 RightSidebar: NFT metadata for Initial Supply:', {
-                      nodeId: selectedNode?.id?.substring(0, 10) + '...',
-                      rawTokenSupply: selectedNodeNFT.tokenSupply,
-                      parsedMetadata: parseNFTMetadata(selectedNodeNFT.content || ''),
-                      finalMetadata: metadata,
-                      fallbackValue: metadata?.tokenSupply || '1000'
-                    });
-                    
-                    if (nodeTokenContract) {
-                      return (
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            Token Contract:
-                          </div>
-                          <div style={{ 
-                            backgroundColor: '#0a0a0a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            padding: '6px',
-                            fontFamily: 'monospace',
-                            fontSize: '10px',
-                            wordBreak: 'break-all',
-                            marginBottom: '8px',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => copyToClipboard(nodeTokenContract)}
-                          title="Click to copy full address"
-                          >
-                            {nodeTokenContract}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>• Token Name: {metadata?.tokenName || 'NODE'}</div>
-                            <div>• Token Symbol: {metadata?.tokenSymbol || 'NODE'}</div>
-                            <div>• Initial Supply: {formatTokenSupply(metadata?.tokenSupply)} {metadata?.tokenSymbol || 'NODE'}</div>
-                            <div>
-                              • Current Balance: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                                {
-                                  isLoadingBalance ? 'Loading...' : 
-                                  currentTokenBalance !== null ? currentTokenBalance : 
-                                  'N/A'
-                                }
-                              </span> {currentTokenBalance !== null && !isLoadingBalance ? (metadata?.tokenSymbol || 'NODE') : ''}
-                            </div>
-                            <div>• Token Type: ERC20</div>
-                            <div>• Held by Token Bound Account</div>
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            Held by TBA: {tokenBoundAccount ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(tokenBoundAccount)} title="Click to copy full address">{ellipseAddress(tokenBoundAccount)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            No Node Token contract found
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Loading Node Token info...
-                </div>
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  Held by TBA: <span style={{ fontWeight: 'bold' }}>N/A</span>
-                </div>
-              </div>
-            )}
-              </>
-            )}
+      {/* Create New Tree - Using subcomponent */}
+      <TreeCreationForm
+        connected={connected}
+        newTreeContent={newTreeContent}
+        setNewTreeContent={setNewTreeContent}
+        isCreatingTree={isCreatingTree}
+        handleCreateTree={handleCreateTree}
+      />
 
-            {/* Token Bound Account (TBA) Information - Only show for nodes with NFT/tokens */}
-            {nodeHasNFT && (
-              <>
-                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>ERC6551: Node NFT TBA</h4>
-            {selectedNodeNFT && (selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount) ? (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #4CAF50',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '15px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
-                  {(() => {
-                    // Use structured data from GraphQL first, fallback to parsed metadata
-                    const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
-                    const metadata = {
-                      ...parseNFTMetadata(selectedNodeNFT.content || ''),
-                      tokenSupply: selectedNodeNFT.tokenSupply
-                    };
-                    
-                    if (tokenBoundAccount) {
-                      return (
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-                            Account Address:
-                          </div>
-                          <div style={{ 
-                            backgroundColor: '#0a0a0a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            padding: '6px',
-                            fontFamily: 'monospace',
-                            fontSize: '10px',
-                            wordBreak: 'break-all',
-                            marginBottom: '8px',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => copyToClipboard(tokenBoundAccount)}
-                          title="Click to copy full address"
-                          >
-                            {tokenBoundAccount}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
-                            <div>• This NFT has its own Ethereum account</div>
-                            <div>• Can hold assets and execute transactions</div>
-                            <div>• Account controlled by NFT owner</div>
-                            <div>• Account transfers with NFT ownership</div>
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                            No Token Bound Account found
-                          </div>
-                          <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                            NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
-                          </div>
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div style={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid #555',
-                borderRadius: '6px',
-                padding: '10px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Loading Token Bound Account info...
-                </div>
-                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                  NFT Address: {currentTree?.nftAddress ? <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.nftAddress)} title="Click to copy full address">{ellipseAddress(currentTree.nftAddress)}</span> : 'N/A'}
-                </div>
-              </div>
-            )}
-              </>
-            )}
+      {/* Tree List - Using subcomponent */}
+      <TreeList
+        connected={connected}
+        trees={trees}
+        currentTree={currentTree}
+        account={account}
+        showOnlyMyTrees={showOnlyMyTrees}
+        setShowOnlyMyTrees={setShowOnlyMyTrees}
+        onSelectTree={onSelectTree}
+        getAllTrees={getAllTrees}
+        setTrees={setTrees}
+        setCurrentTree={setCurrentTree}
+        setIsLoadingTrees={setIsLoadingTrees}
+      />
 
-            {/* Lightweight Mode Info for nodes without NFT/tokens */}
-            {!nodeHasNFT && selectedNode && (
-              <>
-                <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>LoomNode: Content</h4>
-                <div style={{ 
-                  backgroundColor: '#1a1a1a', 
-                  border: '1px solid #4CAF50',
-                  borderRadius: '6px', 
-                  padding: '10px',
-                  marginBottom: '15px'
-                }}>
-                  {/* Display the actual content from the node */}
-                  <div style={{ 
-                    backgroundColor: '#0a0a0a',
-                    border: '1px solid #333',
-                    borderRadius: '4px',
-                    padding: '8px',
-                    marginBottom: '8px',
-                    fontSize: '11px'
-                  }}>
-                    {(() => {
-                      const content = selectedNode.content || '';
-                      // Clip content to maximum 300 characters for right sidebar
-                      const maxLength = 300;
-                      if (content.length > maxLength) {
-                        return content.substring(0, maxLength) + '...';
-                      }
-                      return content;
-                    })()}
-                  </div>
-                  
-                  <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3', textAlign: 'left' }}>
-                    <div>• Content stored in LoomTree</div>
-                    <div>• No NFT, ERC20, or ERC6551 account</div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Backup & Restore - Using subcomponent */}
+      <BackupRestore
+        connected={connected}
+        trees={trees}
+        account={account}
+        isExporting={isExporting}
+        isImporting={isImporting}
+        handleExportTrees={handleExportTrees}
+        handleImportTrees={handleImportTrees}
+      />
 
-      {/* AI Generation Controls */}
-      {selectedNode && (
-        <div className="section">
-          <h3>AI Generation</h3>
-          
-          {/* Generate Children */}
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <button
-                className="btn"
-                onClick={handleGenerateChildren}
-                disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-                style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
-              >
-                {isGeneratingChildren ? 'Generating...' : 'Generate Children'}
-              </button>
-              <select
-                value={childrenCount}
-                onChange={(e) => setChildrenCount(parseInt(e.target.value))}
-                style={{
-                  width: '60px',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #555',
-                  backgroundColor: '#3d3d3d',
-                  color: '#fff',
-                  fontSize: '12px',
-                  height: '36px',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={5}>5</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Generate Siblings */}
-          {selectedNode.parentId && selectedNode.parentId !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-            <div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button
-                  className="btn"
-                  onClick={handleGenerateSiblings}
-                  disabled={!connected || !selectedNode || isGeneratingChildren || isGeneratingSiblings}
-                  style={{ flex: '1', fontSize: '12px', height: '36px', boxSizing: 'border-box', padding: '0 12px', border: 'none' }}
-                >
-                  {isGeneratingSiblings ? 'Generating...' : 'Generate Siblings'}
-                </button>
-                <select
-                  value={siblingCount}
-                  onChange={(e) => setSiblingCount(parseInt(e.target.value))}
-                  style={{
-                    width: '60px',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    border: '1px solid #555',
-                    backgroundColor: '#3d3d3d',
-                    color: '#fff',
-                    fontSize: '12px'
-                  }}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                  <option value={5}>5</option>
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Keyboard Shortcuts - Using subcomponent */}
+      <KeyboardShortcuts shortcutsManager={shortcutsManager} />
 
-      {/* Create New Tree - only show when connected */}
-      {connected && (
-        <div className="section">
-          <h3>Create New Tree</h3>
-          <div className="input-group">
-            <label>Root Content:</label>
-            <textarea
-              value={newTreeContent}
-              onChange={(e) => setNewTreeContent(e.target.value)}
-              placeholder="Enter root text for new tree..."
-            />
-          </div>
-          <button 
-            className="btn" 
-            onClick={handleCreateTree}
-            disabled={!connected || !newTreeContent.trim() || isCreatingTree}
-            style={{ width: '100%' }}
-          >
-            {isCreatingTree ? 'Creating Tree...' : 'Create Tree'}
-          </button>
-        </div>
-      )}
+      {/* Instructions - Using subcomponent */}
+      <Instructions shortcutsManager={shortcutsManager} ipfsAvailable={ipfsAvailable} />
 
-
-      {/* Tree List - only show when connected */}
-      {connected && (
-        <div className="section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h3>Trees ({(() => {
-            const filteredTrees = showOnlyMyTrees 
-              ? trees.filter(tree => tree.nodes && tree.nodes.some(node => node.author && node.author.toLowerCase() === account?.toLowerCase()))
-              : trees;
-            return filteredTrees.length;
-          })()})</h3>
-          <div style={{ display: 'flex', gap: '2px' }}>
-            <button 
-              className={`btn ${showOnlyMyTrees ? '' : 'btn-secondary'}`}
-              onClick={() => setShowOnlyMyTrees(!showOnlyMyTrees)}
-              disabled={!connected}
-              style={{ 
-                fontSize: '11px', 
-                padding: '4px 8px',
-                minWidth: 'auto'
-              }}
-            >
-              {showOnlyMyTrees ? 'Show All' : 'My Trees'}
-            </button>
-            <button 
-              className="btn btn-secondary"
-              onClick={() => refreshTrees(getAllTrees, setTrees, setCurrentTree, setIsLoadingTrees, currentTree)}
-              disabled={!connected}
-              style={{ 
-                fontSize: '11px', 
-                padding: '4px 8px',
-                minWidth: 'auto'
-              }}
-              title="Refresh trees from server"
-            >
-              ↻
-            </button>
-          </div>
-        </div>
-        {(() => {
-          const filteredTrees = showOnlyMyTrees 
-            ? trees.filter(tree => tree.nodes && tree.nodes.some(node => node.author && node.author.toLowerCase() === account?.toLowerCase()))
-            : trees;
-          
-          return filteredTrees.length === 0 ? (
-            <p style={{ color: '#888' }}>
-              {showOnlyMyTrees ? 'No trees created by you' : 'No trees available'}
-            </p>
-          ) : (
-            filteredTrees.map((tree, index) => {
-              const isMyTree = tree.nodes && tree.nodes.some(node => node.author && node.author.toLowerCase() === account?.toLowerCase());
-              return (
-                <div
-                  key={tree.address || tree.id || index}
-                  className={`tree-item ${currentTree?.address === tree.address ? 'selected' : ''}`}
-                  onClick={() => onSelectTree(tree)}
-                >
-                  <div style={{ 
-                    fontWeight: 'bold', 
-                    marginBottom: '5px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span>Tree #{trees.findIndex(t => t.address === tree.address) + 1} {isMyTree ? '*' : ''}</span>
-                    <span style={{ fontSize: '9px', color: '#666', fontWeight: 'normal' }}>
-                      {tree.address ? tree.address.substring(0, 6) + '...' : ''}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '8px' }}>
-                    {tree.rootContent ? tree.rootContent.substring(0, 45) + '...' : 'Loading...'}
-                  </div>
-                  <div className="node-stats" style={{ 
-                    fontSize: '11px', 
-                    color: '#4CAF50', 
-                    fontWeight: 'bold',
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span>Total: {tree.nodeCount || 0} nodes</span>
-                    <span style={{ color: '#888' }}>
-                      {tree.nodes ? `(${tree.nodes.filter(n => !n.isRoot).length} children)` : ''}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          );
-        })()}
-        </div>
-      )}
-
-      {/* Backup & Restore - only show when connected */}
-      {connected && (
-        <div className="section">
-          <h3>Backup & Restore</h3>
-          <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-            <button 
-              className={`btn ${trees.length > 0 ? '' : 'btn-secondary'}`}
-              onClick={handleExportTrees}
-              disabled={!connected || trees.length === 0 || isExporting}
-              style={{ fontSize: '12px', padding: '8px 12px' }}
-            >
-              {isExporting ? 'Exporting...' : `Save All Trees (${trees.length})`}
-            </button>
-            <button 
-              className={`btn ${trees.length === 0 ? '' : 'btn-secondary'}`}
-              onClick={handleImportTrees}
-              disabled={!connected || isImporting}
-              style={{ fontSize: '12px', padding: '8px 12px' }}
-            >
-              {isImporting ? 'Importing...' : 'Load Trees from JSON'}
-            </button>
-          </div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', lineHeight: '1.3' }}>
-            Save exports all trees to JSON. Load recreates trees on blockchain (costs gas).
-          </div>
-        </div>
-      )}
-
-      {/* Keyboard Shortcuts */}
-      <div className="section">
-        <h3>Keyboard Shortcuts</h3>
-        <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.3' }}>
-          {Object.entries(shortcutsManager.getShortcutsByCategory()).map(([category, shortcuts]) => (
-            <div key={category} style={{ marginBottom: '12px' }}>
-              <div style={{ 
-                color: '#4CAF50', 
-                fontSize: '12px', 
-                fontWeight: 'bold', 
-                marginBottom: '6px' 
-              }}>
-                {category}
-              </div>
-              {shortcuts.map((shortcut, index) => (
-                <div key={`${category}-${shortcut.key}-${index}`} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '3px',
-                  padding: '2px 0'
-                }}>
-                  <span>{shortcut.description}</span>
-                  <span style={{ 
-                    backgroundColor: '#333', 
-                    color: '#4CAF50',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    fontSize: '14px',
-                    fontFamily: 'monospace',
-                    fontWeight: 'bold'
-                  }}>
-                    {(() => {
-                      // If symbol exists, check if it needs + formatting
-                      if (shortcut.symbol) {
-                        // Check if it's a combination (has modifier symbols followed by other keys)
-                        const modifierSymbols = ['⇧', '⌃', '⌥', '⌘'];
-                        const symbol = shortcut.symbol;
-                        
-                        // If it starts with a modifier and has more characters, add +
-                        if (modifierSymbols.some(mod => symbol.startsWith(mod)) && symbol.length > 1) {
-                          // Find the modifier and split
-                          for (const mod of modifierSymbols) {
-                            if (symbol.startsWith(mod)) {
-                              const rest = symbol.substring(mod.length);
-                              if (rest.length > 0) {
-                                return mod + '+' + rest;
-                              }
-                            }
-                          }
-                        }
-                        return symbol;
-                      }
-                      
-                      // Otherwise, build from key and modifiers
-                      let displayText = shortcut.key;
-                      if (shortcut.modifiers && shortcut.modifiers.length > 0) {
-                        const modifierSymbols = {
-                          shift: '⇧',
-                          ctrl: '⌃',
-                          control: '⌃', 
-                          alt: '⌥',
-                          meta: '⌘',
-                          cmd: '⌘'
-                        };
-                        const modifiers = shortcut.modifiers.map(mod => modifierSymbols[mod] || mod).join('+');
-                        displayText = modifiers + '+' + displayText;
-                      }
-                      return displayText;
-                    })()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="section">
-        <h3>Instructions</h3>
-        {(() => {
-          // Define shortcut variables to avoid clutter in JSX
-          const createTreeKey = shortcutsManager.getShortcut('createTreeModal')?.symbol || 'T';
-          const editNodeKey = shortcutsManager.getShortcut('editNode')?.symbol || 'G';
-          const generateChildrenKey = shortcutsManager.getShortcut('generateChildren')?.symbol || '⏎';
-          const generateSiblingsKey = shortcutsManager.getShortcut('generateSiblings')?.symbol || '⇧⏎';
-          const pathViewKey = shortcutsManager.getShortcut('storyView')?.symbol || 'Q';
-          const treeViewKey = shortcutsManager.getShortcut('hierarchyView')?.symbol || 'E';
-          const previousTreeKey = shortcutsManager.getShortcut('previousTree')?.symbol || '↑';
-          const nextTreeKey = shortcutsManager.getShortcut('nextTree')?.symbol || '↓';
-          const previousModelKey = shortcutsManager.getShortcut('previousModel')?.symbol || 'Z';
-          const nextModelKey = shortcutsManager.getShortcut('nextModel')?.symbol || 'C';
-          const gasTrackerKey = shortcutsManager.getShortcut('gasTracker')?.symbol || 'R';
-          const storageModeKey = shortcutsManager.getShortcut('lightweightMode')?.symbol || 'L';
-          
-          // Navigation shortcuts (WASD)
-          const navUpKey = shortcutsManager.getShortcut('up')?.symbol || 'W';
-          const navDownKey = shortcutsManager.getShortcut('down')?.symbol || 'S';
-          const navLeftKey = shortcutsManager.getShortcut('left')?.symbol || 'A';
-          const navRightKey = shortcutsManager.getShortcut('right')?.symbol || 'D';
-          const deselectKey = shortcutsManager.getShortcut('deselect')?.symbol || 'Esc';
-          
-          return (
-            <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.4' }}>
-              <p><strong style={{ color: '#4CAF50' }}>Interface:</strong></p>
-              <p>1. Connect your wallet to interact with the blockchain</p>
-              <p>2. Create trees using the "Create New Tree" section or press <strong>{createTreeKey}</strong></p>
-              <p>3. Navigate nodes: <strong>{navUpKey}/{navDownKey}</strong> siblings, <strong>{navLeftKey}</strong> parent, <strong>{navRightKey}</strong> first child, <strong>{deselectKey}</strong> deselect</p>
-              <p>4. Press <strong>{editNodeKey}</strong> to edit content</p>
-              <p>5. Use "Generate Children" or press <strong>{generateChildrenKey}</strong> for sub-branches</p>
-              <p>6. Use "Generate Siblings" or press <strong>{generateSiblingsKey}</strong> for alternatives</p>
-              <p>7. Switch views: <strong>{pathViewKey}</strong> for Path View, <strong>{treeViewKey}</strong> for Tree View</p>
-              <p>8. Navigate trees with <strong>{previousTreeKey}/{nextTreeKey}</strong> arrows, models with <strong>{previousModelKey}/{nextModelKey}</strong></p>
-              <p>9. Press <strong>{gasTrackerKey}</strong> to view gas tracker details</p>
-              <p>10. Press <strong>{storageModeKey}</strong> to cycle storage modes (Full → Lightweight → IPFS)</p>
-              <p><strong style={{ color: '#4CAF50' }}>Blockchain Architecture:</strong></p>
-              <p>1. <strong>LoomFactory:</strong> Deploys new tree contracts + individual NFT contracts per tree</p>
-              <p>2. <strong>LoomTree:</strong> Each tree is a separate contract storing nodes + metadata</p>
-              <p>3. <strong>LoomNodeNFT:</strong> Per-tree ERC721 contract mints NFTs for nodes within that tree</p>
-              <p>4. <strong>NodeToken:</strong> Each node gets its own ERC20 contract</p>
-              <p>5. <strong>ERC6551 TBA:</strong> Each NFT gets a Token Bound Account holding its tokens</p>
-              <p>6. <strong>Token Economics:</strong> Tokens mint/burn based on content length (4 chars = 1 token)</p>
-              <p>7. <strong>AI Generation:</strong> Uses completion token count as new node's token supply</p>
-              <p><strong style={{ color: '#4CAF50' }}>Storage Modes:</strong></p>
-              <p>1. <strong style={{ color: '#ccc' }}>Full:</strong> NFT + ERC20 tokens + TBA</p>
-              <p>2. <strong style={{ color: '#ccc' }}>Lightweight:</strong> Direct contract storage</p>
-              {ipfsAvailable && <p>3. <strong style={{ color: '#ccc' }}>IPFS:</strong> Pin to IPFS, store hash only</p>}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Gas Tracker Modal */}
-      {showGasModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'transparent',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: '#2a2a2a',
-            border: '1px solid #666',
-            borderRadius: '8px',
-            padding: '20px',
-            maxWidth: '600px',
-            maxHeight: '80vh',
-            width: '90%',
-            overflow: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ color: '#4CAF50', margin: 0 }}>Gas Tracker</h3>
-              <button
-                onClick={() => setShowGasModal(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#999',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  padding: '0'
-                }}
-              >
-                ×
-              </button>
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '10px',
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #4CAF50',
-                borderRadius: '6px'
-              }}>
-                <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                  Total Gas Cost: {totalGasCost.toFixed(6)} {nativeCurrencySymbol}
-                </span>
-                <button
-                  onClick={clearGasTransactions}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #666',
-                    borderRadius: '4px',
-                    color: '#ccc',
-                    cursor: 'pointer',
-                    fontFamily: "'Inconsolata', monospace",
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#2a2a2a';
-                    e.target.style.borderColor = '#888';
-                    e.target.style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#1a1a1a';
-                    e.target.style.borderColor = '#666';
-                    e.target.style.color = '#ccc';
-                  }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '10px' }}>
-              <span style={{ color: '#ccc', fontSize: '14px' }}>
-                {gasTransactions.length} transaction{gasTransactions.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {gasTransactions.length === 0 ? (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#999', 
-                padding: '20px',
-                fontStyle: 'italic'
-              }}>
-                No gas transactions recorded yet.
-                <br />
-                Create trees, add nodes, or edit content to start tracking gas costs.
-              </div>
-            ) : (
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {gasTransactions
-                  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                  .map((tx) => (
-                  <div
-                    key={tx.id}
-                    style={{
-                      backgroundColor: '#1a1a1a',
-                      border: '1px solid #444',
-                      borderRadius: '6px',
-                      padding: '12px',
-                      marginBottom: '8px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <div>
-                        <div style={{ color: '#4CAF50', fontWeight: 'bold', marginBottom: '4px' }}>
-                          {tx.type}
-                        </div>
-                        <div style={{ color: '#ccc', fontSize: '12px' }}>
-                          {tx.description}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                          {parseFloat(tx.gasCost).toFixed(6)} {nativeCurrencySymbol}
-                        </div>
-                        <div style={{ color: '#999', fontSize: '11px' }}>
-                          {new Date(tx.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div style={{ borderTop: '1px solid #333', paddingTop: '8px', fontSize: '11px', color: '#999' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <div>Gas Used: {tx.gasUsed?.toLocaleString() || 'N/A'}</div>
-                        <div>Gas Price: {tx.gasPrice ? `${(parseFloat(tx.gasPrice) / 1e9).toFixed(2)} Gwei` : 'N/A'}</div>
-                      </div>
-                      <div style={{ marginTop: '4px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        Tx: {tx.txHash || 'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Gas Tracker Modal - Using subcomponent */}
+      <GasTrackerModal
+        showGasModal={showGasModal}
+        setShowGasModal={setShowGasModal}
+        totalGasCost={totalGasCost}
+        nativeCurrencySymbol={nativeCurrencySymbol}
+        gasTransactions={gasTransactions}
+        clearGasTransactions={clearGasTransactions}
+      />
     </div>
   );
 };
