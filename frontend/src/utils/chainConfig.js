@@ -3,7 +3,9 @@
  * Fetches chain configuration from backend API
  */
 
-const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+import { getEnvironmentConfig } from './envConfig';
+
+const { backendUrl: API_BASE_URL } = getEnvironmentConfig();
 
 // Cache for chain configurations
 let chainConfigCache = null;
