@@ -3,6 +3,7 @@ import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 import { refreshTrees } from '../utils/treeUtils';
 import { getNodeTokenBalance } from '../utils/tokenUtils';
 import { parseNFTMetadata, formatTokenSupply } from '../utils/nftUtils';
+import { getEnvironmentConfig } from '../utils/envConfig';
 import modelsConfig from '../config/models.json';
 
 // Import subcomponents
@@ -131,7 +132,7 @@ const RightSidebar = ({
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+        const { backendUrl } = getEnvironmentConfig();
         const response = await fetch(`${backendUrl}/api/models`);
         if (response.ok) {
           const data = await response.json();

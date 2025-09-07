@@ -1,5 +1,7 @@
 // Simple IPFS utilities for backend communication
-const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+import { getEnvironmentConfig } from './envConfig';
+
+const { backendUrl: API_BASE } = getEnvironmentConfig();
 
 // Check if content is an IPFS hash reference
 export const isIPFSReference = (content) => {

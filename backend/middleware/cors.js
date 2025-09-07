@@ -1,6 +1,7 @@
 const cors = require('cors');
+const { getEnvironmentConfig } = require('../utils/envConfig');
 
-const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+const { frontendUrl } = getEnvironmentConfig();
 
 const corsOptions = {
   origin: frontendUrl,
