@@ -34,6 +34,7 @@ function handleTreeCreation(socket, io) {
       let finalContent = rootContent.trim();
       const rootTokenSupply = calculateTokenSupply(finalContent);
       
+      let ipfsHash = '';
       // Handle IPFS mode - pin content first if requested
       if (storageMode === 'ipfs') {
         try {
@@ -42,11 +43,11 @@ function handleTreeCreation(socket, io) {
             userAccount,
             name: `loom-tree-root-${Date.now()}`
           });
-          finalContent = `ipfs:${pinResult.hash}`;
+          ipfsHash = pinResult.hash;
           console.log('✅ Root content pinned to IPFS:', pinResult.hash);
         } catch (ipfsError) {
-          console.error('❌ IPFS pinning failed, using direct storage:', ipfsError);
-          // Keep original content and continue
+          console.error('❌ IPFS pinning failed:', ipfsError);
+          throw ipfsError; // Don't fall back, fail the operation
         }
       }
 
@@ -57,8 +58,8 @@ function handleTreeCreation(socket, io) {
       });
 
       // Use createTree with user as creator parameter
-      console.log('🔗 Creating tree for user:', { userAccount, model });
-      const tx = await factory.createTree(finalContent, rootTokenSupply, model, userAccount);
+      console.log('🔗 Creating tree for user:', { userAccount, model, ipfsHash });
+      const tx = await factory.createTree(finalContent, ipfsHash, rootTokenSupply, model, userAccount);
       const receipt = await tx.wait();
 
       console.log('📄 Tree creation receipt:', {

@@ -106,7 +106,7 @@ function handleGenerateNodes(socket, io) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          let finalContent = content;
+          let ipfsHash = '';
           
           // Handle IPFS mode - pin content first
           if (storageMode === 'ipfs') {
@@ -117,11 +117,11 @@ function handleGenerateNodes(socket, io) {
                 parentId,
                 name: `loom-node-generated-${Date.now()}-${i + 1}`
               });
-              finalContent = `ipfs:${pinResult.hash}`;
+              ipfsHash = pinResult.hash;
               console.log('✅ Content pinned to IPFS:', pinResult.hash);
             } catch (ipfsError) {
-              console.error('❌ IPFS pinning failed, falling back to lightweight mode:', ipfsError);
-              // Keep original content and continue with lightweight mode
+              console.error('❌ IPFS pinning failed:', ipfsError);
+              throw ipfsError; // Don't fall back, fail the operation
             }
           }
           
@@ -132,7 +132,8 @@ function handleGenerateNodes(socket, io) {
             
           const tx = await treeContract.addNode(
             parentId, 
-            finalContent, 
+            content, // Always pass original content 
+            ipfsHash, // Pass IPFS hash (empty string if not IPFS mode)
             storageMode === 'full', // createNFT = true when in full mode
             model || 'claude-3-haiku', // modelId from request
             author // author parameter
@@ -155,7 +156,7 @@ function handleGenerateNodes(socket, io) {
           await emitGasCost(receipt, 'Node Creation', `Generated child node ${i + 1} with AI model: ${model} - ${modeDescription}`, io);
           
           // Log all events for debugging
-          console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256,bool,string)')}`);
+          console.log(`🔍 Looking for NodeCreated event signature: ${ethers.id('NodeCreated(bytes32,bytes32,address,uint256,bool,string,string,string,uint256,address,address)')}`);
           
           receipt.logs.forEach((log, index) => {
             try {

@@ -8,9 +8,9 @@ dataSources:
     name: LoomFactory
     network: scroll
     source:
-      address: "0xaBd70D0a2a46efcfB3BF03be5972BBaA7F28F19e"
+      address: "0x1f0365b4F484Ee04444fCCB069fc2A9aB5610F98"
       abi: LoomFactory
-      startBlock: 20699628
+      startBlock: 20781000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -52,9 +52,9 @@ templates:
         - name: NodeToken
           file: ./abis/NodeToken.json
       eventHandlers:
-        - event: NodeCreated(indexed bytes32,indexed bytes32,indexed address,uint256,bool,string,uint256,address,address)
+        - event: NodeCreated(indexed bytes32,indexed bytes32,indexed address,uint256,bool,string,string,string,uint256,address,address)
           handler: handleNodeCreated
-        - event: NodeUpdated(indexed bytes32,indexed address,string)
+        - event: NodeUpdated(indexed bytes32,indexed address,string,string,string)
           handler: handleNodeUpdated
         - event: MetadataSet(indexed bytes32,string,string)
           handler: handleMetadataSet

@@ -39,7 +39,7 @@ contract LoomFactory {
         );
     }
     
-    function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address) {
+    function createTree(string memory rootContent, string memory ipfsHash, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address) {
         bytes32 treeId = keccak256(abi.encodePacked(creator, block.timestamp, rootContent));
         
         // Create individual NFT contract for this tree using the NFT factory
@@ -53,7 +53,7 @@ contract LoomFactory {
         LoomNodeNFT(nftContractAddress).addAuthorizedMinter(treeAddress);
         
         // Initialize the root node with token supply from backend
-        newTree.initializeRootNodeWithToken(rootContent, rootTokenSupply, modelId);
+        newTree.initializeRootNodeWithToken(rootContent, ipfsHash, rootTokenSupply, modelId);
         
         // Store mappings
         trees[treeId] = treeAddress;

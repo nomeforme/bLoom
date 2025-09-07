@@ -38,12 +38,12 @@ contract LoomTest is Test {
     
     // Helper function to add node with calculated token supply
     function addNodeWithCalculatedSupply(LoomTree treeContract, bytes32 parentId, string memory content, address author) internal returns (bytes32) {
-        return treeContract.addNodeWithToken(parentId, content, "NODE", "NODE", "test-model", author);
+        return treeContract.addNodeWithToken(parentId, content, "", "NODE", "NODE", "test-model", author);
     }
 
     function testCreateTree() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Once upon a time...", calculateTokenSupply("Once upon a time..."), "", user1);
+        address treeAddress = factory.createTree("Once upon a time...", "", calculateTokenSupply("Once upon a time..."), "", user1);
         
         assertTrue(treeAddress != address(0));
         
@@ -56,7 +56,7 @@ contract LoomTest is Test {
 
     function testAddNode() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root content", calculateTokenSupply("Root content"), "", user1);
+        address treeAddress = factory.createTree("Root content", "", calculateTokenSupply("Root content"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         bytes32 rootId = treeContract.getRootId();
@@ -89,7 +89,7 @@ contract LoomTest is Test {
 
     function testMultipleChildren() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root", calculateTokenSupply("Root"), "", user1);
+        address treeAddress = factory.createTree("Root", "", calculateTokenSupply("Root"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         bytes32 rootId = treeContract.getRootId();
@@ -125,7 +125,7 @@ contract LoomTest is Test {
 
     function testNodeMetadata() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root", calculateTokenSupply("Root"), "", user1);
+        address treeAddress = factory.createTree("Root", "", calculateTokenSupply("Root"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         bytes32 rootId = treeContract.getRootId();
@@ -153,7 +153,7 @@ contract LoomTest is Test {
 
     function testUnauthorizedMetadataUpdate() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root", calculateTokenSupply("Root"), "", user1);
+        address treeAddress = factory.createTree("Root", "", calculateTokenSupply("Root"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         bytes32 rootId = treeContract.getRootId();
@@ -169,7 +169,7 @@ contract LoomTest is Test {
 
     function testTreeStats() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root", calculateTokenSupply("Root"), "", user1);
+        address treeAddress = factory.createTree("Root", "", calculateTokenSupply("Root"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         bytes32 rootId = treeContract.getRootId();
@@ -192,7 +192,7 @@ contract LoomTest is Test {
 
     function testNodeNFTMinting() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root content", calculateTokenSupply("Root content"), "", user1);
+        address treeAddress = factory.createTree("Root content", "", calculateTokenSupply("Root content"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         LoomNodeNFT nftContract = getNFTContractForUser(user1);
@@ -217,7 +217,7 @@ contract LoomTest is Test {
 
     function testNFTMetadata() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Test content for NFT", calculateTokenSupply("Test content for NFT"), "", user1);
+        address treeAddress = factory.createTree("Test content for NFT", "", calculateTokenSupply("Test content for NFT"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         LoomNodeNFT nftContract = getNFTContractForUser(user1);
@@ -236,7 +236,7 @@ contract LoomTest is Test {
 
     function testMultipleNFTs() public {
         vm.prank(user1);
-        address treeAddress = factory.createTree("Root", calculateTokenSupply("Root"), "", user1);
+        address treeAddress = factory.createTree("Root", "", calculateTokenSupply("Root"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         LoomNodeNFT nftContract = getNFTContractForUser(user1);
@@ -267,7 +267,7 @@ contract LoomTest is Test {
         
         // Test 1: 4 characters = 1 token (4/4 = 1)
         vm.prank(user1);
-        address tree1 = factory.createTree("test", calculateTokenSupply("test"), "", user1);
+        address tree1 = factory.createTree("test", "", calculateTokenSupply("test"), "", user1);
         LoomTree treeContract1 = LoomTree(tree1);
         LoomNodeNFT nftContract1 = getNFTContractForUser(user1);
         bytes32 rootId1 = treeContract1.getRootId();
@@ -280,7 +280,7 @@ contract LoomTest is Test {
     function testAutomaticTokenAdjustmentOnEdit() public {
         // Create a tree with initial content
         vm.prank(user1);
-        address treeAddress = factory.createTree("Hello World", calculateTokenSupply("Hello World"), "", user1);
+        address treeAddress = factory.createTree("Hello World", "", calculateTokenSupply("Hello World"), "", user1);
         
         LoomTree treeContract = LoomTree(treeAddress);
         LoomNodeNFT nftContract = getNFTContractForUser(user1);
@@ -296,7 +296,7 @@ contract LoomTest is Test {
         
         // Update content to longer text: "Testing with much longer content now" = 37 chars = 9 tokens
         vm.prank(user1);
-        treeContract.updateNodeContent(childId, "Testing with much longer content now");
+        treeContract.updateNodeContent(childId, "Testing with much longer content now", "");
         
         // Verify token balance increased automatically (should mint 8 additional tokens)
         uint256 newBalance = nftContract.getNodeTokenBalance(childId);
@@ -304,7 +304,7 @@ contract LoomTest is Test {
         
         // Now update to shorter content: "Short" = 5 chars = 1 token
         vm.prank(user1);
-        treeContract.updateNodeContent(childId, "Short");
+        treeContract.updateNodeContent(childId, "Short", "");
         
         // Verify token balance decreased automatically (should burn 8 tokens)
         uint256 finalBalance = nftContract.getNodeTokenBalance(childId);

@@ -12,6 +12,7 @@ contract LoomTree {
         uint256 timestamp;
         bool isRoot;
         string content; // Text storage for lightweight mode
+        string ipfsHash; // IPFS hash for lightweight mode
         bool hasNFT; // Whether this node has an associated NFT/token
         string modelId;
         mapping(string => string) metadata;
@@ -21,6 +22,7 @@ contract LoomTree {
     struct NodeCreationParams {
         bytes32 parentId;
         string content;
+        string ipfsHash;
         bool isRoot;
         address author;
         string tokenName;
@@ -43,6 +45,8 @@ contract LoomTree {
         uint256 timestamp,
         bool hasNFT,
         string modelId,
+        string content,
+        string ipfsHash,
         uint256 tokenId,
         address tokenBoundAccount,
         address nodeTokenContract
@@ -51,7 +55,9 @@ contract LoomTree {
     event NodeUpdated(
         bytes32 indexed nodeId,
         address indexed author,
-        string modelId
+        string modelId,
+        string content,
+        string ipfsHash
     );
     
     event MetadataSet(
@@ -72,12 +78,13 @@ contract LoomTree {
         // Root node will be created after authorization is set up
     }
     
-    function initializeRootNodeWithToken(string memory rootContent, uint256 tokenSupply, string memory modelId) external {
+    function initializeRootNodeWithToken(string memory rootContent, string memory ipfsHash, uint256 tokenSupply, string memory modelId) external {
         require(rootId == bytes32(0), "Root node already initialized");
         require(msg.sender == factory, "Only factory can initialize");
         NodeCreationParams memory params = NodeCreationParams({
             parentId: bytes32(0),
             content: rootContent,
+            ipfsHash: ipfsHash,
             isRoot: true,
             author: treeOwner,
             tokenName: "NODE",
@@ -89,7 +96,7 @@ contract LoomTree {
     }
     
     
-    function addNode(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32) {
+    function addNode(bytes32 parentId, string memory content, string memory ipfsHash, bool createNFT, string memory modelId, address author) external returns (bytes32) {
         require(nodes[parentId].id != bytes32(0) || parentId == bytes32(0), "Parent node does not exist");
         
         if (createNFT) {
@@ -98,6 +105,7 @@ contract LoomTree {
             NodeCreationParams memory params = NodeCreationParams({
                 parentId: parentId,
                 content: content,
+                ipfsHash: ipfsHash,
                 isRoot: false,
                 author: author,
                 tokenName: "NODE",
@@ -108,13 +116,14 @@ contract LoomTree {
             return _createNodeWithToken(params);
         } else {
             // Use lightweight storage path
-            return _createLightweightNode(parentId, content, false, author, modelId);
+            return _createLightweightNode(parentId, content, ipfsHash, false, author, modelId);
         }
     }
     
     function addNodeWithToken(
         bytes32 parentId, 
         string memory content,
+        string memory ipfsHash,
         string memory tokenName,
         string memory tokenSymbol,
         string memory modelId,
@@ -127,6 +136,7 @@ contract LoomTree {
         NodeCreationParams memory params = NodeCreationParams({
             parentId: parentId,
             content: content,
+            ipfsHash: ipfsHash,
             isRoot: false,
             author: author,
             tokenName: tokenName,
@@ -165,6 +175,9 @@ contract LoomTree {
         newNode.isRoot = params.isRoot;
         newNode.modelId = params.modelId;
         
+        // Store IPFS hash in struct
+        newNode.ipfsHash = params.ipfsHash;
+        
         allNodes.push(nodeId);
         
         if (!params.isRoot && params.parentId != bytes32(0)) {
@@ -174,21 +187,26 @@ contract LoomTree {
         // Set hasNFT flag and mint NFT for the node with content and token parameters
         newNode.hasNFT = true;
         
-        // Mint NFT and get the NFT data
-        uint256 tokenId = nftContract.mintNodeNFT(params.author, nodeId, params.content, params.tokenName, params.tokenSymbol, params.tokenSupply);
+        // Decide what content to store: use IPFS hash if provided, otherwise use direct content
+        string memory storedContent = bytes(params.ipfsHash).length > 0 ? 
+            string(abi.encodePacked("ipfs:", params.ipfsHash)) : params.content;
+        
+        // Mint NFT and get the NFT data - always pass original content for metadata
+        uint256 tokenId = nftContract.mintNodeNFT(params.author, nodeId, storedContent, params.tokenName, params.tokenSymbol, params.tokenSupply);
         
         // Get NFT-related addresses from the NFT contract
         address tokenBoundAccount = nftContract.getTokenBoundAccount(tokenId);
         address nodeTokenContract = nftContract.getNodeTokenContract(tokenId);
         
-        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp, true, params.modelId, tokenId, tokenBoundAccount, nodeTokenContract);
+        emit NodeCreated(nodeId, params.parentId, params.author, block.timestamp, true, params.modelId, params.content, params.ipfsHash, tokenId, tokenBoundAccount, nodeTokenContract);
         
         return nodeId;
     }
     
     function _createLightweightNode(
         bytes32 parentId, 
-        string memory content, 
+        string memory content,
+        string memory ipfsHash,
         bool isRoot, 
         address author,
         string memory modelId
@@ -201,9 +219,16 @@ contract LoomTree {
         newNode.author = author;
         newNode.timestamp = block.timestamp;
         newNode.isRoot = isRoot;
-        newNode.content = content; // Store content directly in the node
         newNode.hasNFT = false; // No NFT/token for this node
         newNode.modelId = modelId;
+        
+        // Store IPFS hash in struct and determine on-chain content storage
+        newNode.ipfsHash = ipfsHash;
+        
+        // For IPFS mode: store only IPFS reference on-chain to save gas
+        // For regular mode: store full content on-chain
+        newNode.content = bytes(ipfsHash).length > 0 ? 
+            string(abi.encodePacked("ipfs:", ipfsHash)) : content;
         
         allNodes.push(nodeId);
         
@@ -211,14 +236,21 @@ contract LoomTree {
             nodes[parentId].children.push(nodeId);
         }
         
-        emit NodeCreated(nodeId, parentId, author, block.timestamp, false, modelId, 0, address(0), address(0));
+        emit NodeCreated(nodeId, parentId, author, block.timestamp, false, modelId, content, ipfsHash, 0, address(0), address(0));
         
         return nodeId;
     }
     
-    function updateNodeContent(bytes32 nodeId, string memory newContent) external {
+    function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash) external {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
         require(nodes[nodeId].author == msg.sender || msg.sender == treeOwner, "Not authorized to update this node");
+        
+        // Decide what content to store: use IPFS hash if provided, otherwise use direct content
+        string memory storedContent = bytes(ipfsHash).length > 0 ? 
+            string(abi.encodePacked("ipfs:", ipfsHash)) : newContent;
+        
+        // Update IPFS hash in struct
+        nodes[nodeId].ipfsHash = ipfsHash;
         
         if (nodes[nodeId].hasNFT) {
             // Handle NFT/token nodes
@@ -241,13 +273,13 @@ contract LoomTree {
             }
             // If equal, no token adjustments needed
             
-            // Update the NFT metadata/content
-            nftContract.updateTokenContent(nodeId, newContent);
+            // Update the NFT metadata/content with stored content (IPFS hash or direct)
+            nftContract.updateTokenContent(nodeId, storedContent);
         } else {
-            // Handle direct storage nodes
-            nodes[nodeId].content = newContent;
+            // Handle direct storage nodes - store either IPFS hash or direct content
+            nodes[nodeId].content = storedContent;
         }
-        emit NodeUpdated(nodeId, msg.sender, nodes[nodeId].modelId);
+        emit NodeUpdated(nodeId, msg.sender, nodes[nodeId].modelId, newContent, ipfsHash);
     }
     
     function setNodeMetadata(bytes32 nodeId, string memory key, string memory value) external {
