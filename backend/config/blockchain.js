@@ -48,6 +48,7 @@ const NFT_ABI = [
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
 
 module.exports = {
+  TREE_ABI,
   provider,
   wallet,
   factory,
