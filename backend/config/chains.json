@@ -36,11 +36,11 @@
       "chainId": 534352,
       "name": "Scroll",
       "rpcUrl": "https://scroll-mainnet.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
-      "factoryAddress": "0xaBd70D0a2a46efcfB3BF03be5972BBaA7F28F19e",
+      "factoryAddress": "0x1f0365b4F484Ee04444fCCB069fc2A9aB5610F98",
       "gasPrice": "120108",
       "explorerUrl": "https://scrollscan.com",
       "isTestnet": true,
-      "subgraphVersion": "v0.0.4",
+      "subgraphVersion": "v0.0.16",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",

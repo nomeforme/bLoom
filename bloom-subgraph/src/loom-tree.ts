@@ -21,18 +21,11 @@ export function handleNodeCreated(event: NodeCreatedEvent): void {
   entity.treeAddress = event.address // ← This is the key! The tree contract address
   entity.hasNFT = event.params.hasNFT // ← New field from updated event
   entity.modelId = event.params.modelId // ← Get modelId directly from event
+  entity.content = event.params.content // ← Get content directly from event (always present now)
+  entity.ipfsHash = event.params.ipfsHash // ← IPFS hash for IPFS mode nodes
   entity.tokenId = event.params.tokenId // ← NFT token ID (0 for lightweight nodes)
   entity.tokenBoundAccount = event.params.tokenBoundAccount // ← ERC6551 TBA (null for lightweight)
   entity.nodeTokenContract = event.params.nodeTokenContract // ← ERC20 contract (null for lightweight)
-
-  // For lightweight nodes (hasNFT: false), get content from contract storage
-  if (!event.params.hasNFT) {
-    let contract = LoomTree.bind(event.address)
-    let contentResult = contract.try_getNodeContent(event.params.nodeId)
-    if (!contentResult.reverted) {
-      entity.content = contentResult.value
-    }
-  }
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
@@ -49,13 +42,8 @@ export function handleNodeUpdated(event: NodeUpdatedEvent): void {
   entity.author = event.params.author
   entity.treeAddress = event.address
   entity.modelId = event.params.modelId // ← Get modelId directly from updated event
-
-  // Get updated content from contract storage for all nodes (both lightweight and NFT)
-  let contract = LoomTree.bind(event.address)
-  let contentResult = contract.try_getNodeContent(event.params.nodeId)
-  if (!contentResult.reverted) {
-    entity.content = contentResult.value
-  }
+  entity.content = event.params.content // ← Get content directly from event (always present now)
+  entity.ipfsHash = event.params.ipfsHash // ← IPFS hash for IPFS mode nodes
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp

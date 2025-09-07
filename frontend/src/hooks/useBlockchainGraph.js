@@ -8,14 +8,14 @@ import { getActiveChainConfig, getDefaultRpcUrl } from '../utils/chainConfig';
 
 // Contract ABIs - only keeping what's needed for write operations
 const FACTORY_ABI = [
-  "function createTree(string memory rootContent, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address)",
+  "function createTree(string memory rootContent, string memory ipfsHash, uint256 rootTokenSupply, string memory modelId, address creator) external returns (address)",
   "event TreeCreated(bytes32 indexed treeId, address indexed treeAddress, address indexed nftContractAddress, address creator, string rootContent)"
 ];
 
 const TREE_ABI = [
-  "function addNode(bytes32 parentId, string memory content, bool createNFT, string memory modelId, address author) external returns (bytes32)",
-  "function addNodeWithToken(bytes32 parentId, string memory content, string memory tokenName, string memory tokenSymbol, string memory modelId, address author) external returns (bytes32)",
-  "function updateNodeContent(bytes32 nodeId, string memory newContent) external"
+  "function addNode(bytes32 parentId, string memory content, string memory ipfsHash, bool createNFT, string memory modelId, address author) external returns (bytes32)",
+  "function addNodeWithToken(bytes32 parentId, string memory content, string memory ipfsHash, string memory tokenName, string memory tokenSymbol, string memory modelId, address author) external returns (bytes32)",
+  "function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash) external"
 ];
 
 // IPFS rate limiting configuration
