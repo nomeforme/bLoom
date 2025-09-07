@@ -296,7 +296,7 @@ contract LoomTest is Test {
         
         // Update content to longer text: "Testing with much longer content now" = 37 chars = 9 tokens
         vm.prank(user1);
-        treeContract.updateNodeContent(childId, "Testing with much longer content now", "");
+        treeContract.updateNodeContent(childId, "Testing with much longer content now", "", user1);
         
         // Verify token balance increased automatically (should mint 8 additional tokens)
         uint256 newBalance = nftContract.getNodeTokenBalance(childId);
@@ -304,7 +304,7 @@ contract LoomTest is Test {
         
         // Now update to shorter content: "Short" = 5 chars = 1 token
         vm.prank(user1);
-        treeContract.updateNodeContent(childId, "Short", "");
+        treeContract.updateNodeContent(childId, "Short", "", user1);
         
         // Verify token balance decreased automatically (should burn 8 tokens)
         uint256 finalBalance = nftContract.getNodeTokenBalance(childId);
