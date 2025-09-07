@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getActiveChainConfig } from '../../utils/chainConfig';
 
 const SidebarHeader = ({
   connected,
@@ -10,6 +11,19 @@ const SidebarHeader = ({
   storageMode,
   setShowGasModal
 }) => {
+  const [activeChain, setActiveChain] = useState(null);
+
+  useEffect(() => {
+    const fetchActiveChain = async () => {
+      try {
+        const chainConfig = await getActiveChainConfig();
+        setActiveChain(chainConfig);
+      } catch (error) {
+        console.error('Failed to fetch active chain config:', error);
+      }
+    };
+    fetchActiveChain();
+  }, []);
   const ellipseAddress = (address) => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -61,13 +75,24 @@ const SidebarHeader = ({
       
       {connected && (
         <div>
-          <div style={{ 
-            fontSize: '14px', 
-            color: '#4CAF50', 
-            marginBottom: '2px',
-            fontWeight: 'bold'
-          }}>
-            {ellipseAddress(account)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#4CAF50', 
+              fontWeight: 'bold'
+            }}>
+              {ellipseAddress(account)}
+            </div>
+            {activeChain && (
+              <div style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                fontFamily: "'Inconsolata', monospace"
+              }}>
+                <span style={{ color: '#999' }}>Chain: </span>
+                <span style={{ color: '#4CAF50' }}>{activeChain.name}</span>
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
