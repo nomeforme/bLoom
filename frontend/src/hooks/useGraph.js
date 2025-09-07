@@ -44,6 +44,7 @@ const GET_ALL_TREES_WITH_NODES = gql`
       nodeId
       parentId
       content
+      ipfsHash
       author
       timestamp
       treeAddress
@@ -63,6 +64,7 @@ const GET_ALL_TREES_WITH_NODES = gql`
       treeAddress
       modelId
       content
+      ipfsHash
       blockNumber
       blockTimestamp
       transactionHash
@@ -121,6 +123,7 @@ const GET_TREE_NODES = gql`
       hasNFT
       modelId
       content
+      ipfsHash
       tokenId
       tokenBoundAccount
       nodeTokenContract
@@ -137,6 +140,7 @@ const GET_TREE_NODES = gql`
       treeAddress
       modelId
       content
+      ipfsHash
       blockNumber
       blockTimestamp
       transactionHash
@@ -428,6 +432,9 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       originalContent = content;
     }
 
+    // Determine IPFS hash - prioritize updated hash over original
+    const ipfsHash = (nodeUpdate && nodeUpdate.ipfsHash) ? nodeUpdate.ipfsHash : (nodeCreation.ipfsHash || null);
+
     const nodeObject = {
       nodeId: nodeCreation.nodeId,
       parentId: nodeCreation.parentId,
@@ -439,6 +446,7 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       content: displayContent,
       originalContent: originalContent,
       hasNFT: hasNFT,
+      ipfsHash: ipfsHash, // Use latest IPFS hash from updates or creation
       tokenId: tokenId,
       tokenBoundAccount: tokenBoundAccount,
       nodeTokenContract: nodeTokenContract,

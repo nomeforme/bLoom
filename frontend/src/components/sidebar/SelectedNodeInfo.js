@@ -26,6 +26,16 @@ const SelectedNodeInfo = ({
     return null;
   }
 
+  // Debug logging for IPFS hash
+  console.log('🔍 SelectedNodeInfo - selectedNode:', {
+    selectedNode: selectedNode,
+    nodeId: selectedNode.nodeId?.substring(0, 10) + '...',
+    hasNFT: selectedNode.hasNFT,
+    ipfsHash: selectedNode.ipfsHash,
+    ipfsHashType: typeof selectedNode.ipfsHash,
+    ipfsHashTruthy: !!selectedNode.ipfsHash
+  });
+
   return (
     <div className="section">
       <h3>Selected Node</h3>
@@ -362,6 +372,7 @@ const SelectedNodeInfo = ({
               padding: '10px',
               marginBottom: '15px'
             }}>
+              {/* Always show content */}
               <div style={{ 
                 backgroundColor: '#0a0a0a',
                 border: '1px solid #333',
@@ -379,10 +390,40 @@ const SelectedNodeInfo = ({
                   return content;
                 })()}
               </div>
+
+              {/* Show IPFS hash below content if available */}
+              {selectedNode.ipfsHash && (
+                <>
+                  <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                      IPFS Hash:
+                    </div>
+                    <div style={{ 
+                      backgroundColor: '#0a0a0a',
+                      border: '1px solid #333',
+                      borderRadius: '4px',
+                      padding: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '10px',
+                      wordBreak: 'break-all',
+                      marginBottom: '8px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => copyToClipboard(selectedNode.ipfsHash)}
+                    title="Click to copy IPFS hash"
+                    >
+                      {selectedNode.ipfsHash}
+                    </div>
+                  </div>
+                </>
+              )}
               
               <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3', textAlign: 'left' }}>
-                <div>• Content stored in LoomTree</div>
+                <div>• Content stored {selectedNode.ipfsHash ? 'on IPFS' : 'in LoomTree'}</div>
                 <div>• No NFT, ERC20, or ERC6551 account</div>
+                {selectedNode.ipfsHash && (
+                  <div>• Gas optimized storage mode</div>
+                )}
               </div>
             </div>
           </>
