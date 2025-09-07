@@ -26,6 +26,72 @@ const GET_ALL_TREES = gql`
   }
 `;
 
+const GET_ALL_TREES_WITH_NODES = gql`
+  query GetAllTreesWithNodes($first: Int = 100, $orderBy: TreeCreated_orderBy = "blockTimestamp", $orderDirection: OrderDirection = "desc") {
+    treeCreateds(first: $first, orderBy: $orderBy, orderDirection: $orderDirection) {
+      id
+      treeId
+      treeAddress
+      nftContractAddress
+      creator
+      rootContent
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    nodeCreateds(first: 1000, orderBy: "timestamp") {
+      id
+      nodeId
+      parentId
+      content
+      author
+      timestamp
+      treeAddress
+      hasNFT
+      modelId
+      tokenId
+      tokenBoundAccount
+      nodeTokenContract
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    nodeUpdateds(first: 1000, orderBy: "blockTimestamp") {
+      id
+      nodeId
+      author
+      treeAddress
+      modelId
+      content
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    nodeNFTMinteds(first: 1000, orderBy: "blockTimestamp") {
+      id
+      tokenId
+      nodeId
+      owner
+      content
+      tokenBoundAccount
+      nodeTokenContract
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    metadataSets(first: 1000, orderBy: "blockTimestamp") {
+      id
+      nodeId
+      key
+      value
+      treeAddress
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+  }
+`;
+
 const GET_USER_TREES = gql`
   query GetUserTrees($creator: Bytes!, $first: Int = 100, $orderBy: TreeCreated_orderBy = "blockTimestamp", $orderDirection: OrderDirection = "desc") {
     treeCreateds(where: { creator: $creator }, first: $first, orderBy: $orderBy, orderDirection: $orderDirection) {
@@ -432,6 +498,10 @@ export const useGraph = () => {
     errorPolicy: 'all',
     fetchPolicy: 'cache-first'
   });
+  const [getAllTreesWithNodesQuery, { loading: allTreesWithNodesLoading }] = useLazyQuery(GET_ALL_TREES_WITH_NODES, {
+    errorPolicy: 'all',
+    fetchPolicy: 'cache-first'
+  });
   const [getTreeNodesQuery, { loading: treeNodesLoading }] = useLazyQuery(GET_TREE_NODES, {
     errorPolicy: 'all',
     fetchPolicy: 'cache-and-network' // Changed from 'cache-first' to get updates
@@ -496,45 +566,93 @@ export const useGraph = () => {
     }
   }, [getUserTreesQuery]);
 
-  // Get all trees using The Graph
+  // Get all trees using The Graph (optimized single query)
   const getAllTrees = useCallback(async () => {
-    console.log('🔍 Getting all trees from Graph');
+    console.log('🔍 Getting all trees and nodes from Graph in single query');
     setLoading(true);
     
     try {
-      const { data } = await getAllTreesQuery({
+      const { data } = await getAllTreesWithNodesQuery({
         variables: { first: 100 }
       });
       
       if (!data?.treeCreateds) return [];
       
-      console.log('📊 Found all trees:', data.treeCreateds.length);
+      console.log('📊 Found trees:', data.treeCreateds.length, 'nodes:', data.nodeCreateds?.length || 0, 'updates:', data.nodeUpdateds?.length || 0, 'nfts:', data.nodeNFTMinteds?.length || 0, 'metadata:', data.metadataSets?.length || 0);
       
-      // Build tree objects with node data sequentially to avoid overwhelming GraphQL client
+      // Group all event types by tree address for efficient processing
+      const nodesByTree = new Map();
+      const updatesByTree = new Map();
+      const nftsByTree = new Map();
+      const metadataByTree = new Map();
+      
+      if (data.nodeCreateds) {
+        data.nodeCreateds.forEach(node => {
+          const treeAddress = node.treeAddress.toLowerCase();
+          if (!nodesByTree.has(treeAddress)) {
+            nodesByTree.set(treeAddress, []);
+          }
+          nodesByTree.get(treeAddress).push(node);
+        });
+      }
+      
+      if (data.nodeUpdateds) {
+        data.nodeUpdateds.forEach(update => {
+          const treeAddress = update.treeAddress.toLowerCase();
+          if (!updatesByTree.has(treeAddress)) {
+            updatesByTree.set(treeAddress, []);
+          }
+          updatesByTree.get(treeAddress).push(update);
+        });
+      }
+      
+      if (data.nodeNFTMinteds) {
+        // NFT minted events don't have treeAddress, so we need to match by nodeId
+        // We'll collect all NFTs and let buildTreeFromGraphData filter them
+        data.nodeNFTMinteds.forEach(nft => {
+          // We'll pass all NFTs to each tree and let the function filter by nodeId
+          data.treeCreateds.forEach(treeData => {
+            const treeAddress = treeData.treeAddress.toLowerCase();
+            if (!nftsByTree.has(treeAddress)) {
+              nftsByTree.set(treeAddress, []);
+            }
+            nftsByTree.get(treeAddress).push(nft);
+          });
+        });
+      }
+      
+      if (data.metadataSets) {
+        data.metadataSets.forEach(metadata => {
+          const treeAddress = metadata.treeAddress.toLowerCase();
+          if (!metadataByTree.has(treeAddress)) {
+            metadataByTree.set(treeAddress, []);
+          }
+          metadataByTree.get(treeAddress).push(metadata);
+        });
+      }
+      
+      // Build tree objects with their nodes and all event data (no delays needed)
       const successfulTrees = [];
       
       for (const treeData of data.treeCreateds) {
         try {
-          const tree = await getTreeWithNodes(treeData.treeAddress, treeData);
+          const treeAddress = treeData.treeAddress.toLowerCase();
+          const treeNodes = nodesByTree.get(treeAddress) || [];
+          const treeUpdates = updatesByTree.get(treeAddress) || [];
+          const treeNfts = nftsByTree.get(treeAddress) || [];
+          const treeMetadata = metadataByTree.get(treeAddress) || [];
+          
+          // Build tree using the helper function with all event data
+          const tree = buildTreeFromGraphData(treeData, treeNodes, treeUpdates, treeNfts, treeMetadata);
           if (tree) {
             successfulTrees.push(tree);
           }
         } catch (error) {
-          // Handle abort errors gracefully - they're common during page refresh
-          if (error.name === 'AbortError') {
-            console.warn(`🔄 Tree ${treeData.treeAddress} query was aborted (likely due to page refresh)`);
-          } else {
-            console.warn(`⚠️ Skipping tree ${treeData.treeAddress} due to error:`, error.message);
-          }
-          // Continue with other trees instead of failing completely
-        }
-        
-        // Small delay between requests to be gentle on GraphQL client
-        if (data.treeCreateds.indexOf(treeData) < data.treeCreateds.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          console.warn(`⚠️ Skipping tree ${treeData.treeAddress} due to error:`, error.message);
         }
       }
       
+      console.log('✅ Successfully processed', successfulTrees.length, 'trees');
       return successfulTrees;
     } catch (error) {
       console.error('❌ Error fetching all trees from Graph:', error);
@@ -542,7 +660,7 @@ export const useGraph = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAllTreesQuery]);
+  }, [getAllTreesWithNodesQuery]);
 
   // Get tree with nodes using The Graph
   const getTreeWithNodes = useCallback(async (treeAddress, treeData = null) => {
