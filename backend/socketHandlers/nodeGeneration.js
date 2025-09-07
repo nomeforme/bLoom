@@ -197,6 +197,7 @@ function handleGenerateNodes(socket, io) {
               timestamp: Number(parsedEvent.args.timestamp),
               treeAddress: treeAddress,
               hasNFT: parsedEvent.args.hasNFT, // Get hasNFT from event
+              ipfsHash: parsedEvent.args.ipfsHash || null,
               modelId: parsedEvent.args.modelId || model || 'claude-3-haiku', // Use event modelId first, fallback to request model
               tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null, // Convert BigInt to number
               tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null, // Get TBA from event (null for lightweight nodes)

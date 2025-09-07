@@ -115,7 +115,12 @@ function handleImportNodes(socket, io) {
               author: parsedEvent.args.author,
               timestamp: Number(parsedEvent.args.timestamp),
               treeAddress: treeAddress,
-              modelId: nodeData.modelId || '' // Use original modelId if available from import data
+              hasNFT: parsedEvent.args.hasNFT || false,
+              ipfsHash: parsedEvent.args.ipfsHash || null,
+              modelId: nodeData.modelId || '', // Use original modelId if available from import data
+              tokenId: parsedEvent.args.tokenId ? Number(parsedEvent.args.tokenId) : null,
+              tokenBoundAccount: parsedEvent.args.tokenBoundAccount || null,
+              nodeTokenContract: parsedEvent.args.nodeTokenContract || null
             };
             
             // Emit to all connected clients
