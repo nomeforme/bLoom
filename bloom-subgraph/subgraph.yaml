@@ -8,7 +8,7 @@ dataSources:
     name: LoomFactory
     network: scroll
     source:
-      address: "0xbC7c8847f05FBa04BAac986310A741204764A7d5"
+      address: "0xaBd70D0a2a46efcfB3BF03be5972BBaA7F28F19e"
       abi: LoomFactory
       startBlock: 20699628
     mapping:
@@ -84,7 +84,7 @@ templates:
           handler: handleNodeNFTMinted
         - event: NodeNFTContentUpdated(indexed uint256,indexed bytes32,string)
           handler: handleNodeNFTContentUpdated
-        - event: NodeTokenCreated(indexed uint256,indexed address,indexed address)
+        - event: NodeTokenCreated(indexed uint256,indexed address,indexed address,uint256)
           handler: handleNodeTokenCreated
         - event: TokenBoundAccountCreated(indexed uint256,indexed address)
           handler: handleTokenBoundAccountCreated

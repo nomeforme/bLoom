@@ -89,6 +89,7 @@ type NodeTokenCreated @entity(immutable: true) {
   tokenId: BigInt! # uint256
   nodeTokenContract: Bytes! # address
   tokenBoundAccount: Bytes! # address
+  tokenSupply: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
