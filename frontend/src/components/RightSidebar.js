@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 import { refreshTrees } from '../utils/treeUtils';
 import { getNodeTokenBalance } from '../utils/tokenUtils';
+import { parseNFTMetadata, formatTokenSupply } from '../utils/nftUtils';
 import modelsConfig from '../config/models.json';
 
 const RightSidebar = ({
@@ -383,125 +384,7 @@ const RightSidebar = ({
     }
   };
 
-  // Helper function to safely parse NFT metadata with control character fixes
-  const parseNFTMetadata = (content) => {
-    try {
-      // First attempt: Fix malformed JSON by escaping control characters and LaTeX syntax
-      let fixedContent = content
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r')
-        .replace(/\t/g, '\\t')
-        .replace(/\f/g, '\\f')
-        .replace(/\b/g, '') // Remove backspace characters
-        // Escape LaTeX/TeX brackets and dollar signs within JSON string values
-        .replace(/(\[tex\])/g, '\\[tex\\]')
-        .replace(/(\[\/tex\])/g, '\\[\\/tex\\]')
-        .replace(/(\$)/g, '\\$');
-      
-      try {
-        const parsed = JSON.parse(fixedContent);
-        
-        // Clean up any backspace characters and unescape LaTeX syntax
-        const cleanMetadata = {};
-        for (const [key, value] of Object.entries(parsed)) {
-          if (typeof value === 'string') {
-            cleanMetadata[key] = value
-              .replace(/\b/g, '')
-              .replace(/\\?\[tex\\?\]/g, '[tex]')
-              .replace(/\\?\[\\?\/?tex\\?\]/g, '[/tex]')
-              .replace(/\\?\$/g, '$');
-          } else {
-            cleanMetadata[key] = value;
-          }
-        }
-        
-        return cleanMetadata;
-      } catch (firstError) {
-        
-        // Second attempt: More aggressive fixing for nested quotes and LaTeX
-        fixedContent = content
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')
-          .replace(/\t/g, '\\t')
-          .replace(/\f/g, '\\f')
-          .replace(/\b/g, '')
-          // Handle LaTeX expressions more carefully
-          .replace(/\[tex\]/g, '\\u005Btex\\u005D')
-          .replace(/\[\/tex\]/g, '\\u005B/tex\\u005D')
-          .replace(/\$\$/g, '\\u0024\\u0024')
-          .replace(/\$/g, '\\u0024')
-          // Fix unescaped quotes within JSON string values
-          .replace(/"([^"]*)"([^"]*)"([^"]*)":/g, '"$1\\"$2\\"$3":')
-          .replace(/:"([^"]*)"([^"]*)"([^"]*)"([,}])/g, ':"$1\\"$2\\"$3"$4');
-        
-        try {
-          const parsed = JSON.parse(fixedContent);
-          
-          const cleanMetadata = {};
-          for (const [key, value] of Object.entries(parsed)) {
-            if (typeof value === 'string') {
-              cleanMetadata[key] = value
-                .replace(/\b/g, '')
-                .replace(/\\"/g, '"')
-                .replace(/\\u005Btex\\u005D/g, '[tex]')
-                .replace(/\\u005B\/tex\\u005D/g, '[/tex]')
-                .replace(/\\u0024/g, '$');
-            } else {
-              cleanMetadata[key] = value;
-            }
-          }
-          
-          return cleanMetadata;
-        } catch (secondError) {
-          
-          // Third attempt: Smart regex parsing that handles nested content
-          try {
-            // More sophisticated regex that can handle complex content including LaTeX
-            const extractField = (fieldName, defaultValue = '') => {
-              const regex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'g');
-              const match = regex.exec(content);
-              if (match) {
-                // Unescape the matched content
-                return match[1]
-                  .replace(/\\"/g, '"')
-                  .replace(/\\n/g, '\n')
-                  .replace(/\\r/g, '\r')
-                  .replace(/\\t/g, '\t')
-                  .replace(/\\\\/g, '\\')
-                  .replace(/\b/g, '');
-              }
-              return defaultValue;
-            };
-            
-            const description = extractField('description');
-            const nodeId = extractField('nodeId');
-            const tokenBoundAccount = extractField('tokenBoundAccount');
-            const nodeTokenContract = extractField('nodeTokenContract');
-            const tokenName = extractField('tokenName', 'NODE');
-            const tokenSymbol = extractField('tokenSymbol', 'NODE');
-            const tokenSupply = extractField('tokenSupply', '1000');
-            
-            if (description || nodeId) {
-              return {
-                description,
-                nodeId,
-                tokenBoundAccount,
-                nodeTokenContract,
-                tokenName,
-                tokenSymbol,
-                tokenSupply
-              };
-            }
-          } catch (regexError) {
-          }
-          
-          return null;
-        }
-      }
-    } catch (e) {
-      return null;
-    }
-  };
+  // parseNFTMetadata now imported from utils/nftUtils.js
 
   const handleCreateTree = async () => {
     if (newTreeContent.trim()) {
@@ -972,7 +855,7 @@ const RightSidebar = ({
                           <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
                             <div>• Token Name: {metadata?.tokenName || 'NODE'}</div>
                             <div>• Token Symbol: {metadata?.tokenSymbol || 'NODE'}</div>
-                            <div>• Initial Supply: {metadata?.tokenSupply || '1000'} {metadata?.tokenSymbol || 'NODE'}</div>
+                            <div>• Initial Supply: {formatTokenSupply(metadata?.tokenSupply)} {metadata?.tokenSymbol || 'NODE'}</div>
                             <div>
                               • Current Balance: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
                                 {
