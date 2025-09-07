@@ -40,7 +40,7 @@
       "gasPrice": "120108",
       "explorerUrl": "https://scrollscan.com",
       "isTestnet": true,
-      "subgraphVersion": "v0.0.16",
+      "subgraphVersion": "v0.0.20",
       "nativeCurrency": {
         "name": "Ether",
         "symbol": "ETH",

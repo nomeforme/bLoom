@@ -6,6 +6,13 @@ export const createMemoryHandlers = (
   graphRef
 ) => {
   const handleNodeSelect = (node, currentTree) => {
+    console.log('🎯 handleNodeSelect called with node:', {
+      nodeId: node?.id?.substring(0, 8) + '...',
+      hasIpfsHash: !!node?.ipfsHash,
+      ipfsHashValue: node?.ipfsHash,
+      fullNodeKeys: Object.keys(node || {})
+    });
+    
     setSelectedNode(node);
     
     if (currentTree && node && node.id) {
@@ -42,7 +49,10 @@ export const createMemoryHandlers = (
       console.log(`🔄 Restoring node ${rememberedNodeId.substring(0, 8)}... for tree ${newTree.address.substring(0, 8)}...`);
       const rememberedNode = newTree.nodes?.find(node => node.nodeId === rememberedNodeId);
       if (rememberedNode) {
-        setSelectedNode({
+        console.log('📋 Found remembered node with keys:', Object.keys(rememberedNode));
+        console.log('📋 rememberedNode.ipfsHash:', rememberedNode.ipfsHash);
+        
+        const nodeToSet = {
           id: rememberedNode.nodeId,
           content: rememberedNode.content,
           parentId: rememberedNode.parentId,
@@ -50,10 +60,15 @@ export const createMemoryHandlers = (
           timestamp: rememberedNode.timestamp,
           modelId: rememberedNode.modelId,
           hasNFT: rememberedNode.hasNFT,
+          ipfsHash: rememberedNode.ipfsHash,
           tokenId: rememberedNode.tokenId,
           tokenBoundAccount: rememberedNode.tokenBoundAccount,
           nodeTokenContract: rememberedNode.nodeTokenContract
-        });
+        };
+        console.log('🎯 Setting selected node with keys:', Object.keys(nodeToSet));
+        console.log('🎯 Setting selected node ipfsHash:', nodeToSet.ipfsHash);
+        
+        setSelectedNode(nodeToSet);
         
         if (graphRef.current) {
           setTimeout(() => {
@@ -72,7 +87,10 @@ export const createMemoryHandlers = (
         const rootNode = newTree.nodes?.find(node => node.isRoot);
         if (rootNode) {
           console.log('🎯 Auto-selecting root node (remembered node not found)');
-          setSelectedNode({
+          console.log('📋 Root node keys:', Object.keys(rootNode));
+          console.log('📋 Root node ipfsHash:', rootNode.ipfsHash);
+          
+          const rootNodeToSet = {
             id: rootNode.nodeId,
             content: rootNode.content,
             parentId: rootNode.parentId,
@@ -80,10 +98,15 @@ export const createMemoryHandlers = (
             timestamp: rootNode.timestamp,
             modelId: rootNode.modelId,
             hasNFT: rootNode.hasNFT,
+            ipfsHash: rootNode.ipfsHash,
             tokenId: rootNode.tokenId,
             tokenBoundAccount: rootNode.tokenBoundAccount,
             nodeTokenContract: rootNode.nodeTokenContract
-          });
+          };
+          console.log('🎯 Setting root node with keys:', Object.keys(rootNodeToSet));
+          console.log('🎯 Setting root node ipfsHash:', rootNodeToSet.ipfsHash);
+          
+          setSelectedNode(rootNodeToSet);
           
           // Also select in LiteGraph
           if (graphRef.current) {
@@ -107,7 +130,10 @@ export const createMemoryHandlers = (
       const rootNode = newTree.nodes?.find(node => node.isRoot);
       if (rootNode) {
         console.log('🎯 Auto-selecting root node for new tree');
-        setSelectedNode({
+        console.log('📋 New tree root node keys:', Object.keys(rootNode));
+        console.log('📋 New tree root node ipfsHash:', rootNode.ipfsHash);
+        
+        const newTreeRootNodeToSet = {
           id: rootNode.nodeId,
           content: rootNode.content,
           parentId: rootNode.parentId,
@@ -115,10 +141,15 @@ export const createMemoryHandlers = (
           timestamp: rootNode.timestamp,
           modelId: rootNode.modelId,
           hasNFT: rootNode.hasNFT,
+          ipfsHash: rootNode.ipfsHash,
           tokenId: rootNode.tokenId,
           tokenBoundAccount: rootNode.tokenBoundAccount,
           nodeTokenContract: rootNode.nodeTokenContract
-        });
+        };
+        console.log('🎯 Setting new tree root node with keys:', Object.keys(newTreeRootNodeToSet));
+        console.log('🎯 Setting new tree root node ipfsHash:', newTreeRootNodeToSet.ipfsHash);
+        
+        setSelectedNode(newTreeRootNodeToSet);
         
         // Also select in LiteGraph
         if (graphRef.current) {
