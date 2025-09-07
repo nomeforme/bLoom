@@ -419,6 +419,51 @@ const SelectedNodeInfo = ({
             </div>
           </>
         )}
+
+        {/* Tree Info Section */}
+        {currentTree && (
+          <>
+            <h4 style={{ color: '#4CAF50', marginBottom: '8px', marginTop: '15px' }}>LoomTree: Tree Info</h4>
+            <div style={{ 
+              backgroundColor: '#1a1a1a', 
+              border: '1px solid #4CAF50',
+              borderRadius: '6px',
+              padding: '10px',
+              marginBottom: '15px'
+            }}>
+              <div style={{ fontSize: '12px', color: '#4CAF50', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                  Tree Address:
+                </div>
+                <div style={{ 
+                  backgroundColor: '#0a0a0a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '6px',
+                  fontFamily: 'monospace',
+                  fontSize: '10px',
+                  wordBreak: 'break-all',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => copyToClipboard(currentTree.address)}
+                title="Click to copy full address"
+                >
+                  {currentTree.address}
+                </div>
+                <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.3' }}>
+                  <div>• Created: {currentTree.blockTimestamp ? new Date(currentTree.blockTimestamp * 1000).toLocaleString() : 'Unknown'}</div>
+                  <div>• Creator: {ellipseAddress(currentTree.creator)}</div>
+                  <div>• Total Nodes: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{currentTree.nodeCount || currentTree.nodes?.length || 0}</span></div>
+                  <div>• NFT Address: {currentTree.nftAddress ? ellipseAddress(currentTree.nftAddress) : 'N/A'}</div>
+                </div>
+                <div style={{ borderTop: '1px solid #333', marginTop: '8px', paddingTop: '6px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+                  Tree Creator: <span style={{ cursor: 'pointer', fontWeight: 'bold' }} onClick={() => copyToClipboard(currentTree.creator)} title="Click to copy full address">{ellipseAddress(currentTree.creator)}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
