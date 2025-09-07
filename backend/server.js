@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const { getActiveChainConfig } = require('./config/chainConfig');
+const { getEnvironmentConfig } = require('./utils/envConfig');
 require('dotenv').config();
 
 // Import middleware
@@ -24,7 +25,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+const { frontendUrl } = getEnvironmentConfig();
 const io = socketIo(server, {
   cors: {
     origin: frontendUrl,

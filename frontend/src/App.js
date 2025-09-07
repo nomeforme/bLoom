@@ -16,6 +16,7 @@ import { createImportHandler } from './utils/importUtils';
 import { createMemoryHandlers } from './utils/memoryUtils';
 import { createNotificationSystem } from './utils/notificationUtils';
 import { getActiveChainConfig } from './utils/chainConfig';
+import { getEnvironmentConfig } from './utils/envConfig';
 import { graphClient } from './config/graphql';
 import modelsConfig from './config/models.json';
 import './App.css';
@@ -97,7 +98,7 @@ function AppInner() {
     logChainConfig();
     
     // Initialize socket connection
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+    const { backendUrl } = getEnvironmentConfig();
     const newSocket = io(backendUrl);
     setSocket(newSocket);
 
