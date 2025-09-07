@@ -10,6 +10,14 @@ backend/node_modules/
 .env.test.local
 .env.production.local
 
+# Environment-specific files (keep .example versions)
+.env.development
+.env.staging  
+.env.production
+frontend/.env.development
+frontend/.env.staging
+frontend/.env.production
+
 # Build outputs
 build/
 dist/
