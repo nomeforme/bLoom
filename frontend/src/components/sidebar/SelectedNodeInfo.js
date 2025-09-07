@@ -26,15 +26,6 @@ const SelectedNodeInfo = ({
     return null;
   }
 
-  // Debug logging for IPFS hash
-  console.log('🔍 SelectedNodeInfo - selectedNode:', {
-    selectedNode: selectedNode,
-    nodeId: selectedNode.nodeId?.substring(0, 10) + '...',
-    hasNFT: selectedNode.hasNFT,
-    ipfsHash: selectedNode.ipfsHash,
-    ipfsHashType: typeof selectedNode.ipfsHash,
-    ipfsHashTruthy: !!selectedNode.ipfsHash
-  });
 
   return (
     <div className="section">
