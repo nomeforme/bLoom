@@ -171,7 +171,7 @@ const GET_TREE_NODES = gql`
 `;
 
 const GET_NODE_NFT_INFO = gql`
-  query GetNodeNFTInfo($nodeId: Bytes!, $tokenId: BigInt) {
+  query GetNodeNFTInfo($nodeId: Bytes!, $tokenId: BigInt, $tokenBoundAccount: Bytes) {
     nodeNFTMinteds(where: { nodeId: $nodeId }) {
       id
       tokenId
@@ -210,8 +210,9 @@ const GET_NODE_NFT_INFO = gql`
     }
     
     # Get the token supply from NodeTokenCreated event
+    # Filter by nodeTokenContract since each node has a unique contract
     nodeTokenCreateds(
-      where: { tokenId: $tokenId },
+      where: { tokenBoundAccount: $tokenBoundAccount },
       first: 1
     ) {
       id
@@ -569,6 +570,11 @@ export const useGraph = () => {
   // Get all trees using The Graph (optimized single query)
   const getAllTrees = useCallback(async () => {
     console.log('🔍 Getting all trees and nodes from Graph in single query');
+    
+    // Clear the NFT cache to ensure fresh data after the optimization fix
+    console.log('🗑️ Clearing NFT cache before optimized query');
+    nftCache.current.clear();
+    
     setLoading(true);
     
     try {
@@ -608,16 +614,26 @@ export const useGraph = () => {
       
       if (data.nodeNFTMinteds) {
         // NFT minted events don't have treeAddress, so we need to match by nodeId
-        // We'll collect all NFTs and let buildTreeFromGraphData filter them
+        // Create a map of all NFTs by nodeId first, then match to trees
+        const nftsByNodeId = new Map();
         data.nodeNFTMinteds.forEach(nft => {
-          // We'll pass all NFTs to each tree and let the function filter by nodeId
-          data.treeCreateds.forEach(treeData => {
-            const treeAddress = treeData.treeAddress.toLowerCase();
-            if (!nftsByTree.has(treeAddress)) {
-              nftsByTree.set(treeAddress, []);
+          nftsByNodeId.set(nft.nodeId, nft);
+        });
+        
+        // Now assign NFTs to trees based on their nodes
+        data.treeCreateds.forEach(treeData => {
+          const treeAddress = treeData.treeAddress.toLowerCase();
+          const treeNodes = nodesByTree.get(treeAddress) || [];
+          const treeNfts = [];
+          
+          // Only include NFTs that match nodeIds in this tree
+          treeNodes.forEach(node => {
+            if (nftsByNodeId.has(node.nodeId)) {
+              treeNfts.push(nftsByNodeId.get(node.nodeId));
             }
-            nftsByTree.get(treeAddress).push(nft);
           });
+          
+          nftsByTree.set(treeAddress, treeNfts);
         });
       }
       
@@ -801,7 +817,8 @@ export const useGraph = () => {
               const { data: tokenData } = await getNodeNFTInfoQuery({
                 variables: { 
                   nodeId: normalizedNodeId,
-                  tokenId: nftData.tokenId
+                  tokenId: nftData.tokenId,
+                  tokenBoundAccount: nftData.tokenBoundAccount
                 }
               });
               
