@@ -32,9 +32,11 @@ function handleTokenBalance(socket, io) {
         const nftContractAddress = await treeContract.getNFTContract();
         const nftContract = new ethers.Contract(nftContractAddress, NFT_ABI, wallet);
         
-        // Get current token balance
-        const balanceBigInt = await nftContract.getNodeTokenBalance(nodeId);
-        const balance = Number(balanceBigInt);
+        // Get ERC20 contract and total supply (instead of TBA balance)
+        const nodeTokenContract = await nftContract.getNodeTokenContractByNodeId(nodeId);
+        const tokenContract = new ethers.Contract(nodeTokenContract, ['function totalSupply() view returns (uint256)'], wallet);
+        const totalSupplyBigInt = await tokenContract.totalSupply();
+        const balance = Number(totalSupplyBigInt) / Math.pow(10, 18); // Convert from wei to tokens
         
         socket.emit('tokenBalance', {
           balance,

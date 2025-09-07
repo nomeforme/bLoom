@@ -150,7 +150,7 @@ contract LoomTree {
     function _calculateTokenSupply(string memory content) internal pure returns (uint256) {
         uint256 contentLength = bytes(content).length;
         if (contentLength == 0) return 1;
-        uint256 calculated = contentLength / 4;
+        uint256 calculated = contentLength / 3;
         return calculated > 0 ? calculated : 1; // Minimum 1 token
     }
     

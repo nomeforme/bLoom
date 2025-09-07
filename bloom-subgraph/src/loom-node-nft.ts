@@ -54,6 +54,7 @@ export function handleNodeTokenCreated(event: NodeTokenCreatedEvent): void {
   entity.tokenId = event.params.tokenId
   entity.nodeTokenContract = event.params.nodeTokenContract
   entity.tokenBoundAccount = event.params.tokenBoundAccount
+  entity.tokenSupply = event.params.tokenSupply
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp

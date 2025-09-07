@@ -41,7 +41,8 @@ contract LoomNodeNFT is ERC721, Ownable {
     event NodeTokenCreated(
         uint256 indexed tokenId,
         address indexed nodeTokenContract,
-        address indexed tokenBoundAccount
+        address indexed tokenBoundAccount,
+        uint256 tokenSupply
     );
     
     event NodeNFTContentUpdated(
@@ -181,7 +182,7 @@ contract LoomNodeNFT is ERC721, Ownable {
         
         emit NodeNFTMinted(newTokenId, nodeId, to, content, tokenBoundAccount, nodeTokenContract);
         emit TokenBoundAccountCreated(newTokenId, tokenBoundAccount);
-        emit NodeTokenCreated(newTokenId, nodeTokenContract, tokenBoundAccount);
+        emit NodeTokenCreated(newTokenId, nodeTokenContract, tokenBoundAccount, tokenSupply);
         
         return newTokenId;
     }

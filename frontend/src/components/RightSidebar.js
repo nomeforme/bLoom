@@ -934,7 +934,18 @@ const RightSidebar = ({
                     // Use structured data from GraphQL first, fallback to parsed metadata
                     const nodeTokenContract = selectedNodeNFT.nodeTokenContract || selectedNode.nodeTokenContract;
                     const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content || '');
+                    const metadata = {
+                      ...parseNFTMetadata(selectedNodeNFT.content || ''),
+                      tokenSupply: selectedNodeNFT.tokenSupply
+                    };
+                    
+                    console.log('🔍 RightSidebar: NFT metadata for Initial Supply:', {
+                      nodeId: selectedNode?.id?.substring(0, 10) + '...',
+                      rawTokenSupply: selectedNodeNFT.tokenSupply,
+                      parsedMetadata: parseNFTMetadata(selectedNodeNFT.content || ''),
+                      finalMetadata: metadata,
+                      fallbackValue: metadata?.tokenSupply || '1000'
+                    });
                     
                     if (nodeTokenContract) {
                       return (
@@ -1029,7 +1040,10 @@ const RightSidebar = ({
                   {(() => {
                     // Use structured data from GraphQL first, fallback to parsed metadata
                     const tokenBoundAccount = selectedNodeNFT.tokenBoundAccount || selectedNode.tokenBoundAccount;
-                    const metadata = parseNFTMetadata(selectedNodeNFT.content || '');
+                    const metadata = {
+                      ...parseNFTMetadata(selectedNodeNFT.content || ''),
+                      tokenSupply: selectedNodeNFT.tokenSupply
+                    };
                     
                     if (tokenBoundAccount) {
                       return (

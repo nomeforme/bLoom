@@ -239,33 +239,73 @@ function AppInner() {
       tokenId: selectedNode.tokenId
     } : null);
 
-    // Use GraphQL data directly from the node object (now includes latest updated content)
-    if (selectedNode && selectedNode.hasNFT && (selectedNode.tokenBoundAccount || selectedNode.nodeTokenContract)) {
-      console.log('✅ App.js: Setting selectedNodeNFT with data:', {
-        tokenId: selectedNode.tokenId,
-        tokenBoundAccount: selectedNode.tokenBoundAccount,
-        nodeTokenContract: selectedNode.nodeTokenContract
-      });
-      
-      // Use the GraphQL data directly from the node object (already includes latest content)
-      setSelectedNodeNFT({
-        tokenId: selectedNode.tokenId,
-        nodeId: selectedNode.nodeId,
-        owner: selectedNode.author,
-        content: selectedNode.originalContent || selectedNode.content,
-        tokenBoundAccount: selectedNode.tokenBoundAccount,
-        nodeTokenContract: selectedNode.nodeTokenContract
-      });
-    } else {
-      console.log('❌ App.js: Setting selectedNodeNFT to null, conditions:', {
-        hasSelectedNode: !!selectedNode,
-        hasNFT: selectedNode?.hasNFT,
-        hasTokenBoundAccount: !!selectedNode?.tokenBoundAccount,
-        hasNodeTokenContract: !!selectedNode?.nodeTokenContract
-      });
-      setSelectedNodeNFT(null);
-    }
-  }, [selectedNode]);
+    const fetchNFTData = async () => {
+      if (selectedNode && selectedNode.hasNFT && (selectedNode.tokenBoundAccount || selectedNode.nodeTokenContract)) {
+        console.log('✅ App.js: Fetching complete NFT data for node:', {
+          nodeId: selectedNode.nodeId?.substring(0, 10) + '...',
+          tokenId: selectedNode.tokenId,
+          tokenBoundAccount: selectedNode.tokenBoundAccount,
+          nodeTokenContract: selectedNode.nodeTokenContract
+        });
+        
+        try {
+          // Fetch complete NFT data including tokenSupply
+          const nftData = await getNodeNFTInfo(currentTree, selectedNode.nodeId);
+          
+          if (nftData) {
+            console.log('💰 App.js: Got complete NFT data with tokenSupply:', {
+              nodeId: selectedNode.nodeId?.substring(0, 10) + '...',
+              tokenSupply: nftData.tokenSupply,
+              tokenSupplyType: typeof nftData.tokenSupply
+            });
+            
+            setSelectedNodeNFT({
+              tokenId: selectedNode.tokenId,
+              nodeId: selectedNode.nodeId,
+              owner: selectedNode.author,
+              content: nftData.content || selectedNode.originalContent || selectedNode.content,
+              latestContent: nftData.latestContent,
+              tokenBoundAccount: selectedNode.tokenBoundAccount,
+              nodeTokenContract: selectedNode.nodeTokenContract,
+              tokenSupply: nftData.tokenSupply // Include the tokenSupply from GraphQL
+            });
+          } else {
+            console.log('⚠️ App.js: No NFT data returned, using basic node data');
+            // Fallback to basic data without tokenSupply
+            setSelectedNodeNFT({
+              tokenId: selectedNode.tokenId,
+              nodeId: selectedNode.nodeId,
+              owner: selectedNode.author,
+              content: selectedNode.originalContent || selectedNode.content,
+              tokenBoundAccount: selectedNode.tokenBoundAccount,
+              nodeTokenContract: selectedNode.nodeTokenContract
+            });
+          }
+        } catch (error) {
+          console.error('❌ App.js: Error fetching NFT data:', error);
+          // Fallback to basic data without tokenSupply
+          setSelectedNodeNFT({
+            tokenId: selectedNode.tokenId,
+            nodeId: selectedNode.nodeId,
+            owner: selectedNode.author,
+            content: selectedNode.originalContent || selectedNode.content,
+            tokenBoundAccount: selectedNode.tokenBoundAccount,
+            nodeTokenContract: selectedNode.nodeTokenContract
+          });
+        }
+      } else {
+        console.log('❌ App.js: Setting selectedNodeNFT to null, conditions:', {
+          hasSelectedNode: !!selectedNode,
+          hasNFT: selectedNode?.hasNFT,
+          hasTokenBoundAccount: !!selectedNode?.tokenBoundAccount,
+          hasNodeTokenContract: !!selectedNode?.nodeTokenContract
+        });
+        setSelectedNodeNFT(null);
+      }
+    };
+
+    fetchNFTData();
+  }, [selectedNode, currentTree, getNodeNFTInfo]);
 
   // Initialize node handlers
   const nodeHandlers = createNodeHandlers(
