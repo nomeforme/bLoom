@@ -90,7 +90,7 @@ const SidebarHeader = ({
                 fontFamily: "'Inconsolata', monospace"
               }}>
                 <span style={{ color: '#999' }}>Chain: </span>
-                <span style={{ color: '#4CAF50' }}>{activeChain.name}</span>
+                <span style={{ color: '#4CAF50' }}>{activeChain.name.toUpperCase()}</span>
               </div>
             )}
           </div>
