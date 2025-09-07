@@ -32,11 +32,43 @@ function handleUpdateNode(socket, io) {
       // Get the tree contract
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
+      // Check if node was originally created in IPFS mode by getting its current content
+      let finalContent = newContent;
+      let wasIPFSMode = false;
+      
+      try {
+        // Get current node content to check if it's in IPFS format
+        const currentContent = await treeContract.getNodeContent(nodeId);
+        wasIPFSMode = ipfsService.isIPFSReference(currentContent);
+        
+        console.log('📝 Node update analysis:', {
+          nodeId: nodeId.substring(0, 10) + '...',
+          wasIPFSMode,
+          currentContent: wasIPFSMode ? currentContent : currentContent.substring(0, 50) + '...',
+          newContentLength: newContent.length
+        });
+        
+        // If node was originally in IPFS mode, maintain consistency by pinning new content
+        if (wasIPFSMode) {
+          console.log('🌐 Maintaining IPFS mode: pinning updated content to IPFS...');
+          const pinResult = await ipfsService.pinText(newContent, {
+            treeAddress,
+            parentId: nodeId, // For metadata purposes
+            name: `loom-node-update-${Date.now()}`
+          });
+          finalContent = `ipfs:${pinResult.hash}`;
+          console.log('✅ Updated content pinned to IPFS:', pinResult.hash);
+        }
+      } catch (contentError) {
+        console.warn('⚠️ Could not check node\'s current content, proceeding with direct update:', contentError.message);
+        // Proceed with direct content update
+      }
+      
       // Token adjustments for direct edits are now handled automatically by the contract
       
-      // Update the node content
+      // Update the node content (either with new IPFS hash or direct content)
       const updateReceipt = await queueTransaction(async (nonce) => {
-        const updateTx = await treeContract.updateNodeContent(nodeId, newContent, { nonce });
+        const updateTx = await treeContract.updateNodeContent(nodeId, finalContent, { nonce });
         return await updateTx.wait();
       });
       
