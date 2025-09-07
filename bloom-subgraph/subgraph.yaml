@@ -8,7 +8,7 @@ dataSources:
     name: LoomFactory
     network: scroll
     source:
-      address: "0x1f0365b4F484Ee04444fCCB069fc2A9aB5610F98"
+      address: "0x390af32EB799f9611c4a9360a4e2876715de720f"
       abi: LoomFactory
       startBlock: 20781000
     mapping:

@@ -241,9 +241,10 @@ contract LoomTree {
         return nodeId;
     }
     
-    function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash) external {
+    function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash, address author) external {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
-        require(nodes[nodeId].author == msg.sender || msg.sender == treeOwner, "Not authorized to update this node");
+        require(nodes[nodeId].author == author, "Author parameter must match node author");
+        // No authorization check - anyone can update any node
         
         // Decide what content to store: use IPFS hash if provided, otherwise use direct content
         string memory storedContent = bytes(ipfsHash).length > 0 ? 
@@ -279,7 +280,7 @@ contract LoomTree {
             // Handle direct storage nodes - store either IPFS hash or direct content
             nodes[nodeId].content = storedContent;
         }
-        emit NodeUpdated(nodeId, msg.sender, nodes[nodeId].modelId, newContent, ipfsHash);
+        emit NodeUpdated(nodeId, author, nodes[nodeId].modelId, newContent, ipfsHash);
     }
     
     function setNodeMetadata(bytes32 nodeId, string memory key, string memory value) external {

@@ -24,7 +24,7 @@ const FACTORY_ABI = [
 const TREE_ABI = [
   "function addNode(bytes32 parentId, string memory content, string memory ipfsHash, bool createNFT, string memory modelId, address author) external returns (bytes32)",
   "function addNodeWithToken(bytes32 parentId, string memory content, string memory ipfsHash, string memory tokenName, string memory tokenSymbol, string memory modelId, address author) external returns (bytes32)",
-  "function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash) external",
+  "function updateNodeContent(bytes32 nodeId, string memory newContent, string memory ipfsHash, address author) external",
   "function getNode(bytes32 nodeId) external view returns (bytes32 id, bytes32 parentId, bytes32[] memory children, address author, uint256 timestamp, bool isRoot, string memory modelId)",
   "function getNodeContent(bytes32 nodeId) external view returns (string memory)",
   "function getNodeModelId(bytes32 nodeId) external view returns (string memory)",
