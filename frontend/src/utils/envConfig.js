@@ -1,6 +1,6 @@
 const getEnvironmentConfig = () => {
-    const env = process.env.REACT_APP_NODE_ENV || 'dev';
-    
+    const env = process.env.REACT_APP_ENVIRONMENT || 'dev';
+
     const config = {
         dev: {
             backendUrl: process.env.REACT_APP_DEV_BACKEND_URL || 'http://localhost:3001'
@@ -14,6 +14,10 @@ const getEnvironmentConfig = () => {
     };
     
     const selectedConfig = config[env] || config.dev;
+    
+    console.log('🔧 Environment Config:');
+    console.log('  environment:', env);
+    console.log('  backendUrl:', selectedConfig.backendUrl);
     
     return {
         environment: env,

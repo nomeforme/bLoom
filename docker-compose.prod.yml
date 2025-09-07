@@ -35,6 +35,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_ENVIRONMENT=production
+        - REACT_APP_DEV_BACKEND_URL=http://localhost:3001
+        - REACT_APP_STAGING_BACKEND_URL=http://REDACTED_IP:3001
+        - REACT_APP_PROD_BACKEND_URL=
+        - REACT_APP_GRAPH_VERSION=v0.0.20
+        - REACT_APP_GRAPH_USER_ID=120324
+        - REACT_APP_IPFS_PLAN_TIER=free
     container_name: bloom-frontend-prod
     ports:
       - "3000:3000"
