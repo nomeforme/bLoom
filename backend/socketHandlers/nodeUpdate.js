@@ -33,7 +33,7 @@ function handleUpdateNode(socket, io) {
       const treeContract = new ethers.Contract(treeAddress, TREE_ABI, wallet);
       
       // Check if node was originally created in IPFS mode by getting its current content
-      let finalContent = newContent;
+      let ipfsHash = '';
       let wasIPFSMode = false;
       
       try {
@@ -56,7 +56,7 @@ function handleUpdateNode(socket, io) {
             parentId: nodeId, // For metadata purposes
             name: `loom-node-update-${Date.now()}`
           });
-          finalContent = `ipfs:${pinResult.hash}`;
+          ipfsHash = pinResult.hash;
           console.log('✅ Updated content pinned to IPFS:', pinResult.hash);
         }
       } catch (contentError) {
@@ -66,9 +66,9 @@ function handleUpdateNode(socket, io) {
       
       // Token adjustments for direct edits are now handled automatically by the contract
       
-      // Update the node content (either with new IPFS hash or direct content)
+      // Update the node content - always pass original content and ipfsHash separately
       const updateReceipt = await queueTransaction(async (nonce) => {
-        const updateTx = await treeContract.updateNodeContent(nodeId, finalContent, { nonce });
+        const updateTx = await treeContract.updateNodeContent(nodeId, newContent, ipfsHash, { nonce });
         return await updateTx.wait();
       });
       
@@ -87,7 +87,7 @@ function handleUpdateNode(socket, io) {
         
         // Create child node - no manual token burning needed
         
-        let finalChildContent = options.childContent;
+        let childIpfsHash = '';
         
         // Handle IPFS mode for child content
         if (options.storageMode === 'ipfs') {
@@ -98,11 +98,11 @@ function handleUpdateNode(socket, io) {
               parentId: nodeId,
               name: `loom-child-node-${Date.now()}`
             });
-            finalChildContent = `ipfs:${pinResult.hash}`;
+            childIpfsHash = pinResult.hash;
             console.log('✅ Child content pinned to IPFS:', pinResult.hash);
           } catch (ipfsError) {
-            console.error('❌ IPFS pinning failed for child, using original content:', ipfsError);
-            // Keep original content
+            console.error('❌ IPFS pinning failed for child:', ipfsError);
+            throw ipfsError; // Don't fall back, fail the operation
           }
         }
         
@@ -114,7 +114,8 @@ function handleUpdateNode(socket, io) {
         const childReceipt = await queueTransaction(async (nonce) => {
           const childTx = await treeContract.addNode(
             nodeId, 
-            finalChildContent,
+            options.childContent, // Always pass original content
+            childIpfsHash, // Pass IPFS hash (empty string if not IPFS mode)
             options.storageMode === 'full', // createNFT = true when in full mode
             modelId || '', // modelId from the selected node being edited
             author, // author parameter
@@ -172,7 +173,7 @@ function handleUpdateNode(socket, io) {
         
         // Create sibling node - no manual token burning needed
         
-        let finalSiblingContent = options.siblingContent;
+        let siblingIpfsHash = '';
         
         // Handle IPFS mode for sibling content
         if (options.storageMode === 'ipfs') {
@@ -183,11 +184,11 @@ function handleUpdateNode(socket, io) {
               parentId: options.parentId,
               name: `loom-sibling-node-${Date.now()}`
             });
-            finalSiblingContent = `ipfs:${pinResult.hash}`;
+            siblingIpfsHash = pinResult.hash;
             console.log('✅ Sibling content pinned to IPFS:', pinResult.hash);
           } catch (ipfsError) {
-            console.error('❌ IPFS pinning failed for sibling, using original content:', ipfsError);
-            // Keep original content
+            console.error('❌ IPFS pinning failed for sibling:', ipfsError);
+            throw ipfsError; // Don't fall back, fail the operation
           }
         }
         
@@ -199,7 +200,8 @@ function handleUpdateNode(socket, io) {
         const siblingReceipt = await queueTransaction(async (nonce) => {
           const siblingTx = await treeContract.addNode(
             options.parentId, 
-            finalSiblingContent,
+            options.siblingContent, // Always pass original content
+            siblingIpfsHash, // Pass IPFS hash (empty string if not IPFS mode)
             options.storageMode === 'full', // createNFT = true when in full mode
             modelId || '', // modelId from the selected node being edited
             siblingAuthor, // author parameter
