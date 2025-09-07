@@ -64,11 +64,15 @@ function handleUpdateNode(socket, io) {
         // Proceed with direct content update
       }
       
+      // Get the original node author for authorization
+      const nodeInfo = await treeContract.getNode(nodeId);
+      const originalAuthor = nodeInfo[3]; // author is the 4th element in the returned array
+      
       // Token adjustments for direct edits are now handled automatically by the contract
       
-      // Update the node content - always pass original content and ipfsHash separately
+      // Update the node content - always pass original content, ipfsHash, and author separately
       const updateReceipt = await queueTransaction(async (nonce) => {
-        const updateTx = await treeContract.updateNodeContent(nodeId, newContent, ipfsHash, { nonce });
+        const updateTx = await treeContract.updateNodeContent(nodeId, newContent, ipfsHash, originalAuthor, { nonce });
         return await updateTx.wait();
       });
       
