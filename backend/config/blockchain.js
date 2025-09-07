@@ -41,7 +41,8 @@ const NFT_ABI = [
   "function mintTokensToNode(bytes32 nodeId, uint256 amount, string memory reason) external",
   "function burnTokensFromNode(bytes32 nodeId, uint256 amount, string memory reason) external",
   "function getNodeTokenBalance(bytes32 nodeId) external view returns (uint256)",
-  "function getTextContent(bytes32 nodeId) external view returns (string memory)"
+  "function getTextContent(bytes32 nodeId) external view returns (string memory)",
+  "function getNodeTokenContractByNodeId(bytes32 nodeId) external view returns (address)"
 ];
 
 const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, wallet);

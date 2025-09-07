@@ -99,7 +99,7 @@ const GET_TREE_NODES = gql`
 `;
 
 const GET_NODE_NFT_INFO = gql`
-  query GetNodeNFTInfo($nodeId: Bytes!) {
+  query GetNodeNFTInfo($nodeId: Bytes!, $tokenId: BigInt) {
     nodeNFTMinteds(where: { nodeId: $nodeId }) {
       id
       tokenId
@@ -132,6 +132,21 @@ const GET_NODE_NFT_INFO = gql`
       tokenId
       nodeId
       content
+      blockNumber
+      blockTimestamp
+      transactionHash
+    }
+    
+    # Get the token supply from NodeTokenCreated event
+    nodeTokenCreateds(
+      where: { tokenId: $tokenId },
+      first: 1
+    ) {
+      id
+      tokenId
+      nodeTokenContract
+      tokenBoundAccount
+      tokenSupply
       blockNumber
       blockTimestamp
       transactionHash
@@ -691,14 +706,17 @@ export const useGraph = () => {
     if (!nodeId) return null;
     
     const normalizedNodeId = nodeId.toLowerCase();
-    console.log('🔍 getNodeNFTInfo called for nodeId:', normalizedNodeId.substring(0, 10) + '...', {
-      cacheHit: nftCache.current.has(normalizedNodeId) ? 'YES' : 'NO'
+    console.log('🚀 getNodeNFTInfo CALLED for nodeId:', normalizedNodeId.substring(0, 10) + '...', {
+      cacheHit: nftCache.current.has(normalizedNodeId) ? 'YES' : 'NO',
+      fullNodeId: normalizedNodeId
     });
     
     // Check cache first
     if (nftCache.current.has(normalizedNodeId)) {
       console.log('✅ Using cached NFT data for node:', normalizedNodeId.substring(0, 10) + '...');
-      return nftCache.current.get(normalizedNodeId);
+      const cachedData = nftCache.current.get(normalizedNodeId);
+      console.log('📦 Cached data:', cachedData);
+      return cachedData;
     }
     
     // Check if there's already a pending request for this nodeId
@@ -709,13 +727,65 @@ export const useGraph = () => {
     // Create and cache the promise to avoid duplicate requests
     const requestPromise = (async () => {
       try {
+        // First get the NFT data to extract the tokenId
         const { data } = await getNodeNFTInfoQuery({
-          variables: { nodeId: normalizedNodeId }
+          variables: { 
+            nodeId: normalizedNodeId,
+            tokenId: "0" // Placeholder, will get real tokenId below
+          }
         });
         
         let result = null;
         if (data?.nodeNFTMinteds?.length > 0) {
           const nftData = data.nodeNFTMinteds[0];
+          
+          // Now that we have the tokenId, query for NodeTokenCreated event
+          let tokenSupply = null;
+          if (nftData.tokenId) {
+            try {
+              console.log('🔍 Querying NodeTokenCreated with tokenId:', {
+                nodeId: normalizedNodeId.substring(0, 10) + '...',
+                tokenId: nftData.tokenId
+              });
+              
+              const { data: tokenData } = await getNodeNFTInfoQuery({
+                variables: { 
+                  nodeId: normalizedNodeId,
+                  tokenId: nftData.tokenId
+                }
+              });
+              
+              console.log('📊 NodeTokenCreated query result:', {
+                nodeId: normalizedNodeId.substring(0, 10) + '...',
+                tokenId: nftData.tokenId,
+                hasNodeTokenCreated: !!tokenData?.nodeTokenCreateds?.length,
+                nodeTokenCreatedsLength: tokenData?.nodeTokenCreateds?.length || 0,
+                rawData: tokenData?.nodeTokenCreateds
+              });
+              
+              if (tokenData?.nodeTokenCreateds?.length > 0) {
+                tokenSupply = tokenData.nodeTokenCreateds[0].tokenSupply;
+                console.log('💰 Found token supply from NodeTokenCreated event:', {
+                  nodeId: normalizedNodeId.substring(0, 10) + '...',
+                  tokenId: nftData.tokenId,
+                  tokenSupply: tokenSupply,
+                  tokenSupplyType: typeof tokenSupply
+                });
+              } else {
+                console.warn('⚠️ No NodeTokenCreated events found for tokenId:', {
+                  nodeId: normalizedNodeId.substring(0, 10) + '...',
+                  tokenId: nftData.tokenId
+                });
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not fetch NodeTokenCreated data:', error);
+            }
+          } else {
+            console.warn('⚠️ No tokenId available for NodeTokenCreated query:', {
+              nodeId: normalizedNodeId.substring(0, 10) + '...',
+              nftData: nftData
+            });
+          }
           
           // Determine the most recent content in priority order:
           // 1. Latest NFT content update (NodeNFTContentUpdated event)
@@ -767,6 +837,7 @@ export const useGraph = () => {
             owner: nftData.owner,
             content: content,
             latestContent: latestContent, // Most recent content from NFT updates, falls back to node updates
+            tokenSupply: tokenSupply, // From NodeTokenCreated event
             tokenBoundAccount: nftData.tokenBoundAccount,
             nodeTokenContract: nftData.nodeTokenContract,
             nodeId: nftData.nodeId
