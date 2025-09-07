@@ -2,6 +2,12 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useLazyQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 import { isIPFSReference } from '../utils/ipfsUtils';
+import { 
+  calculateTokenBalance, 
+  normalizeNodeId, 
+  formatBlockchainTimestamp,
+  withGraphQLErrorHandling 
+} from '../utils/graphqlUtils';
 
 // GraphQL Queries
 const GET_ALL_TREES = gql`
@@ -262,63 +268,13 @@ const GET_RECENT_ACTIVITIES = gql`
   }
 `;
 
-// Helper function to calculate token balance from transfers
-const calculateTokenBalance = (transfers, mints, burns, userAddress) => {
-  let balance = 0;
-  
-  // Add minted tokens
-  mints.forEach(mint => {
-    if (mint.to.toLowerCase() === userAddress.toLowerCase()) {
-      balance += parseInt(mint.amount);
-    }
-  });
-  
-  // Subtract burned tokens
-  burns.forEach(burn => {
-    if (burn.from.toLowerCase() === userAddress.toLowerCase()) {
-      balance -= parseInt(burn.amount);
-    }
-  });
-  
-  // Process transfers
-  transfers.forEach(transfer => {
-    if (transfer.from.toLowerCase() === userAddress.toLowerCase()) {
-      balance -= parseInt(transfer.value);
-    }
-    if (transfer.to.toLowerCase() === userAddress.toLowerCase()) {
-      balance += parseInt(transfer.value);
-    }
-  });
-  
-  return balance;
-};
+// calculateTokenBalance moved to utils/graphqlUtils.js
 
 // Helper function to build tree structure from Graph data
 const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds, metadataSets) => {
-  console.log('🔄 Building tree from Graph data:', {
-    treeAddress: treeData.treeAddress,
-    nodeCount: nodeCreations.length,
-    nodeUpdateCount: nodeUpdates.length,
-    nftCount: nftMinteds.length,
-    metadataCount: metadataSets.length
-  });
-
-  // Now that we have proper tree filtering in the subgraph, we can use the data directly
-  // The nodeCreations and metadataSets are already filtered by treeAddress
-  
-  console.log('✅ Using filtered data from enhanced subgraph schema');
-  
   // Filter NFTs by nodeId to match our nodes (since NFTs don't have treeAddress field yet)
   const nodeIds = new Set(nodeCreations.map(node => node.nodeId));
   const filteredNfts = nftMinteds.filter(nft => nodeIds.has(nft.nodeId));
-  
-  console.log('🔄 Final filtered data for tree:', {
-    treeAddress: treeData.treeAddress,
-    nodeCount: nodeCreations.length,
-    nodeUpdateCount: nodeUpdates.length,
-    filteredNftCount: filteredNfts.length,
-    metadataCount: metadataSets.length
-  });
 
   // Create a map of the latest updates by nodeId for quick lookup
   const nodeUpdateMap = new Map();
@@ -334,13 +290,6 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
   const nftMap = new Map();
   filteredNfts.forEach(nft => {
     nftMap.set(nft.nodeId, nft);
-  });
-
-  console.log('🔍 NFT mapping for tree:', {
-    treeAddress: treeData.treeAddress,
-    totalNfts: filteredNfts.length,
-    nftNodeIds: Array.from(nftMap.keys()).map(id => id.substring(0, 10) + '...'),
-    nodeIds: nodeCreations.map(n => n.nodeId.substring(0, 10) + '...')
   });
 
   // Create a map of metadata by nodeId
@@ -384,30 +333,24 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       if (nodeUpdate && nodeUpdate.content) {
         content = nodeUpdate.content;
         originalContent = nftData?.content || '';
-        console.log('✅ Using UPDATED content for NFT node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else if (nftData && nftData.content) {
         content = nftData.content;
         originalContent = content;
-        console.log('✅ Using original NFT content for node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else {
         content = 'Loading NFT content...';
         originalContent = '';
-        console.log('⏳ NFT data available, waiting for content:', nodeCreation.nodeId.substring(0, 10) + '...');
       }
     } else {
       // Lightweight node - prioritize updated content over original content
       if (nodeUpdate && nodeUpdate.content) {
         content = nodeUpdate.content;
         originalContent = content;
-        console.log('✅ Using UPDATED contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else if (nodeCreation.content) {
         content = nodeCreation.content;
         originalContent = content;
-        console.log('✅ Using original contract storage content for lightweight node:', nodeCreation.nodeId.substring(0, 10) + '...', 'Content:', content.substring(0, 50) + '...');
       } else {
         content = 'Content in contract storage';
         originalContent = '';
-        console.log('📄 Node uses contract storage (content not indexed):', nodeCreation.nodeId.substring(0, 10) + '...');
       }
     }
     
@@ -436,13 +379,7 @@ const buildTreeFromGraphData = (treeData, nodeCreations, nodeUpdates, nftMinteds
       id: nodeCreation.nodeId // Alias for nodeId for consistency
     };
 
-    console.log('📊 Final node object for', nodeCreation.nodeId.substring(0, 10) + '...:', {
-      hasNFT: nodeObject.hasNFT,
-      tokenBoundAccount: nodeObject.tokenBoundAccount,
-      nodeTokenContract: nodeObject.nodeTokenContract,
-      hasEventData: !!(nodeCreation.tokenId || nodeCreation.tokenBoundAccount),
-      hasNftContentData: !!nftData
-    });
+    // Node object created successfully
 
     return nodeObject;
   });
@@ -743,11 +680,6 @@ export const useGraph = () => {
           let tokenSupply = null;
           if (nftData.tokenId) {
             try {
-              console.log('🔍 Querying NodeTokenCreated with tokenId:', {
-                nodeId: normalizedNodeId.substring(0, 10) + '...',
-                tokenId: nftData.tokenId
-              });
-              
               const { data: tokenData } = await getNodeNFTInfoQuery({
                 variables: { 
                   nodeId: normalizedNodeId,
@@ -755,22 +687,8 @@ export const useGraph = () => {
                 }
               });
               
-              console.log('📊 NodeTokenCreated query result:', {
-                nodeId: normalizedNodeId.substring(0, 10) + '...',
-                tokenId: nftData.tokenId,
-                hasNodeTokenCreated: !!tokenData?.nodeTokenCreateds?.length,
-                nodeTokenCreatedsLength: tokenData?.nodeTokenCreateds?.length || 0,
-                rawData: tokenData?.nodeTokenCreateds
-              });
-              
               if (tokenData?.nodeTokenCreateds?.length > 0) {
                 tokenSupply = tokenData.nodeTokenCreateds[0].tokenSupply;
-                console.log('💰 Found token supply from NodeTokenCreated event:', {
-                  nodeId: normalizedNodeId.substring(0, 10) + '...',
-                  tokenId: nftData.tokenId,
-                  tokenSupply: tokenSupply,
-                  tokenSupplyType: typeof tokenSupply
-                });
               } else {
                 console.warn('⚠️ No NodeTokenCreated events found for tokenId:', {
                   nodeId: normalizedNodeId.substring(0, 10) + '...',
