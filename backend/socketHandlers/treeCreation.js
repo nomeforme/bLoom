@@ -82,14 +82,28 @@ function handleTreeCreation(socket, io) {
         }
       });
 
+      // Find the NodeCreated event (for root node) in the same transaction
+      const { ethers } = require('ethers');
+      const { TREE_ABI } = require('../config/blockchain');
+      const treeInterface = new ethers.Interface(TREE_ABI);
+      
+      const nodeCreatedEvent = receipt.logs.find(log => {
+        try {
+          const parsed = treeInterface.parseLog(log);
+          return parsed.name === 'NodeCreated';
+        } catch {
+          return false;
+        }
+      });
+
       if (treeCreatedEvent) {
-        const parsedEvent = factory.interface.parseLog(treeCreatedEvent);
+        const parsedTreeEvent = factory.interface.parseLog(treeCreatedEvent);
         const treeData = {
-          treeId: parsedEvent.args.treeId,
-          treeAddress: parsedEvent.args.treeAddress,
-          nftContractAddress: parsedEvent.args.nftContractAddress,
-          creator: parsedEvent.args.creator, // This will be the backend wallet for now
-          rootContent: parsedEvent.args.rootContent,
+          treeId: parsedTreeEvent.args.treeId,
+          treeAddress: parsedTreeEvent.args.treeAddress,
+          nftContractAddress: parsedTreeEvent.args.nftContractAddress,
+          creator: parsedTreeEvent.args.creator, // This will be the backend wallet for now
+          rootContent: parsedTreeEvent.args.rootContent,
           requestedBy: userAccount, // Track who requested it
           model: model
         };
@@ -101,9 +115,39 @@ function handleTreeCreation(socket, io) {
           requestedBy: treeData.requestedBy
         });
 
-        // Emit to all connected clients
+        // Emit TreeCreated event to all connected clients
         console.log(`📡 Emitting treeCreated event to ${io.engine.clientsCount} clients`);
         io.emit('treeCreated', treeData);
+
+        // Also emit NodeCreated event for the root node if found
+        if (nodeCreatedEvent) {
+          const parsedNodeEvent = treeInterface.parseLog(nodeCreatedEvent);
+          const nodeData = {
+            nodeId: parsedNodeEvent.args.nodeId,
+            parentId: parsedNodeEvent.args.parentId, // Should be null/0x0 for root
+            content: parsedTreeEvent.args.rootContent, // Get content from TreeCreated event
+            author: parsedNodeEvent.args.author,
+            timestamp: Number(parsedNodeEvent.args.timestamp),
+            treeAddress: treeData.treeAddress, // Associate with the tree
+            hasNFT: parsedNodeEvent.args.hasNFT,
+            modelId: parsedNodeEvent.args.modelId || model,
+            tokenId: parsedNodeEvent.args.tokenId ? Number(parsedNodeEvent.args.tokenId) : null,
+            tokenBoundAccount: parsedNodeEvent.args.tokenBoundAccount || null,
+            nodeTokenContract: parsedNodeEvent.args.nodeTokenContract || null
+          };
+
+          console.log('✅ Root node created:', {
+            nodeId: nodeData.nodeId.substring(0, 10) + '...',
+            hasNFT: nodeData.hasNFT,
+            tokenId: nodeData.tokenId
+          });
+
+          // Emit NodeCreated event for the root node
+          console.log(`📡 Emitting nodeCreated event for root node to ${io.engine.clientsCount} clients`);
+          io.emit('nodeCreated', nodeData);
+        } else {
+          console.warn('⚠️ NodeCreated event not found for root node in tree creation transaction');
+        }
 
         // Send success response to requesting client
         socket.emit('treeCreationComplete', {
