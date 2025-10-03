@@ -99,3 +99,6 @@ wheels/
 dump.rdb
 
 loomchain-subgraph/generated/
+
+# Reference directory (unused)
+reference/
