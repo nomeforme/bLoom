@@ -102,3 +102,6 @@ loomchain-subgraph/generated/
 
 # Reference directory (unused)
 reference/
+
+# Sensitive files
+refs.txt
