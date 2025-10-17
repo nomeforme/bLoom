@@ -20,7 +20,7 @@
     "534351": {
       "chainId": 534351,
       "name": "Scroll Sepolia",
-      "rpcUrl": "https://scroll-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
+      "rpcUrl": "https://scroll-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY",
       "factoryAddress": "0x71836619c0647aE4C4ab8c47Ff12426887A54F7e",
       "gasPrice": "30000000",
       "explorerUrl": "https://sepolia.scrollscan.com",
@@ -35,7 +35,7 @@
     "534352": {
       "chainId": 534352,
       "name": "Scroll",
-      "rpcUrl": "https://scroll-mainnet.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
+      "rpcUrl": "https://scroll-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY",
       "factoryAddress": "0x390af32EB799f9611c4a9360a4e2876715de720f",
       "gasPrice": "120108",
       "explorerUrl": "https://scrollscan.com",
@@ -50,7 +50,7 @@
     "11155111": {
       "chainId": 11155111,
       "name": "Sepolia Testnet",
-      "rpcUrl": "https://eth-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v",
+      "rpcUrl": "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY",
       "factoryAddress": "0x0a275e9170D873374f7532e77Af34448D77C3a44",
       "gasPrice": "3000000",
       "explorerUrl": "https://sepolia.etherscan.io",
