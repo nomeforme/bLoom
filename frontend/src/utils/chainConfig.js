@@ -76,15 +76,15 @@ function getFallbackConfig() {
     '11155111': {
       chainId: 11155111,
       name: 'Sepolia Testnet',
-      rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/YgcabtmS_ig4_7SmBLs1v',
+      rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY',
       factoryAddress: '0x0a275e9170D873374f7532e77Af34448D77C3a44',
       explorerUrl: 'https://sepolia.etherscan.io'
     }
   };
-  
-  return { 
-    chains: fallbackChains, 
-    active: fallbackChains['31337'] 
+
+  return {
+    chains: fallbackChains,
+    active: fallbackChains['31337']
   };
 }
 

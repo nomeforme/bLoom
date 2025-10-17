@@ -48,13 +48,19 @@ function resolveChainId(chainIdOrAlias) {
 function getChainConfig(chainIdOrAlias) {
   const config = loadChainsConfig();
   const chainId = resolveChainId(chainIdOrAlias);
-  
+
   if (!config.chains[chainId]) {
     throw new Error(`Chain configuration not found for ID: ${chainId}`);
   }
 
   const chainConfig = { ...config.chains[chainId] };
-  
+
+  // Inject Alchemy API key into RPC URL if present
+  const alchemyApiKey = process.env.ALCHEMY_API_KEY;
+  if (alchemyApiKey && chainConfig.rpcUrl) {
+    chainConfig.rpcUrl = chainConfig.rpcUrl.replace(/\/v2\/[^/]*$/, `/v2/${alchemyApiKey}`);
+  }
+
   // Add private key from environment variables
   const privateKey = process.env[`PRIVATE_KEY_${chainId}`] || process.env.PRIVATE_KEY;
   if (privateKey) {
