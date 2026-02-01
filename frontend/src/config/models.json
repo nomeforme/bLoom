@@ -63,8 +63,8 @@
     },
     "deepseek-v3": {
       "name": "DeepSeek V3",
-      "provider": "Chutes",
-      "modelId": "deepseek-ai/DeepSeek-V3-Base",
+      "provider": "OpenRouter",
+      "modelId": "deepseek/deepseek-v3-base",
       "maxTokens": 4000
     },
     "llama-3.1-405b": {

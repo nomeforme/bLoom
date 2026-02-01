@@ -95,13 +95,13 @@ const LLM_CONFIG = {
     defaultTemp: 0.7
   },
   
-  // DeepSeek via Chutes API
+  // DeepSeek via OpenRouter
   'deepseek-v3': {
-    name: 'DeepSeek V3 (Chutes)',
-    id: 'deepseek-ai/DeepSeek-V3-Base',
+    name: 'DeepSeek V3 (OpenRouter)',
+    id: 'deepseek/deepseek-v3-base',
     provider: 'openai', // Uses OpenAI-compatible API
-    baseURL: 'https://llm.chutes.ai/v1/',
-    apiKey: process.env.CHUTES_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
     maxTokens: 4000,
     defaultTemp: 0.7
   },
