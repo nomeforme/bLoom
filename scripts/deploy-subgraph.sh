@@ -23,7 +23,7 @@ if [ -f ".env" ]; then
 fi
 
 # Set default project ID if not set
-GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID:-"120278"}
+GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID:-"1724098"}
 
 # Function to print colored output
 print_status() {
@@ -165,14 +165,14 @@ update_factory_address() {
 run_codegen() {
     print_status "Generating types from schema and ABIs..."
     cd "$SUBGRAPH_DIR"
-    
-    if npm run codegen; then
+
+    if npx graph codegen; then
         print_success "Code generation completed successfully"
     else
         print_error "Code generation failed"
         exit 1
     fi
-    
+
     cd ..
 }
 
@@ -180,14 +180,14 @@ run_codegen() {
 build_subgraph() {
     print_status "Building subgraph..."
     cd "$SUBGRAPH_DIR"
-    
-    if npm run build; then
+
+    if npx graph build; then
         print_success "Build completed successfully"
     else
         print_error "Build failed"
         exit 1
     fi
-    
+
     cd ..
 }
 
@@ -195,21 +195,28 @@ build_subgraph() {
 deploy_subgraph() {
     print_status "Deploying subgraph to The Graph Studio..."
     cd "$SUBGRAPH_DIR"
-    
-    # Set the deploy key for this session
+
+    # Authenticate with the deploy key
     if [ -n "$GRAPH_DEPLOY_KEY" ]; then
-        echo "$GRAPH_DEPLOY_KEY" | graph auth --studio 2>/dev/null || true
+        print_status "Authenticating with Graph Studio..."
+        if ! npx graph auth "$GRAPH_DEPLOY_KEY"; then
+            print_error "Authentication failed"
+            exit 1
+        fi
+        print_success "Authentication successful"
+    else
+        print_error "No deploy key available"
+        exit 1
     fi
-    
-    if graph deploy --node https://api.studio.thegraph.com/deploy/ "$SUBGRAPH_NAME" --version-label "$VERSION"; then
+
+    if npx graph deploy "$SUBGRAPH_NAME" --node https://api.studio.thegraph.com/deploy/ --version-label "$VERSION"; then
         print_success "Deployment completed successfully!"
-        print_success "Subgraph endpoint: https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/$VERSION"
         print_success "Studio URL: https://thegraph.com/studio/subgraph/bloom-subgraph"
     else
         print_error "Deployment failed"
         exit 1
     fi
-    
+
     cd ..
 }
 

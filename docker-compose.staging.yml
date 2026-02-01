@@ -9,10 +9,10 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=staging
+      - NODE_ENV=${NODE_ENV:-staging}
       - PORT=3001
     env_file:
-      - .env.staging
+      - .env
     restart: unless-stopped
     networks:
       - bloom-network
@@ -28,19 +28,18 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_ENVIRONMENT=staging
-        - REACT_APP_STAGING_BACKEND_URL=http://REDACTED_IP:3001
-        - REACT_APP_DEV_BACKEND_URL=http://localhost:3001
-        - REACT_APP_GRAPH_VERSION=v0.0.20
-        - REACT_APP_GRAPH_USER_ID=120324
-        - REACT_APP_IPFS_PLAN_TIER=free
+        - REACT_APP_ENVIRONMENT=${REACT_APP_ENVIRONMENT}
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+        - REACT_APP_GRAPH_VERSION=${REACT_APP_GRAPH_VERSION}
+        - REACT_APP_GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID}
+        - REACT_APP_IPFS_PLAN_TIER=${REACT_APP_IPFS_PLAN_TIER}
     container_name: bloom-frontend-staging
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_NODE_ENV=staging
+      - REACT_APP_NODE_ENV=${NODE_ENV:-staging}
     env_file:
-      - ./frontend/.env.staging
+      - .env
     depends_on:
       - backend
     restart: unless-stopped

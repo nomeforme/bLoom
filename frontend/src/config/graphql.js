@@ -3,8 +3,8 @@ import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
 // Static configuration using environment variables
-const GRAPH_VERSION = process.env.REACT_APP_GRAPH_VERSION || 'v0.0.4';
-const GRAPH_USER_ID = process.env.REACT_APP_GRAPH_USER_ID || '120278';
+const GRAPH_VERSION = process.env.REACT_APP_GRAPH_VERSION || 'version/latest';
+const GRAPH_USER_ID = process.env.REACT_APP_GRAPH_USER_ID || '1724098';
 const GRAPH_ENDPOINT = `https://api.studio.thegraph.com/query/${GRAPH_USER_ID}/bloom-subgraph/${GRAPH_VERSION}`;
 
 console.log('📊 Using Graph subgraph version:', GRAPH_VERSION);
