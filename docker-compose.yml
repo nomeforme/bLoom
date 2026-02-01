@@ -15,6 +15,8 @@ services:
       - .env
     depends_on: []
     restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
     networks:
       - bloom-network
     healthcheck:
@@ -44,6 +46,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
     networks:
       - bloom-network
     healthcheck:

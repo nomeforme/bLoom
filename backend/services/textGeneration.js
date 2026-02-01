@@ -109,7 +109,7 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       
     } else if (modelConfig.provider === 'openai') {
       // OpenAI-compatible API (covers OpenAI, DeepSeek via Chutes, Llama via OpenRouter, Local)
-      const isBaseModel = modelConfig.id.includes('gpt-4-base') || modelConfig.id.includes('deepseek') || modelConfig.id.includes('meta-llama') || modelKey === 'local';
+      const isBaseModel = modelConfig.id.includes('gpt-4-base') || modelConfig.id.includes('davinci') || modelConfig.id.includes('deepseek') || modelConfig.id.includes('meta-llama') || modelKey === 'local';
       
       if (isBaseModel) {
         // Use completions endpoint for base models

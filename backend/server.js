@@ -57,6 +57,50 @@ server.listen(PORT, () => {
   console.log(`📡 Socket.IO server ready for connections`);
   console.log(`🔗 Connected to ${chainConfig.name} (${chainConfig.chainId}) at ${chainConfig.rpcUrl}`);
   console.log(`📋 Factory contract: ${chainConfig.factoryAddress}`);
-  
+
   setupBlockchainListeners(io);
 });
+
+// Graceful shutdown
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+
+  // Close Socket.IO connections
+  console.log('📡 Closing Socket.IO connections...');
+  io.close();
+
+  // Remove blockchain event listeners
+  const { factory, provider } = require('./config/blockchain');
+  console.log('🔗 Removing blockchain listeners...');
+  factory.removeAllListeners();
+
+  // Destroy provider if possible
+  if (provider.destroy) {
+    provider.destroy();
+  }
+
+  // Close HTTP server
+  console.log('🌐 Closing HTTP server...');
+  server.close((err) => {
+    if (err) {
+      console.error('❌ Error closing server:', err);
+      process.exit(1);
+    }
+    console.log('✅ Server closed successfully');
+    process.exit(0);
+  });
+
+  // Force exit after timeout
+  setTimeout(() => {
+    console.error('⚠️ Forced shutdown after timeout');
+    process.exit(1);
+  }, 5000);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

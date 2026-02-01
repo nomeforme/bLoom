@@ -13,6 +13,12 @@
       "modelId": "gpt-5",
       "maxTokens": 4000
     },
+    "davinci-002": {
+      "name": "Davinci 002",
+      "provider": "OpenAI",
+      "modelId": "davinci-002",
+      "maxTokens": 4096
+    },
     "claude-3-7-sonnet": {
       "name": "Claude 3.7 Sonnet",
       "provider": "Anthropic",

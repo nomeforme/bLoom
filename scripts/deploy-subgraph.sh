@@ -23,7 +23,11 @@ if [ -f ".env" ]; then
 fi
 
 # Set default project ID if not set
-GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID:-"1724098"}
+GRAPH_USER_ID=${REACT_APP_GRAPH_USER_ID}
+if [ -z "$GRAPH_USER_ID" ]; then
+    print_error "REACT_APP_GRAPH_USER_ID environment variable is required"
+    exit 1
+fi
 
 # Function to print colored output
 print_status() {

@@ -10,7 +10,7 @@ dataSources:
     source:
       address: "0x390af32EB799f9611c4a9360a4e2876715de720f"
       abi: LoomFactory
-      startBlock: 20781000
+      startBlock: 20784190
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

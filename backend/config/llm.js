@@ -21,7 +21,16 @@ const LLM_CONFIG = {
     maxTokens: 4000,
     defaultTemp: 0.8
   },
-  
+  'davinci-002': {
+    name: 'Davinci 002 (OpenAI)',
+    id: 'davinci-002',
+    provider: 'openai',
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    maxTokens: 4096,
+    defaultTemp: 0.8
+  },
+
   // Anthropic Models
   'claude-3-7-sonnet': {
     name: 'Claude 3.7 Sonnet (Anthropic)',
