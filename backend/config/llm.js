@@ -28,7 +28,7 @@ const LLM_CONFIG = {
     baseURL: 'https://api.openai.com/v1',
     apiKey: process.env.OPENAI_API_KEY,
     maxTokens: 4096,
-    defaultTemp: 0.8
+    defaultTemp: 1
   },
 
   // Anthropic Models
@@ -71,6 +71,15 @@ const LLM_CONFIG = {
   'claude-opus-4-1': {
     name: 'Claude Opus 4.1 (Anthropic)',
     id: 'claude-opus-4-1-20250805',
+    provider: 'anthropic',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    maxTokens: 4000,
+    defaultTemp: 0.8
+  },
+
+  'claude-opus-4-5': {
+    name: 'Claude Opus 4.5 (Anthropic)',
+    id: 'claude-opus-4-5-20251101',
     provider: 'anthropic',
     apiKey: process.env.ANTHROPIC_API_KEY,
     maxTokens: 4000,

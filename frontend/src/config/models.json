@@ -49,6 +49,12 @@
       "modelId": "claude-opus-4-1-20250805",
       "maxTokens": 4000
     },
+    "claude-opus-4-5": {
+      "name": "Claude Opus 4.5",
+      "provider": "Anthropic",
+      "modelId": "claude-opus-4-5-20251101",
+      "maxTokens": 4000
+    },
     "claude-3-opus": {
       "name": "Claude 3 Opus",
       "provider": "Anthropic",
@@ -89,6 +95,12 @@
       "name": "Kimi K2",
       "provider": "OpenRouter",
       "modelId": "moonshotai/kimi-k2",
+      "maxTokens": 4000
+    },
+    "h-405": {
+      "name": "Hermes 3 Llama 405B",
+      "provider": "OpenRouter",
+      "modelId": "nousresearch/hermes-3-llama-3.1-405b",
       "maxTokens": 4000
     },
     "claude-opus-4-1-bedrock": {
