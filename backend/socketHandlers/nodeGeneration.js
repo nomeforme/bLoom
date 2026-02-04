@@ -7,6 +7,7 @@ const { ipfsService } = require('../services/ipfsService');
 
 function handleGenerateNodes(socket, io) {
   socket.on('generateNodes', async (data) => {
+    console.log('📨 Received generateNodes request:', { count: data.count, model: data.model });
     const { treeAddress, parentId, parentContent, count = 3, userAccount, model = 'claude-3-haiku', temperature, maxTokens, storageMode = 'full' } = data;
     
     try {

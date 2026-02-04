@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import KeyboardShortcutsManager from '../utils/keyboardShortcuts';
 
-const LoomGraph = forwardRef(({ 
-  currentTree, 
-  onNodeSelect, 
-  onAddNode, 
-  onUpdateNode, 
+const LoomGraph = forwardRef(({
+  currentTree,
+  onNodeSelect,
+  onAddNode,
+  onUpdateNode,
   onGenerateSiblings,
   onCreateTree,
   isGeneratingChildren,
   setIsGeneratingChildren,
   isGeneratingSiblings,
   setIsGeneratingSiblings,
-  storageMode
+  storageMode,
+  childrenCount,
+  siblingCount
 }, ref) => {
   const canvasRef = useRef(null);
   const graphRef = useRef(null);
@@ -26,6 +28,14 @@ const LoomGraph = forwardRef(({
       console.log('🔍 [LoomGraph] Updated graph.storageMode to:', storageMode);
     }
   }, [storageMode]);
+
+  // Update graph object when generation counts change
+  useEffect(() => {
+    if (graphRef.current) {
+      graphRef.current.childrenCount = childrenCount;
+      graphRef.current.siblingCount = siblingCount;
+    }
+  }, [childrenCount, siblingCount]);
   
   // Helper function to extract clean content from NFT JSON metadata
   const extractCleanContent = (rawContent) => {
@@ -178,6 +188,9 @@ const LoomGraph = forwardRef(({
     graphRef.current = graph;
     // Expose canvas instance to other effects
     graph.canvasInstance = canvas;
+    // Initialize generation counts (will be updated by useEffect when props change)
+    graph.childrenCount = childrenCount;
+    graph.siblingCount = siblingCount;
     
     // Configure LiteGraph settings
     canvas.background_image = null;
@@ -1490,7 +1503,7 @@ const LoomGraph = forwardRef(({
           
           const generateChildren = graph.onGenerateSiblings;
           if (generateChildren) {
-            generateChildren(selectedNodeData.id, 3)
+            generateChildren(selectedNodeData.id, graph.childrenCount || 3)
               .then((result) => {
                 if (setIsGeneratingChildren) {
                   setIsGeneratingChildren(false);
@@ -1529,7 +1542,7 @@ const LoomGraph = forwardRef(({
           
           const generateSiblings = graph.onGenerateSiblings;
           if (generateSiblings) {
-            generateSiblings(selectedNodeData.parentId, 3)
+            generateSiblings(selectedNodeData.parentId, graph.siblingCount || 3)
               .then((result) => {
                 if (setIsGeneratingSiblings) {
                   setIsGeneratingSiblings(false);

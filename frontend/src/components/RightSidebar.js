@@ -46,11 +46,13 @@ const RightSidebar = ({
   cycleStorageMode,
   ipfsAvailable,
   nativeCurrencySymbol = 'ETH',
-  socket
+  socket,
+  childrenCount,
+  setChildrenCount,
+  siblingCount,
+  setSiblingCount
 }) => {
   const [newTreeContent, setNewTreeContent] = useState('');
-  const [childrenCount, setChildrenCount] = useState(3);
-  const [siblingCount, setSiblingCount] = useState(3);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isCreatingTree, setIsCreatingTree] = useState(false);

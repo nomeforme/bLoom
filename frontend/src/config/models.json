@@ -49,6 +49,18 @@
       "modelId": "claude-opus-4-1-20250805",
       "maxTokens": 4000
     },
+    "claude-haiku-4-5": {
+      "name": "Claude Haiku 4.5",
+      "provider": "Anthropic",
+      "modelId": "claude-haiku-4-5-20251101",
+      "maxTokens": 4000
+    },
+    "claude-sonnet-4-5": {
+      "name": "Claude Sonnet 4.5",
+      "provider": "Anthropic",
+      "modelId": "claude-sonnet-4-5-20251101",
+      "maxTokens": 4000
+    },
     "claude-opus-4-5": {
       "name": "Claude Opus 4.5",
       "provider": "Anthropic",

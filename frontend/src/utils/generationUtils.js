@@ -60,6 +60,7 @@ export const createGenerationHandler = (
 
       const fullPathContext = buildFullPathContext(parentId, currentTree);
 
+      console.log('📤 Emitting generateNodes with count:', count);
       socket.emit('generateNodes', {
         treeAddress: currentTree?.address,
         parentId,

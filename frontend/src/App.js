@@ -38,6 +38,10 @@ function AppInner() {
   const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
+
+  // Generation count state (shared between sidebar and keyboard shortcuts)
+  const [childrenCount, setChildrenCount] = useState(3);
+  const [siblingCount, setSiblingCount] = useState(3);
   
   const {
     provider,
@@ -386,6 +390,10 @@ function AppInner() {
         ipfsAvailable={ipfsAvailable}
         nativeCurrencySymbol={nativeCurrencySymbol}
         socket={socket}
+        childrenCount={childrenCount}
+        setChildrenCount={setChildrenCount}
+        siblingCount={siblingCount}
+        setSiblingCount={setSiblingCount}
       />
       
       {/* Notifications */}
@@ -454,6 +462,8 @@ function AppInner() {
           isGeneratingSiblings={isGeneratingSiblings}
           setIsGeneratingSiblings={setIsGeneratingSiblings}
           storageMode={storageMode}
+          childrenCount={childrenCount}
+          siblingCount={siblingCount}
         />
       </div>
       

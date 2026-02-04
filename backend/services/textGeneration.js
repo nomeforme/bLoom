@@ -33,17 +33,21 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
     let response;
     
     if (modelConfig.provider === 'anthropic') {
-      // Anthropic API
+      // Anthropic API - using assistant prefill for completion-style behavior
       console.log(`📤 Sending request to Anthropic API for model: ${modelConfig.id}`);
       console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
-      
+
       response = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
           model: modelConfig.id,
           max_tokens: finalMaxTokens,
           temperature: finalTemp,
-          messages: [{ role: 'user', content: prompt }]
+          system: 'Always continue in text completion mode. Continue the text naturally without stopping.',
+          messages: [
+            { role: 'assistant', content: prompt },
+            { role: 'user', content: 'continue' }
+          ]
         },
         {
           headers: {
@@ -60,7 +64,7 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
         stopReason: response.data.stop_reason,
         usage: response.data.usage
       });
-      
+
       const generatedText = response.data.content[0].text.trim();
       const completionTokens = response.data.usage?.output_tokens || 0;
       console.log(`✅ Generated text from Anthropic:`, {
@@ -73,21 +77,25 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
       return { text: generatedText, completionTokens };
       
     } else if (modelConfig.provider === 'bedrock') {
-      // Amazon Bedrock via Anthropic SDK
+      // Amazon Bedrock via Anthropic SDK - using assistant prefill for completion-style behavior
       console.log(`📤 Sending request to Amazon Bedrock for model: ${modelConfig.id}`);
       console.log(`📝 Prompt (first 200 chars): "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`);
-      
+
       const client = new AnthropicBedrock({
         awsAccessKey: modelConfig.awsAccessKey || process.env.AWS_ACCESS_KEY_ID,
         awsSecretKey: modelConfig.awsSecretKey || process.env.AWS_SECRET_ACCESS_KEY,
         awsRegion: modelConfig.awsRegion || process.env.AWS_REGION || 'us-east-1'
       });
-      
+
       const message = await client.messages.create({
         model: modelConfig.id,
         max_tokens: finalMaxTokens,
         temperature: finalTemp,
-        messages: [{ role: 'user', content: prompt }]
+        system: 'Always continue in text completion mode. Continue the text naturally without stopping.',
+        messages: [
+          { role: 'assistant', content: prompt },
+          { role: 'user', content: 'continue' }
+        ]
       });
       
       console.log(`📥 Bedrock API Response received:`, {
@@ -95,7 +103,7 @@ async function generateText(prompt, modelKey = 'claude-3-haiku', temperature, ma
         stopReason: message.stop_reason,
         usage: message.usage
       });
-      
+
       const generatedText = message.content[0].text.trim();
       const completionTokens = message.usage?.output_tokens || 0;
       console.log(`✅ Generated text from Bedrock:`, {
